@@ -213,6 +213,8 @@ export const COLORS = {
   amber: { 50: '#FFFAEB', 400: '#FBBF24', 500: '#F59E0B', 700: '#B45309' },
   green: { 50: '#ECFDF5', 500: '#10B981', 700: '#047857' },
   red: { 50: '#FEF2F2', 500: '#EF4444', 700: '#B91C1C' },
+  /** 純白。neutral[50] は暖色寄りなので、カード面やボタン文字にはこちらを使う */
+  white: '#FFFFFF',
 } as const;
 
 /** 意味を持つ色。用途が変わっても呼び出し側を書き換えずに済むよう別名で持つ */
@@ -309,6 +311,12 @@ module.exports = {
           50: '#FAF9F7', 100: '#F2F0ED', 200: '#E4E1DC', 300: '#CFCAC2', 400: '#A8A29A',
           500: '#7C766E', 600: '#5C574F', 700: '#443F39', 800: '#2C2823', 900: '#1A1714',
         },
+        // 以下は Tailwind 既定のスケールと同名だが値が異なる（green は既定の green ではなく
+        // emerald 相当）。明示しないと className 側だけ既定色になり theme.ts と食い違う
+        amber: { 50: '#FFFAEB', 400: '#FBBF24', 500: '#F59E0B', 700: '#B45309' },
+        green: { 50: '#ECFDF5', 500: '#10B981', 700: '#047857' },
+        red: { 50: '#FEF2F2', 500: '#EF4444', 700: '#B91C1C' },
+        white: '#FFFFFF',
       },
       borderRadius: {
         card: '16px',
@@ -348,6 +356,21 @@ module.exports = {
 > `text-base` を書いた全コンポーネントが設計と 1px ずれる。しかもクラス名は
 > 有効なので**エラーにならず静かにずれる**。同期テストでこれを固定する。
 
+> **なぜ amber / green / red / white も必ず書くか**
+> `fontSize` と同じ罠が色にもある。`COLORS.amber` `COLORS.green` `COLORS.red` は
+> Tailwind の同名スケールと**値が違う**（`COLORS.green` は既定の green ではなく emerald 相当）。
+> Tailwind 側に書かないと `className="bg-green-50"` だけ既定色になり、
+> JS から `SEMANTIC_COLORS.open` を渡した箇所と別の色になる。実測での差分は次の 3 件:
+>
+> | クラス | 未定義時（Tailwind 既定） | `theme.ts` |
+> | --- | --- | --- |
+> | `bg-amber-50` | `#FFFBEB` | `#FFFAEB` |
+> | `bg-green-50` | `#F0FDF4` | `#ECFDF5` |
+> | `text-green-700` | `#15803D` | `#047857` |
+>
+> `white` は `COLORS.neutral[50]`（`#FAF9F7`）が暖色寄りで、`text-white` と並べると
+> そこだけ黄ばんで見えるため、純白を独立したトークンとして持つ。
+
 - [ ] **Step 2: theme.ts と tailwind.config.js の同期テストを追加する**
 
 色の二重定義がずれると気づけないため、同期をテストで固定する。
@@ -358,12 +381,10 @@ module.exports = {
 const tailwindConfig = require('../../tailwind.config.js');
 
 describe('theme.ts と tailwind.config.js の同期', () => {
-  it('primary の全スケールが一致する', () => {
-    expect(tailwindConfig.theme.extend.colors.primary).toEqual(COLORS.primary);
-  });
-
-  it('neutral の全スケールが一致する', () => {
-    expect(tailwindConfig.theme.extend.colors.neutral).toEqual(COLORS.neutral);
+  // スケール単位ではなく COLORS 全体を比較する。theme.ts に色を足して
+  // tailwind.config.js への追記を忘れた場合もこれ 1 本で検知できる
+  it('カラートークンが過不足なく一致する', () => {
+    expect(tailwindConfig.theme.extend.colors).toEqual(COLORS);
   });
 
   it('カードの角丸が一致する', () => {
@@ -653,25 +674,98 @@ git commit -m "feat(mobile): ロガーを追加する"
 - [ ] **Step 1: jest.config.js を作る**
 
 ```js
-// apps/mobile/jest.config.js
+const path = require('node:path');
+
+const { resolveBabelOptions } = require('jest-expo/src/resolveBabelOptions');
+
+/** ソース変換の transform キー。jest-expo のプリセットと同じ値にして差し替える */
+const SOURCE_TRANSFORM_PATTERN = '\\.[jt]sx?$';
+
+/**
+ * ESM で解決されるパッケージ用の transform キー。
+ * jest-expo の既定は `\.[jt]sx?$` だけで .mjs / .cjs を変換対象にしないため、
+ * .mjs に解決されるパッケージが require(esm) エラーになる。
+ * SOURCE_TRANSFORM_PATTERN とは排他（[mc] が必須）なので二重変換にはならない。
+ */
+const ESM_TRANSFORM_PATTERN = '\\.[mc]js$';
+
+/**
+ * npm は babel-jest@30 の peerDependency を満たすため @babel/core@8 をルートへ巻き上げるが、
+ * babel-preset-expo@57 は Babel 7 専用で、Babel 8 から読み込むと変換前に落ちる。
+ * jest-expo 同梱の babel-jest（@babel/core@7 を解決する）を明示して回避する。
+ * ルートの @babel/core が 7 系に戻ったらこの迂回は削除してよい。
+ */
+const JEST_EXPO_DIR = path.dirname(require.resolve('jest-expo/package.json'));
+const BABEL_JEST_PATH = require.resolve('babel-jest', { paths: [JEST_EXPO_DIR] });
+
+/**
+ * CommonJS で配信されていないため変換が必要な node_modules。
+ * 前方一致で判定するので `react-native` は react-native-svg / react-native-css-interop も含む。
+ */
+const TRANSPILED_NODE_MODULES = [
+  '.pnpm',
+  'react-native',
+  '@react-native',
+  '@react-native-community',
+  'expo',
+  '@expo',
+  '@expo-google-fonts',
+  'react-navigation',
+  '@react-navigation',
+  '@sentry/react-native',
+  'native-base',
+  'standard-navigation',
+  'nativewind',
+  // lucide-react-native は CJS 版も持つが、exports のキー順で `react-native` 条件が
+  // `require` より先に来ており、その条件が .mjs を指す。RN の Jest 環境は
+  // customExportConditions に 'react-native' を含むため .mjs 側に解決される。
+  // 前方一致 'react-native' では先頭一致しないため個別に挙げる
+  'lucide-react-native',
+  '@meshimap',
+];
+
 /** @type {import('jest').Config} */
 module.exports = {
   preset: 'jest-expo',
   setupFilesAfterEnv: ['<rootDir>/jest-setup.ts'],
-  // モノレポの workspace パッケージと RN 系はトランスパイルが必要
+  transform: {
+    [SOURCE_TRANSFORM_PATTERN]: [BABEL_JEST_PATH, resolveBabelOptions(__dirname)],
+    [ESM_TRANSFORM_PATTERN]: [BABEL_JEST_PATH, resolveBabelOptions(__dirname)],
+  },
   transformIgnorePatterns: [
-    'node_modules/(?!((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg|nativewind|react-native-css-interop|@meshimap/.*)/)',
+    `/node_modules/(?!(${TRANSPILED_NODE_MODULES.join('|')}))`,
+    // babel プラグイン自身を変換すると "Reentrant plugin detected" になるため除外する
+    '/node_modules/react-native-reanimated/plugin/',
+    '/node_modules/@react-native/babel-preset/',
   ],
-  collectCoverageFrom: [
-    'src/**/*.{ts,tsx}',
-    '!src/**/*.test.{ts,tsx}',
-    '!src/app/**',
-  ],
+  collectCoverageFrom: ['src/**/*.{ts,tsx}', '!src/**/*.test.{ts,tsx}', '!src/app/**'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
 };
 ```
+
+> **なぜ `babel-jest` を `require.resolve` で名指しするのか**
+> npm はルートに `@babel/core@8.0.5` を巻き上げる（`@babel/preset-react@8` など v8 の
+> プラグイン群が `peerDependencies: @babel/core@^8` を宣言しているため、ルートの
+> 巻き上げ先は v8 でなければならない）。一方 `babel-preset-expo@57` は Babel 7 専用で、
+> v8 の core から読むと落ちる。`jest-expo` の直下には `@babel/core@7.29.7` が入っているので、
+> そこを起点に `babel-jest` を解決させて Babel 7 に寄せる。
+> ルート `package.json` に `overrides: { "@babel/core": "7.29.7" }` を書くのは**誤り**で、
+> v8 のプラグイン群まで 7 に落としてしまう。narrow にやるなら
+> `overrides: { "babel-jest": { "@babel/core": "7.29.7" } }` だが、
+> 上記の解決で足りているため依存は増やさない。
+
+> **なぜ transform のキーを 2 本持つのか**
+> `jest-expo` プリセットの transform キーは `\.[jt]sx?$` で、`.mjs` / `.cjs` に一致しない。
+> `lucide-react-native` は CJS 版も配信しているが、`exports` のキー順で `react-native` 条件が
+> `require` より先にあり、そこが `.mjs` を指す。RN の Jest 環境
+> （`@react-native/jest-preset/jest/react-native-env.js`）は
+> `customExportConditions = ['require', 'react-native']` を設定しており、
+> 条件は exports のキー順で評価されるため `.mjs` 側に解決される。
+> よってキーを足さないと `Must use import to load ES Module` で落ちる。
+> `SOURCE_TRANSFORM_PATTERN` の文字列はプリセットのキーと**完全一致させること**。
+> 変えるとプリセット側のキーが生き残り、壊れた `babel-jest` が使われる。
 
 - [ ] **Step 2: jest-setup.ts を作る**
 
@@ -986,7 +1080,19 @@ interface InputProps {
 - `errorMessage` があるとき枠線が danger 色になる
 - `isRequired` のとき必須マークを表示する
 - `maxLength` を指定すると文字数カウンタを表示する
-- アクセシビリティ: エラー時に `accessibilityInvalid` が true
+- `isMultiline` の最小高さは className の `h-[96px]` ではなく
+  `style={{ minHeight: MULTILINE_MIN_HEIGHT_PX }}` で与える（値の二重管理を避ける）
+- アクセシビリティ: エラー時にラベル・必須・エラー文を合成した `accessibilityLabel` が付く
+- アクセシビリティ: エラーメッセージが `accessibilityRole="alert"` で公開される
+
+> **`accessibilityInvalid` は使えない（実装時に判明）**
+> React Native 0.86.3 の `AccessibilityProps` に `accessibilityInvalid` も `aria-invalid` も存在しない
+> （`node_modules/react-native/Libraries/Components/View/ViewAccessibility.d.ts`。
+> `AccessibilityState` のキーは `disabled` / `selected` / `checked` / `busy` / `expanded` の 5 つだけ）。
+> `grep -rn "accessibilityInvalid" node_modules/react-native/` は 0 件、
+> `aria-invalid` も `Libraries` 配下に 0 件（対照として `'aria-busy'` は 16 件ヒットする）。
+> よってエラー状態は **`accessibilityLabel` への合成**（例: `店名、必須、エラー: 店名を入力してください`）と
+> **エラー文への `accessibilityRole="alert"`** の 2 段構えで伝える。
 
 #### Task 0-11: `Skeleton`
 
@@ -1064,11 +1170,60 @@ interface IconProps {
 
 **Files:**
 - Create: `apps/mobile/src/app/_dev/catalog.tsx`
+- Test: `apps/mobile/src/app/_dev/catalog.test.tsx`
 
 **Interfaces:**
 - Consumes: Task 0-7〜0-13 の全プリミティブ
 
-- [ ] **Step 1: カタログ画面を作る**
+> **`_dev/` はルートとして拾われる（`_layout` のような除外はされない）**
+> expo-router 57 のファイル探索は `require.context` の正規表現
+> `/^(?:\.\/)(?!(?:(?:(?:.*\+api)|(?:\+html)|(?:\+middleware)))\.[tj]sx?$).*\.[tj]sx?$/` で行われ、
+> `_` プレフィックスによる一般的な除外は無い（特別扱いされるのは**ファイル名が完全一致で
+> `_layout` の場合だけ**）。実測でも `./_dev/catalog.tsx` はこの正規表現に一致する。
+> つまりカタログは `/_dev/catalog` で到達でき、本番バンドルにも含まれる。
+> ポートフォリオでは「デザインシステムを見せられる」利点の方が大きいため、あえて除外しない。
+
+> **カタログにもテストを置く理由**
+> ここは全プリミティブを同時に描画する唯一の場所なので、どれか 1 つが
+> 例外を投げるようになった変更を最も早く検知できる。目視確認だけに頼らない。
+
+- [ ] **Step 1: 失敗するスモークテストを書く**
+
+```tsx
+// apps/mobile/src/app/_dev/catalog.test.tsx
+import { render, screen } from '@testing-library/react-native';
+
+import CatalogScreen from './catalog';
+
+/** 画面に必ず並ぶセクション見出し。プリミティブを足したらここにも足す */
+const EXPECTED_SECTION_TITLES = [
+  'Button',
+  'Badge',
+  'Card',
+  'Input',
+  'Skeleton',
+  'Icon',
+  'EmptyState',
+  'ErrorState',
+];
+
+describe('CatalogScreen', () => {
+  it('全プリミティブのセクションが例外なく描画される', async () => {
+    await render(<CatalogScreen />);
+
+    for (const title of EXPECTED_SECTION_TITLES) {
+      expect(screen.getByText(title)).toBeTruthy();
+    }
+  });
+});
+```
+
+- [ ] **Step 2: テストが失敗することを確認する**
+
+Run: `npx jest src/app/_dev/catalog.test.tsx`
+Expected: FAIL（`Cannot find module './catalog'`）
+
+- [ ] **Step 3: カタログ画面を作る**
 
 全プリミティブを variant / size / 状態ごとに並べる。デザインの一貫性を目視確認する場所であり、
 新しいプリミティブを足したらここにも追加する。
@@ -1092,7 +1247,7 @@ const BADGE_TONES = ['neutral', 'success', 'warning', 'danger', 'brand'] as cons
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <View className="gap-3 border-b border-neutral-200 py-6">
+    <View className="gap-sm border-b border-neutral-200 py-lg">
       <Text className="font-display text-lg text-neutral-900">{title}</Text>
       {children}
     </View>
@@ -1101,7 +1256,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 export default function CatalogScreen() {
   return (
-    <ScrollView className="flex-1 bg-white px-4">
+    <ScrollView className="flex-1 bg-white px-md">
       <Section title="Button">
         {BUTTON_VARIANTS.map((variant) => (
           <Button key={variant} label={variant} variant={variant} onPress={() => {}} />
@@ -1111,7 +1266,7 @@ export default function CatalogScreen() {
       </Section>
 
       <Section title="Badge">
-        <View className="flex-row flex-wrap gap-2">
+        <View className="flex-row flex-wrap gap-sm">
           {BADGE_TONES.map((tone) => (
             <Badge key={tone} label={tone} tone={tone} />
           ))}
@@ -1139,7 +1294,7 @@ export default function CatalogScreen() {
       </Section>
 
       <Section title="Icon">
-        <View className="flex-row items-center gap-3">
+        <View className="flex-row items-center gap-sm">
           <Icon icon={MapPin} size="sm" />
           <Icon icon={MapPin} size="md" />
           <Icon icon={Star} size="lg" />
@@ -1158,25 +1313,35 @@ export default function CatalogScreen() {
 }
 ```
 
-- [ ] **Step 2: 起動して全プリミティブが表示されることを確認する**
+- [ ] **Step 4: テストが通ることを確認する**
+
+Run: `npx jest src/app/_dev/catalog.test.tsx`
+Expected: PASS
+
+- [ ] **Step 5: わざと壊してテストが落ちることを確認する**
+
+`EXPECTED_SECTION_TITLES` のどれか 1 つに対応する `<Section>` を一時的に削除し、
+テストが `Unable to find an element with text:` で落ちることを確認してから元に戻す。
+
+- [ ] **Step 6: 起動して全プリミティブが表示されることを確認する**
 
 Run: `npm run mobile` → `/_dev/catalog` へ遷移
 確認: すべての variant が崩れず表示され、フォントがテーマどおりであること。
 
-- [ ] **Step 3: 全テストが通ることを確認する**
+- [ ] **Step 7: 全テストが通ることを確認する**
 
 Run: `npm test -w @meshimap/mobile`
 Expected: Phase 0 で書いた全テストが PASS
 
-- [ ] **Step 4: 型チェックが通ることを確認する**
+- [ ] **Step 8: 型チェックが通ることを確認する**
 
 Run: `npm run typecheck -w @meshimap/mobile`
 Expected: エラーなし
 
-- [ ] **Step 5: コミットする**
+- [ ] **Step 9: コミットする**
 
 ```bash
-git add apps/mobile/src/app/_dev/catalog.tsx
+git add apps/mobile/src/app/_dev/catalog.tsx apps/mobile/src/app/_dev/catalog.test.tsx
 git commit -m "feat(mobile): UI プリミティブのカタログ画面を追加する"
 ```
 
