@@ -20,6 +20,9 @@ const CURRENT_DIR = dirname(fileURLToPath(import.meta.url));
 /** src/db/testing/ から apps/api/migrations/ までの相対位置 */
 const MIGRATIONS_DIR = join(CURRENT_DIR, '..', '..', '..', 'migrations');
 
+/** src/db/testing/ から apps/api/seeds/seed.sql までの相対位置 */
+export const SEED_FILE_PATH = join(CURRENT_DIR, '..', '..', '..', 'seeds', 'seed.sql');
+
 export type LocalD1 = {
   readonly d1: D1Database;
   readonly dispose: () => Promise<void>;
@@ -115,6 +118,27 @@ export function toExecutableStatements(migrationSql: string): readonly string[] 
  */
 export async function applyMigrations(d1: D1Database): Promise<number> {
   const statements = toExecutableStatements(readMigrationSql());
+
+  for (const statement of statements) {
+    await d1.exec(statement);
+  }
+
+  return statements.length;
+}
+
+/**
+ * seeds/seed.sql を 1 文ずつ流し込み、実行した文の数を返す。
+ *
+ * マイグレーションと違い、シードには `--> statement-breakpoint` が無い。
+ * 代わりに生成側（scripts/generate-seed.ts）が「1 文を必ず 1 行で出す」約束になっているので、
+ * 改行で割ってから 1 行ずつ `toExecutableStatements()` に通す。
+ * 分け方だけが違い、行コメント落とし・空文の切り捨てという正規化は共通なので、
+ * その部分は関数を分けずに再利用する。複数行に跨る文を足したくなったら生成側を直すこと。
+ */
+export async function applySeed(d1: D1Database): Promise<number> {
+  const statements = readFileSync(SEED_FILE_PATH, 'utf8')
+    .split('\n')
+    .flatMap((line) => toExecutableStatements(line));
 
   for (const statement of statements) {
     await d1.exec(statement);
