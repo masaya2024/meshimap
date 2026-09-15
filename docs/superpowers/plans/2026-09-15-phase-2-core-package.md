@@ -28,14 +28,14 @@
 
 `@meshimap/core` を「API（Phase 4 以降）とモバイル（Phase 5 以降）が共有する、副作用ゼロのドメイン層」として完成させる。
 
-| ゴール | 完了条件 |
-|---|---|
-| ドメインの語彙を型で固定する | ロール / 各種 ID / 0 時からの分 / JST 日付 が、すべてブランド型またはリテラル union になっている |
-| 営業状態の判定を 1 箇所に集める | `getOpenStatus` / `isCurrentlyOpen` / `minutesUntilClose` が日跨ぎ・中休み・臨時休業・定休日をすべて扱う |
-| 予約の可否判定を 1 箇所に集める | `generateSlots` と `canReserve` が席数・同時受付数・受付停止を一貫した優先順で判定する |
-| 入力検証を API とモバイルで共有する | Zod v4 スキーマを公開し、両側で同じ境界値・同じエラーメッセージになる |
-| 表示文字列をプラットフォーム非依存にする | `Intl` / `toLocaleString` / `Date` のローカル時刻メソッドを一切使わない |
-| 品質ゲート | カバレッジ 100%（lines / functions / branches / statements）、ミューテーションスコア 85% 以上 |
+| ゴール                                   | 完了条件                                                                                                 |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| ドメインの語彙を型で固定する             | ロール / 各種 ID / 0 時からの分 / JST 日付 が、すべてブランド型またはリテラル union になっている         |
+| 営業状態の判定を 1 箇所に集める          | `getOpenStatus` / `isCurrentlyOpen` / `minutesUntilClose` が日跨ぎ・中休み・臨時休業・定休日をすべて扱う |
+| 予約の可否判定を 1 箇所に集める          | `generateSlots` と `canReserve` が席数・同時受付数・受付停止を一貫した優先順で判定する                   |
+| 入力検証を API とモバイルで共有する      | Zod v4 スキーマを公開し、両側で同じ境界値・同じエラーメッセージになる                                    |
+| 表示文字列をプラットフォーム非依存にする | `Intl` / `toLocaleString` / `Date` のローカル時刻メソッドを一切使わない                                  |
+| 品質ゲート                               | カバレッジ 100%（lines / functions / branches / statements）、ミューテーションスコア 85% 以上            |
 
 **非ゴール（このフェーズでやらないこと）**
 
@@ -83,42 +83,42 @@
 
 ### 2.2 設計上の決定と理由
 
-| 決定 | 理由 |
-|---|---|
-| 時刻を「0 時からの分」(`MinuteOfDay`) で持つ | 日跨ぎ営業（翌 1:30 = 1530）を数値比較 1 回で判定できる。文字列比較や `Date` の加算を避ける |
-| 閉店 > 1440 を日跨ぎの表現とする | 「翌 0:00 閉店」(1440) は当日で閉まる扱い、「翌 0:01 以降」(1441〜) が日跨ぎ。境界を 1 箇所（`isOvernight`）に閉じ込める |
-| JST は自前で +540 分してから `getUTC*` で読む | `getHours()` 等は実行環境の TZ で結果が変わる。Cloudflare Workers（UTC）と端末（JST）で同じ答えを出すため |
-| ID をブランド型にする | `shopId` を `userId` の位置に渡す事故をコンパイル時に落とす。`as` はブランド生成点だけで使う |
-| `Intl` / `toLocaleString` を使わない | React Native（Hermes）でロケールデータが欠ける環境があるため、桁区切りは正規表現で自前実装する |
-| 現在時刻を引数で受け取る | テストが時計に依存しない。`vi.useFakeTimers()` を使わずに境界値を直接指定できる |
-| Zod スキーマを `core` に置く | API（Hono）とモバイル（フォーム）で同じ境界値・同じ日本語メッセージを共有する |
+| 決定                                          | 理由                                                                                                                     |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| 時刻を「0 時からの分」(`MinuteOfDay`) で持つ  | 日跨ぎ営業（翌 1:30 = 1530）を数値比較 1 回で判定できる。文字列比較や `Date` の加算を避ける                              |
+| 閉店 > 1440 を日跨ぎの表現とする              | 「翌 0:00 閉店」(1440) は当日で閉まる扱い、「翌 0:01 以降」(1441〜) が日跨ぎ。境界を 1 箇所（`isOvernight`）に閉じ込める |
+| JST は自前で +540 分してから `getUTC*` で読む | `getHours()` 等は実行環境の TZ で結果が変わる。Cloudflare Workers（UTC）と端末（JST）で同じ答えを出すため                |
+| ID をブランド型にする                         | `shopId` を `userId` の位置に渡す事故をコンパイル時に落とす。`as` はブランド生成点だけで使う                             |
+| `Intl` / `toLocaleString` を使わない          | React Native（Hermes）でロケールデータが欠ける環境があるため、桁区切りは正規表現で自前実装する                           |
+| 現在時刻を引数で受け取る                      | テストが時計に依存しない。`vi.useFakeTimers()` を使わずに境界値を直接指定できる                                          |
+| Zod スキーマを `core` に置く                  | API（Hono）とモバイル（フォーム）で同じ境界値・同じ日本語メッセージを共有する                                            |
 
 ---
 
 ## 3. 技術スタック（実測値）
 
-| 項目 | バージョン | 確認方法 |
-|---|---|---|
-| Node.js | v22.23.2 | `node -v` |
-| TypeScript | 6.0.3 | `node -e "console.log(require('typescript/package.json').version)"` |
-| Vitest | 5.0.0 | `node -e "console.log(require('vitest/package.json').version)"` |
-| @vitest/coverage-v8 | 5.0.0 | 同上 |
-| Zod | 4.6.5 | `node -e "console.log(require('zod/package.json').version)"` |
-| @stryker-mutator/core | 10.0.0 | 同上 |
-| Prettier | 3.9.6 | 同上 |
+| 項目                  | バージョン | 確認方法                                                            |
+| --------------------- | ---------- | ------------------------------------------------------------------- |
+| Node.js               | v22.23.2   | `node -v`                                                           |
+| TypeScript            | 6.0.3      | `node -e "console.log(require('typescript/package.json').version)"` |
+| Vitest                | 5.0.0      | `node -e "console.log(require('vitest/package.json').version)"`     |
+| @vitest/coverage-v8   | 5.0.0      | 同上                                                                |
+| Zod                   | 4.6.5      | `node -e "console.log(require('zod/package.json').version)"`        |
+| @stryker-mutator/core | 10.0.0     | 同上                                                                |
+| Prettier              | 3.9.6      | 同上                                                                |
 
 `tsconfig.base.json` → `tsconfig.strict.json` から継承される主な設定（実測）:
 
-| 設定 | 値 | 実装上の意味 |
-|---|---|---|
-| `target` / `module` / `moduleResolution` | `ES2022` / `ESNext` / `bundler` | 拡張子なしの相対 import を書く |
-| `lib` | `["ES2022"]` | **`toSorted` / `toReversed` / `Object.groupBy` / `Array.prototype.at`(ES2022 は可) に注意。`toSorted` は型定義が無いので使えない** → `[...array].sort()` を使う |
-| `strict` | `true` | 暗黙 any 禁止 |
-| `noUncheckedIndexedAccess` | `true` | `array[0]` は `T \| undefined`。添字アクセス後は必ず `undefined` を潰す |
-| `exactOptionalPropertyTypes` | `true` | `foo?: number` に `undefined` を明示代入できない。省略可能プロパティは `number \| null \| undefined` のように書く |
-| `verbatimModuleSyntax` | `true` | **型だけの import は `import type` にする**（混在させると実行時 import が残る） |
-| `noUnusedLocals` / `noUnusedParameters` | `true` | 使わない import を残すとコンパイルエラー |
-| `isolatedModules` | `true` | 型の再輸出は `export type { ... }` にする |
+| 設定                                     | 値                              | 実装上の意味                                                                                                                                                    |
+| ---------------------------------------- | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `target` / `module` / `moduleResolution` | `ES2022` / `ESNext` / `bundler` | 拡張子なしの相対 import を書く                                                                                                                                  |
+| `lib`                                    | `["ES2022"]`                    | **`toSorted` / `toReversed` / `Object.groupBy` / `Array.prototype.at`(ES2022 は可) に注意。`toSorted` は型定義が無いので使えない** → `[...array].sort()` を使う |
+| `strict`                                 | `true`                          | 暗黙 any 禁止                                                                                                                                                   |
+| `noUncheckedIndexedAccess`               | `true`                          | `array[0]` は `T \| undefined`。添字アクセス後は必ず `undefined` を潰す                                                                                         |
+| `exactOptionalPropertyTypes`             | `true`                          | `foo?: number` に `undefined` を明示代入できない。省略可能プロパティは `number \| null \| undefined` のように書く                                               |
+| `verbatimModuleSyntax`                   | `true`                          | **型だけの import は `import type` にする**（混在させると実行時 import が残る）                                                                                 |
+| `noUnusedLocals` / `noUnusedParameters`  | `true`                          | 使わない import を残すとコンパイルエラー                                                                                                                        |
+| `isolatedModules`                        | `true`                          | 型の再輸出は `export type { ... }` にする                                                                                                                       |
 
 ---
 
@@ -132,14 +132,14 @@
 
 2. **コマンドはリポジトリルートから `-w @meshimap/core` で実行する。**
 
-   | 目的 | コマンド |
-   |---|---|
-   | 型チェック | `npm run typecheck -w @meshimap/core` |
-   | 全テスト | `npm run test -w @meshimap/core` |
-   | 単一ファイルのテスト | `npm run test -w @meshimap/core -- src/role.test.ts` |
-   | カバレッジ | `npm run test:coverage -w @meshimap/core` |
-   | ミューテーションテスト | `npm run test:mutation -w @meshimap/core` |
-   | 整形 | `npx prettier --write "packages/core/src/**/*.ts"` |
+   | 目的                   | コマンド                                             |
+   | ---------------------- | ---------------------------------------------------- |
+   | 型チェック             | `npm run typecheck -w @meshimap/core`                |
+   | 全テスト               | `npm run test -w @meshimap/core`                     |
+   | 単一ファイルのテスト   | `npm run test -w @meshimap/core -- src/role.test.ts` |
+   | カバレッジ             | `npm run test:coverage -w @meshimap/core`            |
+   | ミューテーションテスト | `npm run test:mutation -w @meshimap/core`            |
+   | 整形                   | `npx prettier --write "packages/core/src/**/*.ts"`   |
 
 3. **`any` 禁止。** `unknown` + 絞り込みで書く。`isRole(value: unknown)` のように、外部から来る値は `unknown` で受ける。
 4. **`as` はブランド型の生成点だけ。** 具体的には `toShopId` / `toUserId` / `toReviewId` / `toReservationId` / `toMinuteOfDay` / `toJstDate` / `toDayOfWeek` / `toRating` の `return value as X;` の 8 箇所と、`as const` のみ。それ以外で `as` を書いたらレビューで差し戻す。
@@ -151,48 +151,49 @@
 10. **ファイル配置:** すべて `packages/core/src/` 直下（サブディレクトリを作らない）。テストは実装と同じディレクトリに `*.test.ts` で置く（`vitest.config.ts` の `include: ['src/**/*.test.ts']` に合わせる）。
 
 ---
+
 ## 5. 定数・期待値の根拠
 
 この節の値はすべて **実際に計算・実行して確認した実測値**であり、推測は含まない。実装中に期待値で迷ったら、まずこの表を見る。
 
 ### 5.1 時間の換算（`node -e` で計算）
 
-| 定数 / 式 | 値 | 根拠 |
-|---|---|---|
-| `MINUTES_PER_HOUR` | 60 | 定義 |
-| `MINUTES_PER_DAY` | 1440 | `24 * 60 = 1440` |
-| `MINUTE_OF_DAY_MIN` | 0 | 0:00 |
-| `MINUTE_OF_DAY_MAX` | 2879 | `node -e "console.log(47*60+59)"` → `2879`（翌 23:59 まで表現できる上限） |
-| `JST_OFFSET_MINUTES` | 540 | `9 * 60 = 540` |
-| `MILLISECONDS_PER_MINUTE` | 60000 | `60 * 1000` |
-| `MILLISECONDS_PER_DAY` | 86400000 | `24 * 60 * 60 * 1000`。`MILLISECONDS_PER_MINUTE * MINUTES_PER_DAY = 60000 * 1440 = 86400000` と一致することをテストで検証する |
-| `CLOSING_SOON_THRESHOLD_MINUTES` | 30 | 仕様（閉店 30 分前から「まもなく閉店」） |
-| `DAYS_PER_WEEK` / `DAY_OF_WEEK_MIN` / `DAY_OF_WEEK_MAX` | 7 / 0 / 6 | `Date.prototype.getUTCDay()` と D1 の `shop_hours.day_of_week` に合わせて 0 = 日曜 |
+| 定数 / 式                                               | 値        | 根拠                                                                                                                          |
+| ------------------------------------------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `MINUTES_PER_HOUR`                                      | 60        | 定義                                                                                                                          |
+| `MINUTES_PER_DAY`                                       | 1440      | `24 * 60 = 1440`                                                                                                              |
+| `MINUTE_OF_DAY_MIN`                                     | 0         | 0:00                                                                                                                          |
+| `MINUTE_OF_DAY_MAX`                                     | 2879      | `node -e "console.log(47*60+59)"` → `2879`（翌 23:59 まで表現できる上限）                                                     |
+| `JST_OFFSET_MINUTES`                                    | 540       | `9 * 60 = 540`                                                                                                                |
+| `MILLISECONDS_PER_MINUTE`                               | 60000     | `60 * 1000`                                                                                                                   |
+| `MILLISECONDS_PER_DAY`                                  | 86400000  | `24 * 60 * 60 * 1000`。`MILLISECONDS_PER_MINUTE * MINUTES_PER_DAY = 60000 * 1440 = 86400000` と一致することをテストで検証する |
+| `CLOSING_SOON_THRESHOLD_MINUTES`                        | 30        | 仕様（閉店 30 分前から「まもなく閉店」）                                                                                      |
+| `DAYS_PER_WEEK` / `DAY_OF_WEEK_MIN` / `DAY_OF_WEEK_MAX` | 7 / 0 / 6 | `Date.prototype.getUTCDay()` と D1 の `shop_hours.day_of_week` に合わせて 0 = 日曜                                            |
 
 ### 5.2 `formatMinuteOfDay` の出力（プローブ実装に対する vitest で実測）
 
-| 入力 | 出力 | 備考 |
-|---|---|---|
-| 0 | `"0:00"` | **時は 0 詰めしない**（`"00:00"` ではない） |
-| 60 | `"1:00"` | |
-| 690 | `"11:30"` | |
-| 1080 | `"18:00"` | |
-| 1439 | `"23:59"` | 当日の最後の分 |
-| 1440 | `"翌 0:00"` | ここから接頭辞が付く |
-| 1530 | `"翌 1:30"` | 分は必ず 2 桁（`padStart(2, '0')`） |
-| 1560 | `"翌 2:00"` | |
-| 2879 | `"翌 23:59"` | 上限 |
+| 入力 | 出力         | 備考                                        |
+| ---- | ------------ | ------------------------------------------- |
+| 0    | `"0:00"`     | **時は 0 詰めしない**（`"00:00"` ではない） |
+| 60   | `"1:00"`     |                                             |
+| 690  | `"11:30"`    |                                             |
+| 1080 | `"18:00"`    |                                             |
+| 1439 | `"23:59"`    | 当日の最後の分                              |
+| 1440 | `"翌 0:00"`  | ここから接頭辞が付く                        |
+| 1530 | `"翌 1:30"`  | 分は必ず 2 桁（`padStart(2, '0')`）         |
+| 1560 | `"翌 2:00"`  |                                             |
+| 2879 | `"翌 23:59"` | 上限                                        |
 
 `formatBusinessHours` の出力: `"18:00 - 翌 1:30"` / `"22:30 - 翌 2:00"` / `"11:30 - 14:00 / 17:00 - 23:00"` / `"0:00 - 翌 0:00"`（24 時間営業）/ `"定休日"`。
 
 ### 5.3 JST 変換のアンカー（TZ 非依存であることまで実測）
 
-| 入力（UTC） | `toJstClock` の結果 | 意味 |
-|---|---|---|
-| `2026-09-15T00:00:00Z` | `{ date: '2026-09-15', dayOfWeek: 2, minuteOfDay: 540 }` | UTC 0:00 = JST 9:00 |
-| `2026-09-15T13:30:00Z` | `{ date: '2026-09-15', dayOfWeek: 2, minuteOfDay: 1350 }` | JST 火曜 22:30 |
+| 入力（UTC）            | `toJstClock` の結果                                       | 意味                           |
+| ---------------------- | --------------------------------------------------------- | ------------------------------ |
+| `2026-09-15T00:00:00Z` | `{ date: '2026-09-15', dayOfWeek: 2, minuteOfDay: 540 }`  | UTC 0:00 = JST 9:00            |
+| `2026-09-15T13:30:00Z` | `{ date: '2026-09-15', dayOfWeek: 2, minuteOfDay: 1350 }` | JST 火曜 22:30                 |
 | `2026-09-15T14:59:59Z` | `{ date: '2026-09-15', dayOfWeek: 2, minuteOfDay: 1439 }` | **秒は切り捨てる**。まだ同じ日 |
-| `2026-09-15T15:00:00Z` | `{ date: '2026-09-16', dayOfWeek: 3, minuteOfDay: 0 }` | ここで JST の日付が変わる |
+| `2026-09-15T15:00:00Z` | `{ date: '2026-09-16', dayOfWeek: 3, minuteOfDay: 0 }`    | ここで JST の日付が変わる      |
 
 曜日の実測: `2026-09-13` → 0（日）、`2026-09-15` → 2（火）、`2026-09-19` → 6（土）。
 
@@ -202,24 +203,24 @@
 
 営業時間 `火曜 22:30 - 翌 2:00`（`openMinute: 1350`, `closeMinute: 1560`, `dayOfWeek: 2`）に対する `minutesUntilClose` の実測値:
 
-| 現在時刻（UTC） | JST | 結果 | 意味 |
-|---|---|---|---|
-| `2026-09-15T13:29:00Z` | 火 22:29 | `null` | **開店 1 分前は営業時間外** |
-| `2026-09-15T13:30:00Z` | 火 22:30 | `210` | **開店ちょうどは営業中**（`1560 - 1350 = 210`） |
-| `2026-09-15T14:59:00Z` | 火 23:59 | `121` | 当日分として判定 |
-| `2026-09-15T15:00:00Z` | 水 0:00 | `120` | **前日（火）の行を +1440 して判定**（`1560 - (0 + 1440) = 120`） |
-| `2026-09-15T16:00:00Z` | 水 1:00 | `60` | 日跨ぎ分の残り |
-| `2026-09-15T17:00:00Z` | 水 2:00 | `null` | **閉店ちょうどは営業時間外** |
+| 現在時刻（UTC）        | JST      | 結果   | 意味                                                             |
+| ---------------------- | -------- | ------ | ---------------------------------------------------------------- |
+| `2026-09-15T13:29:00Z` | 火 22:29 | `null` | **開店 1 分前は営業時間外**                                      |
+| `2026-09-15T13:30:00Z` | 火 22:30 | `210`  | **開店ちょうどは営業中**（`1560 - 1350 = 210`）                  |
+| `2026-09-15T14:59:00Z` | 火 23:59 | `121`  | 当日分として判定                                                 |
+| `2026-09-15T15:00:00Z` | 水 0:00  | `120`  | **前日（火）の行を +1440 して判定**（`1560 - (0 + 1440) = 120`） |
+| `2026-09-15T16:00:00Z` | 水 1:00  | `60`   | 日跨ぎ分の残り                                                   |
+| `2026-09-15T17:00:00Z` | 水 2:00  | `null` | **閉店ちょうどは営業時間外**                                     |
 
 昼夜 2 部営業（`11:30 - 14:00` = 690〜840、`17:00 - 23:00` = 1020〜1380）の実測:
 
-| JST | 結果 | 意味 |
-|---|---|---|
-| 11:29 | `null` | 開店 1 分前 |
-| 11:30 | `150` | 開店ちょうど |
-| 14:00 | `null` | **昼の部の閉店ちょうど** |
+| JST   | 結果   | 意味                                            |
+| ----- | ------ | ----------------------------------------------- |
+| 11:29 | `null` | 開店 1 分前                                     |
+| 11:30 | `150`  | 開店ちょうど                                    |
+| 14:00 | `null` | **昼の部の閉店ちょうど**                        |
 | 15:00 | `null` | 中休みは `closed`（`regular-holiday` ではない） |
-| 22:00 | `60` | 夜の部の残り（昼の部に引きずられない） |
+| 22:00 | `60`   | 夜の部の残り（昼の部に引きずられない）          |
 
 `getOpenStatus` の実測: 残り 31 分 → `'open'`、残り 30 分 → `'closing-soon'`、残り 1 分 → `'closing-soon'`、営業時間のある曜日の開店前 → `'closed'`、中休み → `'closed'`、臨時休業日 → `'closed'`、その曜日に営業行が無い/定休日フラグのみ → `'regular-holiday'`。
 
@@ -242,31 +243,31 @@ node -e "const a=[];for(let s=1080;s+90<=1530;s+=90)a.push([s,s+90]);console.log
 
 `Math.round((totalScore / count) * 10) / 10` の実測:
 
-| 入力 | 平均の生値 | ×10 | `Math.round` | 最終結果 | 型 |
-|---|---|---|---|---|---|
-| `[4, 5, 3]`（合計 12 / 3 件） | 4 | 40 | 40 | **`4`** | `number`。JSON でも `4`（`4.0` にはならない） |
-| `[4, 5, 4, 4, 5]`（22 / 5 件） | 4.4 | 44 | 44 | `4.4` | |
-| 星 5 × 9 + 星 4 × 11（89 / 20 件） | 4.45 | 44.5 | 45 | **`4.5`** | 0.5 は切り上げ |
-| 星 4 × 7 + 星 3 × 13（67 / 20 件） | 3.35 | 33.5 | 34 | **`3.4`** | |
-| `[]`（0 件） | — | — | — | `{ average: 0, count: 0, distribution: { 1:0, 2:0, 3:0, 4:0, 5:0 } }` | 0 除算を避けるため件数 0 を先に返す |
+| 入力                               | 平均の生値 | ×10  | `Math.round` | 最終結果                                                              | 型                                            |
+| ---------------------------------- | ---------- | ---- | ------------ | --------------------------------------------------------------------- | --------------------------------------------- |
+| `[4, 5, 3]`（合計 12 / 3 件）      | 4          | 40   | 40           | **`4`**                                                               | `number`。JSON でも `4`（`4.0` にはならない） |
+| `[4, 5, 4, 4, 5]`（22 / 5 件）     | 4.4        | 44   | 44           | `4.4`                                                                 |                                               |
+| 星 5 × 9 + 星 4 × 11（89 / 20 件） | 4.45       | 44.5 | 45           | **`4.5`**                                                             | 0.5 は切り上げ                                |
+| 星 4 × 7 + 星 3 × 13（67 / 20 件） | 3.35       | 33.5 | 34           | **`3.4`**                                                             |                                               |
+| `[]`（0 件）                       | —          | —    | —            | `{ average: 0, count: 0, distribution: { 1:0, 2:0, 3:0, 4:0, 5:0 } }` | 0 除算を避けるため件数 0 を先に返す           |
 
 **「3 件 4,5,3 の平均は 4.0 か 4 か」への答え: `4`（`number` 型の 4）。** JavaScript に `4.0` という値は存在せず、`toBe(4)` で比較する。表示側で小数第 1 位を固定したい場合は Phase 5 の UI 層の責務とし、`core` では数値のまま返す。
 
 ### 5.7 予算の表示（実測）
 
-| 入力 | 出力 |
-|---|---|
-| `formatYen(0)` | `"¥0"` |
-| `formatYen(999)` | `"¥999"` |
-| `formatYen(1000)` | `"¥1,000"` |
-| `formatYen(12345)` | `"¥12,345"` |
-| `formatYen(1000000)` | `"¥1,000,000"` |
-| `formatBudgetRange(1000, 3000)` | `"¥1,000 〜 ¥3,000"` |
-| `formatBudgetRange(2000, 2000)` | `"¥2,000"`（同額なら 1 つだけ） |
-| `formatBudgetRange(3000, null)` | `"¥3,000 〜"` |
-| `formatBudgetRange(null, 3000)` | `"〜 ¥3,000"` |
-| `formatBudgetRange(null, null)` | `"－"`（全角ダッシュ） |
-| `formatBudgetRange(0, 0)` | `"¥0"`（`null` と `0` を混同しない） |
+| 入力                            | 出力                                 |
+| ------------------------------- | ------------------------------------ |
+| `formatYen(0)`                  | `"¥0"`                               |
+| `formatYen(999)`                | `"¥999"`                             |
+| `formatYen(1000)`               | `"¥1,000"`                           |
+| `formatYen(12345)`              | `"¥12,345"`                          |
+| `formatYen(1000000)`            | `"¥1,000,000"`                       |
+| `formatBudgetRange(1000, 3000)` | `"¥1,000 〜 ¥3,000"`                 |
+| `formatBudgetRange(2000, 2000)` | `"¥2,000"`（同額なら 1 つだけ）      |
+| `formatBudgetRange(3000, null)` | `"¥3,000 〜"`                        |
+| `formatBudgetRange(null, 3000)` | `"〜 ¥3,000"`                        |
+| `formatBudgetRange(null, null)` | `"－"`（全角ダッシュ）               |
+| `formatBudgetRange(0, 0)`       | `"¥0"`（`null` と `0` を混同しない） |
 
 桁区切りは `/\B(?=(\d{3})+(?!\d))/g` による自前実装。`node -e "console.log((1000000).toLocaleString('ja-JP'))"` → `1,000,000` と一致することをテストで突き合わせる（`Intl` 自体は実装では使わない）。
 
@@ -274,17 +275,17 @@ node -e "const a=[];for(let s=1080;s+90<=1530;s+=90)a.push([s,s+90]);console.log
 
 `zod@4.6.5` で実際に `safeParse` して得た `error.issues` の中身:
 
-| ケース | 実測した issue |
-|---|---|
-| `z.string().min(1).safeParse('')` | `{ origin: 'string', code: 'too_small', minimum: 1, inclusive: true, path: [], message: 'Too small: expected string to have >=1 characters' }` |
-| `z.number().max(90).safeParse(90.1)` | `{ origin: 'number', code: 'too_big', maximum: 90, inclusive: true, path: [], message: 'Too big: expected number to be <=90' }` |
-| 必須キーが無い | `{ expected: 'string', code: 'invalid_type', path: ['a'], message: 'Invalid input: expected string, received undefined' }` ← **`received` キーが無い** |
-| `z.number().int().safeParse(1.5)` | `{ expected: 'int', format: 'safeint', code: 'invalid_type', ... }` |
-| `z.number().int().safeParse(NaN)` | `{ expected: 'number', code: 'invalid_type', received: 'NaN', ... }` ← NaN のときだけ `received` が付く |
-| `z.enum([...]).safeParse('root')` | `{ code: 'invalid_value', values: ['user','owner'], message: 'Invalid option: expected one of "user"\|"owner"' }` |
-| `z.string().regex(...)` 不一致 | `{ origin: 'string', code: 'invalid_format', format: 'regex', pattern: '/^[0-9]{3}-[0-9]{4}$/', ... }` |
+| ケース                                 | 実測した issue                                                                                                                                                 |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `z.string().min(1).safeParse('')`      | `{ origin: 'string', code: 'too_small', minimum: 1, inclusive: true, path: [], message: 'Too small: expected string to have >=1 characters' }`                 |
+| `z.number().max(90).safeParse(90.1)`   | `{ origin: 'number', code: 'too_big', maximum: 90, inclusive: true, path: [], message: 'Too big: expected number to be <=90' }`                                |
+| 必須キーが無い                         | `{ expected: 'string', code: 'invalid_type', path: ['a'], message: 'Invalid input: expected string, received undefined' }` ← **`received` キーが無い**         |
+| `z.number().int().safeParse(1.5)`      | `{ expected: 'int', format: 'safeint', code: 'invalid_type', ... }`                                                                                            |
+| `z.number().int().safeParse(NaN)`      | `{ expected: 'number', code: 'invalid_type', received: 'NaN', ... }` ← NaN のときだけ `received` が付く                                                        |
+| `z.enum([...]).safeParse('root')`      | `{ code: 'invalid_value', values: ['user','owner'], message: 'Invalid option: expected one of "user"\|"owner"' }`                                              |
+| `z.string().regex(...)` 不一致         | `{ origin: 'string', code: 'invalid_format', format: 'regex', pattern: '/^[0-9]{3}-[0-9]{4}$/', ... }`                                                         |
 | `z.iso.date().safeParse('2026-02-30')` | `{ origin: 'string', code: 'invalid_format', format: 'date', message: 'Invalid ISO date' }` ← **閏年を判定できる**（`2024-02-29` は成功、`2026-02-29` は失敗） |
-| `.refine(fn, { error, path })` | `{ code: 'custom', path: [...], message: <error に渡した文字列> }` |
+| `.refine(fn, { error, path })`         | `{ code: 'custom', path: [...], message: <error に渡した文字列> }`                                                                                             |
 
 **v3 との差分で特に効いた点（すべて実測で確認）**
 
@@ -298,18 +299,18 @@ node -e "const a=[];for(let s=1080;s+90<=1530;s+=90)a.push([s,s+90]);console.log
 
 ### 5.9 書式パターンの受理・拒否（実測）
 
-| パターン | 受理 | 拒否 |
-|---|---|---|
-| 郵便番号 `/^[0-9]{3}-[0-9]{4}$/` | `150-0002` | `1500002` / `0150-0002` / `150-00021` / `150-0002 `（末尾空白） |
-| 電話 `/^0[0-9]{1,4}-[0-9]{1,4}-[0-9]{3,4}$/` | `03-1234-5678` / `0120-123-456` | `0312345678` / `81-03-1234-5678` / `03-1234-5678-9` |
-| URL `z.url({ protocol: /^https?$/ })` | `https://example.com` / `http://example.com` / `HTTPS://example.com` | `httpx://example.com` / `xhttps://example.com` / `ftp://example.com` / `javascript:alert(1)` |
+| パターン                                     | 受理                                                                 | 拒否                                                                                         |
+| -------------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| 郵便番号 `/^[0-9]{3}-[0-9]{4}$/`             | `150-0002`                                                           | `1500002` / `0150-0002` / `150-00021` / `150-0002 `（末尾空白）                              |
+| 電話 `/^0[0-9]{1,4}-[0-9]{1,4}-[0-9]{3,4}$/` | `03-1234-5678` / `0120-123-456`                                      | `0312345678` / `81-03-1234-5678` / `03-1234-5678-9`                                          |
+| URL `z.url({ protocol: /^https?$/ })`        | `https://example.com` / `http://example.com` / `HTTPS://example.com` | `httpx://example.com` / `xhttps://example.com` / `ftp://example.com` / `javascript:alert(1)` |
 
 ### 5.10 Stryker 10 + Vitest 5 の組み合わせ（**実測で判明した不具合**）
 
-| 事象 | 実測 |
-|---|---|
-| `testRunner: "vitest"`（既定の設定ファイルのまま） | 変異ごとに実行されるテストが 0 件になり、スコアが **21.14%** まで落ちる（`@stryker-mutator/vitest-runner@10.0.0` が `vitest@5.0.0` と噛み合っていない） |
-| `testRunner: "command"` + `coverageAnalysis: "off"` | 正常に動作し、同じコード・同じテストでスコア **100.00%**（610 変異 / 601 kill + 9 timeout / 0 survive、1 分 34 秒） |
+| 事象                                                | 実測                                                                                                                                                    |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `testRunner: "vitest"`（既定の設定ファイルのまま）  | 変異ごとに実行されるテストが 0 件になり、スコアが **21.14%** まで落ちる（`@stryker-mutator/vitest-runner@10.0.0` が `vitest@5.0.0` と噛み合っていない） |
+| `testRunner: "command"` + `coverageAnalysis: "off"` | 正常に動作し、同じコード・同じテストでスコア **100.00%**（610 変異 / 601 kill + 9 timeout / 0 survive、1 分 34 秒）                                     |
 
 → **Task 2-0 で `packages/core/stryker.config.json` をコマンドランナーに差し替える。** Phase 1（`packages/geo`）でも同じ不具合が出て同じ対処になっている。
 
@@ -319,21 +320,21 @@ node -e "const a=[];for(let s=1080;s+90<=1530;s+=90)a.push([s,s+90]);console.log
 
 すべて `packages/core/src/` 直下に置く。
 
-| ファイル | 責務 | import する内部モジュール |
-|---|---|---|
-| `constants.ts` | 数値・文字列定数の唯一の置き場 | なし |
-| `role.ts` | ロールの定義と権限判定 | なし |
-| `identifier.ts` | 4 種類の ID のブランド型と生成関数 | なし |
-| `minute-of-day.ts` | 「0 時からの分」型・生成・表示 | `constants` |
-| `jst-clock.ts` | JST の日付・曜日・現在時刻の分解 | `constants`, `minute-of-day` |
-| `business-hours.ts` | 営業時間・臨時休業の型、曜日抽出、表示 | `constants`, `jst-clock`(型), `minute-of-day` |
-| `open-status.ts` | 営業中判定・残り時間・表示ステータス | `constants`, `business-hours`, `jst-clock` |
-| `reservation-slot.ts` | 席設定の検証と予約枠の生成 | `constants`, `business-hours`, `jst-clock`, `minute-of-day` |
-| `reservation-availability.ts` | 予約可否と理由コード | `constants`, `reservation-slot`, `minute-of-day`(型) |
-| `rating.ts` | 評価の型・平均・分布 | `constants` |
-| `budget.ts` | 金額と予算帯の表示 | `constants` |
-| `schema.ts` | Zod v4 の入力スキーマ | `constants`, `identifier`, `role`, `@meshimap/geo` |
-| `index.ts` | 公開バレル（再輸出のみ） | 全モジュール |
+| ファイル                      | 責務                                   | import する内部モジュール                                   |
+| ----------------------------- | -------------------------------------- | ----------------------------------------------------------- |
+| `constants.ts`                | 数値・文字列定数の唯一の置き場         | なし                                                        |
+| `role.ts`                     | ロールの定義と権限判定                 | なし                                                        |
+| `identifier.ts`               | 4 種類の ID のブランド型と生成関数     | なし                                                        |
+| `minute-of-day.ts`            | 「0 時からの分」型・生成・表示         | `constants`                                                 |
+| `jst-clock.ts`                | JST の日付・曜日・現在時刻の分解       | `constants`, `minute-of-day`                                |
+| `business-hours.ts`           | 営業時間・臨時休業の型、曜日抽出、表示 | `constants`, `jst-clock`(型), `minute-of-day`               |
+| `open-status.ts`              | 営業中判定・残り時間・表示ステータス   | `constants`, `business-hours`, `jst-clock`                  |
+| `reservation-slot.ts`         | 席設定の検証と予約枠の生成             | `constants`, `business-hours`, `jst-clock`, `minute-of-day` |
+| `reservation-availability.ts` | 予約可否と理由コード                   | `constants`, `reservation-slot`, `minute-of-day`(型)        |
+| `rating.ts`                   | 評価の型・平均・分布                   | `constants`                                                 |
+| `budget.ts`                   | 金額と予算帯の表示                     | `constants`                                                 |
+| `schema.ts`                   | Zod v4 の入力スキーマ                  | `constants`, `identifier`, `role`, `@meshimap/geo`          |
+| `index.ts`                    | 公開バレル（再輸出のみ）               | 全モジュール                                                |
 
 テストは同名の `*.test.ts` を同じディレクトリに置く（13 ファイル）。
 
@@ -345,21 +346,21 @@ node -e "const a=[];for(let s=1080;s+90<=1530;s+=90)a.push([s,s+90]);console.log
 
 `docs/superpowers/plans/README.md` の Phase 2 は **11 タスク**。本計画は **13 タスク**にする。
 
-| 本計画 | タスク | README との対応 |
-|---|---|---|
-| 2-0 | 基盤整備（定数・geo 依存・Stryker 設定） | **新規**（+1） |
-| 2-1 | ロール定義 | README 2-1 |
-| 2-2 | ID ブランド型 | README 2-2 |
-| 2-3 | 分単位時刻 `MinuteOfDay` | README 2-3 を分割（+1） |
-| 2-4 | JST クロック | **新規**（+1） |
-| 2-5 | 営業時間の型と表示 | README 2-3 の残り + README 2-6 を統合（-1） |
-| 2-6 | 営業中判定と営業ステータス | README 2-4 + 2-5 を統合（-1） |
-| 2-7 | 予約枠生成 | README 2-7 |
-| 2-8 | 予約可否 | README 2-8 |
-| 2-9 | 評価集計 | README 2-9 |
-| 2-10 | 予算帯の表示 | README 2-10 |
-| 2-11 | Zod スキーマ | README 2-11 |
-| 2-12 | 公開 API バレルと品質ゲート | **新規**（+1） |
+| 本計画 | タスク                                   | README との対応                             |
+| ------ | ---------------------------------------- | ------------------------------------------- |
+| 2-0    | 基盤整備（定数・geo 依存・Stryker 設定） | **新規**（+1）                              |
+| 2-1    | ロール定義                               | README 2-1                                  |
+| 2-2    | ID ブランド型                            | README 2-2                                  |
+| 2-3    | 分単位時刻 `MinuteOfDay`                 | README 2-3 を分割（+1）                     |
+| 2-4    | JST クロック                             | **新規**（+1）                              |
+| 2-5    | 営業時間の型と表示                       | README 2-3 の残り + README 2-6 を統合（-1） |
+| 2-6    | 営業中判定と営業ステータス               | README 2-4 + 2-5 を統合（-1）               |
+| 2-7    | 予約枠生成                               | README 2-7                                  |
+| 2-8    | 予約可否                                 | README 2-8                                  |
+| 2-9    | 評価集計                                 | README 2-9                                  |
+| 2-10   | 予算帯の表示                             | README 2-10                                 |
+| 2-11   | Zod スキーマ                             | README 2-11                                 |
+| 2-12   | 公開 API バレルと品質ゲート              | **新規**（+1）                              |
 
 **増減の理由（11 → 13、差し引き +2）**
 
@@ -370,6 +371,7 @@ node -e "const a=[];for(let s=1080;s+90<=1530;s+=90)a.push([s,s+90]);console.log
 - **+1 `2-12 バレルと品質ゲート`**: 公開 API の確定（`index.ts`）と、カバレッジ 100% / ミューテーション 85% のゲート通過を独立させ、「どこまで終われば Phase 2 完了か」を 1 タスクに閉じ込める。
 
 ---
+
 ## Task 2-0: 基盤整備（定数・`@meshimap/geo` 依存・Stryker 設定）
 
 **Files:**
@@ -624,10 +626,10 @@ describe('ドメインの範囲定数', () => {
 
   1 つずつ適用し、指定のテストが FAIL することを確認したら**必ず元に戻す**。
 
-  | # | 変更する行（`src/constants.ts`） | 変更後 | 期待: FAIL するテスト（実測） |
-  |---|---|---|---|
-  | 1 | `export const MINUTES_PER_DAY = 1440;` | `= 1444;` | `時間の定数 > 1 日は 1440 分である`、`時間の定数 > 0 時からの分は 0 〜 2879（翌 23:59）の範囲である`、`時間の定数 > ミリ秒の換算定数が分・日と整合する`（この時点では 3 件。全モジュール実装後は 23 件が FAIL する） |
-  | 2 | `export const JST_OFFSET_MINUTES = 540;` | `= 480;` | `時間の定数 > JST は UTC+9（540 分）である`（全モジュール実装後は `toJstClock` 系も含め 33 件が FAIL する） |
+  | #   | 変更する行（`src/constants.ts`）         | 変更後    | 期待: FAIL するテスト（実測）                                                                                                                                                                                        |
+  | --- | ---------------------------------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | 1   | `export const MINUTES_PER_DAY = 1440;`   | `= 1444;` | `時間の定数 > 1 日は 1440 分である`、`時間の定数 > 0 時からの分は 0 〜 2879（翌 23:59）の範囲である`、`時間の定数 > ミリ秒の換算定数が分・日と整合する`（この時点では 3 件。全モジュール実装後は 23 件が FAIL する） |
+  | 2   | `export const JST_OFFSET_MINUTES = 540;` | `= 480;`  | `時間の定数 > JST は UTC+9（540 分）である`（全モジュール実装後は `toJstClock` 系も含め 33 件が FAIL する）                                                                                                          |
 
   戻したら再度 `npm run test -w @meshimap/core -- src/constants.test.ts` が緑になることを確認する。
 
@@ -696,7 +698,7 @@ export function canModerate(role: Role): boolean {
 }
 ```
 
-  `isRole` に `typeof value === 'string'` の事前判定を**入れない**理由: `ROLES.some((role) => role === value)` は文字列以外に対して必ず `false` を返すので、事前判定は結果を変えない冗長なコードになる。ミューテーションテストでは「条件を消しても結果が変わらない＝生き残る変異」として検出される（実測で確認済み）。
+`isRole` に `typeof value === 'string'` の事前判定を**入れない**理由: `ROLES.some((role) => role === value)` は文字列以外に対して必ず `false` を返すので、事前判定は結果を変えない冗長なコードになる。ミューテーションテストでは「条件を消しても結果が変わらない＝生き残る変異」として検出される（実測で確認済み）。
 
 - [x] **Step 2: `packages/core/src/role.test.ts` を作る**
 
@@ -811,10 +813,10 @@ describe('canModerate', () => {
 
 - [x] **Step 4: 意図的に壊してテストが検知することを確認する**
 
-  | # | 変更する行（`src/role.ts`） | 変更後 | 期待: FAIL するテスト（実測） |
-  |---|---|---|---|
-  | 1 | `export const ROLES = [ROLE_USER, ROLE_OWNER, ROLE_ADMIN] as const;` | `= [ROLE_USER, ROLE_OWNER] as const;` | `ROLES > 利用者・店舗管理者・システム管理者の 3 種類を宣言順で持つ`、`isRole > 定義済みのロール文字列を受け入れる`（計 2 件。バレル実装後は `@meshimap/core の公開 API > ロールごとに店舗管理とモデレーションの権限が決まる` も加わり 3 件） |
-  | 2 | `return role === ROLE_OWNER \|\| role === ROLE_ADMIN;` | `return role === ROLE_ADMIN;` | `canManageShop > 店舗管理者とシステム管理者に許可する` |
+  | #   | 変更する行（`src/role.ts`）                                          | 変更後                                | 期待: FAIL するテスト（実測）                                                                                                                                                                                                                |
+  | --- | -------------------------------------------------------------------- | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | 1   | `export const ROLES = [ROLE_USER, ROLE_OWNER, ROLE_ADMIN] as const;` | `= [ROLE_USER, ROLE_OWNER] as const;` | `ROLES > 利用者・店舗管理者・システム管理者の 3 種類を宣言順で持つ`、`isRole > 定義済みのロール文字列を受け入れる`（計 2 件。バレル実装後は `@meshimap/core の公開 API > ロールごとに店舗管理とモデレーションの権限が決まる` も加わり 3 件） |
+  | 2   | `return role === ROLE_OWNER \|\| role === ROLE_ADMIN;`               | `return role === ROLE_ADMIN;`         | `canManageShop > 店舗管理者とシステム管理者に許可する`                                                                                                                                                                                       |
 
 ---
 
@@ -892,7 +894,7 @@ export function toReservationId(value: string): ReservationId {
 }
 ```
 
-  `declare const xBrand: unique symbol;` は**型空間だけの宣言**で、実行時のコードを 1 バイトも生成しない。`as` を使ってよいのは各 `toXxxId` の `return value as XxxId;` だけ。
+`declare const xBrand: unique symbol;` は**型空間だけの宣言**で、実行時のコードを 1 バイトも生成しない。`as` を使ってよいのは各 `toXxxId` の `return value as XxxId;` だけ。
 
 - [x] **Step 2: `packages/core/src/identifier.test.ts` を作る**
 
@@ -1023,10 +1025,10 @@ describe('toUserId / toReviewId / toReservationId', () => {
 
 - [x] **Step 5: 意図的に壊してテストが検知することを確認する**
 
-  | # | 変更する行（`src/identifier.ts`） | 変更後 | 期待: FAIL するテスト（実測） |
-  |---|---|---|---|
-  | 1 | `if (value.length === 0 \|\| value.length > IDENTIFIER_MAX_LENGTH) {` | `value.length >= IDENTIFIER_MAX_LENGTH` | `toShopId > 上限ちょうど 64 文字を受け入れる` |
-  | 2 | `export const IDENTIFIER_PATTERN = /^[A-Za-z0-9_-]+$/;` | `/^[A-Za-z0-9_-]+/`（末尾の `$` を外す） | `toShopId > 空白を含む値を拒否する`、`toShopId > SQL のワイルドカードを含む値を拒否する`（**`日本語を含む値を拒否する` は FAIL しない**。値が非 ASCII で始まるため先頭アンカーだけで弾けるから。末尾アンカーの検証には「前半が合法で後半が不正」な値が要る、という実測結果） |
+  | #   | 変更する行（`src/identifier.ts`）                                     | 変更後                                   | 期待: FAIL するテスト（実測）                                                                                                                                                                                                                                                |
+  | --- | --------------------------------------------------------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | 1   | `if (value.length === 0 \|\| value.length > IDENTIFIER_MAX_LENGTH) {` | `value.length >= IDENTIFIER_MAX_LENGTH`  | `toShopId > 上限ちょうど 64 文字を受け入れる`                                                                                                                                                                                                                                |
+  | 2   | `export const IDENTIFIER_PATTERN = /^[A-Za-z0-9_-]+$/;`               | `/^[A-Za-z0-9_-]+/`（末尾の `$` を外す） | `toShopId > 空白を含む値を拒否する`、`toShopId > SQL のワイルドカードを含む値を拒否する`（**`日本語を含む値を拒否する` は FAIL しない**。値が非 ASCII で始まるため先頭アンカーだけで弾けるから。末尾アンカーの検証には「前半が合法で後半が不正」な値が要る、という実測結果） |
 
 ---
 
@@ -1272,10 +1274,10 @@ describe('formatMinuteOfDay', () => {
 
 - [x] **Step 4: 意図的に壊してテストが検知することを確認する**
 
-  | # | 変更する行（`src/minute-of-day.ts`） | 変更後 | 期待: FAIL するテスト（実測） |
-  |---|---|---|---|
-  | 1 | `if (value < MINUTE_OF_DAY_MIN \|\| value > MINUTE_OF_DAY_MAX) {` | `value >= MINUTE_OF_DAY_MAX` | `toMinuteOfDay > 上限 2879（翌 23:59）を受け入れる`、`minuteOfDay > 上限の 47 時 59 分を 2879 に変換する`、`formatMinuteOfDay > 上限 2879 分を "翌 23:59" と表示する`（3 件） |
-  | 2 | `String(minute).padStart(2, '0')` | `padStart(1, '0')` | `formatMinuteOfDay` の 6 件（`分は必ず 2 桁ゼロ埋めする` / `0 分を "0:00" と表示する` / `60 分を "1:00" と表示する` / `1080 分を "18:00" と表示する` / `1440 分から翌日扱いになり "翌 0:00" と表示する` / `1560 分を "翌 2:00" と表示する`）。分が 1 桁の期待値を持つテストが全て落ちるため。計画作成時は 1 件と見積もっていたが実測は 6 件 |
+  | #   | 変更する行（`src/minute-of-day.ts`）                              | 変更後                       | 期待: FAIL するテスト（実測）                                                                                                                                                                                                                                                                                                               |
+  | --- | ----------------------------------------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | 1   | `if (value < MINUTE_OF_DAY_MIN \|\| value > MINUTE_OF_DAY_MAX) {` | `value >= MINUTE_OF_DAY_MAX` | `toMinuteOfDay > 上限 2879（翌 23:59）を受け入れる`、`minuteOfDay > 上限の 47 時 59 分を 2879 に変換する`、`formatMinuteOfDay > 上限 2879 分を "翌 23:59" と表示する`（3 件）                                                                                                                                                               |
+  | 2   | `String(minute).padStart(2, '0')`                                 | `padStart(1, '0')`           | `formatMinuteOfDay` の 6 件（`分は必ず 2 桁ゼロ埋めする` / `0 分を "0:00" と表示する` / `60 分を "1:00" と表示する` / `1080 分を "18:00" と表示する` / `1440 分から翌日扱いになり "翌 0:00" と表示する` / `1560 分を "翌 2:00" と表示する`）。分が 1 桁の期待値を持つテストが全て落ちるため。計画作成時は 1 件と見積もっていたが実測は 6 件 |
 
 ---
 
@@ -1396,7 +1398,7 @@ export function toJstClock(now: Date): JstClock {
 }
 ```
 
-  **`getHours()` / `getDate()` / `getDay()` などローカル時刻メソッドは 1 つも使わない。** 使った瞬間にテストが実行環境の TZ に依存する。エポックミリ秒に +540 分してから `getUTC*` で読む方式なら、UTC の Cloudflare Workers でも JST の端末でも同じ答えになる。
+**`getHours()` / `getDate()` / `getDay()` などローカル時刻メソッドは 1 つも使わない。** 使った瞬間にテストが実行環境の TZ に依存する。エポックミリ秒に +540 分してから `getUTC*` で読む方式なら、UTC の Cloudflare Workers でも JST の端末でも同じ答えになる。
 
 - [x] **Step 2: `packages/core/src/jst-clock.test.ts` を作る**
 
@@ -1644,12 +1646,13 @@ describe('toJstDate（前後の余分な文字）', () => {
 
 - [x] **Step 4: 意図的に壊してテストが検知することを確認する**
 
-  | # | 変更する行（`src/jst-clock.ts`） | 変更後 | 期待: FAIL するテスト（実測） |
-  |---|---|---|---|
-  | 1 | `const shifted = new Date(now.getTime() + JST_OFFSET_MINUTES * MILLISECONDS_PER_MINUTE);` | `now.getTime() - JST_OFFSET_MINUTES * ...` | `toJstClock > UTC 00:00 は JST 09:00 になる`、`toJstClock > UTC 14:59:59 はまだ JST の同日 23:59 である`、`toJstClock > UTC 15:00 で JST の日付が翌日 00:00 へ変わる`、`toJstClock > 秒は切り捨てて分までを返す`、`toJstClock > 実行環境のタイムゾーンに依存しない（TZ を差し替えても同じ結果）`（`jst-clock.test.ts` 単体では 5 件。全モジュール実装後は 36 件） |
-  | 2 | `if (Number.isNaN(parsed.getTime()) \|\| formatUtcDate(parsed) !== value) {` | `if (Number.isNaN(parsed.getTime())) {`（往復検証を外す） | `toJstDate > 存在しない 2 月 30 日を拒否する（Date の自動繰り上がりを検知する）`、`toJstDate > 平年の 2 月 29 日を拒否する`、`toJstDate > 9 月 31 日を拒否する`（3 件） |
+  | #   | 変更する行（`src/jst-clock.ts`）                                                          | 変更後                                                    | 期待: FAIL するテスト（実測）                                                                                                                                                                                                                                                                                                                                     |
+  | --- | ----------------------------------------------------------------------------------------- | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | 1   | `const shifted = new Date(now.getTime() + JST_OFFSET_MINUTES * MILLISECONDS_PER_MINUTE);` | `now.getTime() - JST_OFFSET_MINUTES * ...`                | `toJstClock > UTC 00:00 は JST 09:00 になる`、`toJstClock > UTC 14:59:59 はまだ JST の同日 23:59 である`、`toJstClock > UTC 15:00 で JST の日付が翌日 00:00 へ変わる`、`toJstClock > 秒は切り捨てて分までを返す`、`toJstClock > 実行環境のタイムゾーンに依存しない（TZ を差し替えても同じ結果）`（`jst-clock.test.ts` 単体では 5 件。全モジュール実装後は 36 件） |
+  | 2   | `if (Number.isNaN(parsed.getTime()) \|\| formatUtcDate(parsed) !== value) {`              | `if (Number.isNaN(parsed.getTime())) {`（往復検証を外す） | `toJstDate > 存在しない 2 月 30 日を拒否する（Date の自動繰り上がりを検知する）`、`toJstDate > 平年の 2 月 29 日を拒否する`、`toJstDate > 9 月 31 日を拒否する`（3 件）                                                                                                                                                                                           |
 
 ---
+
 ## Task 2-5: 営業時間の型と表示
 
 **Files:**
@@ -1732,7 +1735,7 @@ export function formatBusinessHours(hours: readonly BusinessHours[]): string {
 }
 ```
 
-  **`toSorted` は使えない。** `tsconfig.base.json` の `lib` は `["ES2022"]` なので `Array.prototype.toSorted`（ES2023）の型定義が存在せず、`Property 'toSorted' does not exist on type 'BusinessHours[]'` になる。引数配列を壊さないために `[...openEntries].sort(...)` と書く。`toReversed` / `Object.groupBy` も同じ理由で使えない。
+**`toSorted` は使えない。** `tsconfig.base.json` の `lib` は `["ES2022"]` なので `Array.prototype.toSorted`（ES2023）の型定義が存在せず、`Property 'toSorted' does not exist on type 'BusinessHours[]'` になる。引数配列を壊さないために `[...openEntries].sort(...)` と書く。`toReversed` / `Object.groupBy` も同じ理由で使えない。
 
 - [x] **Step 2: `packages/core/src/business-hours.test.ts` を作る**
 
@@ -1862,10 +1865,10 @@ describe('formatBusinessHours', () => {
 
 - [x] **Step 4: 意図的に壊してテストが検知することを確認する**
 
-  | # | 変更する行（`src/business-hours.ts`） | 変更後 | 期待: FAIL するテスト（実測） |
-  |---|---|---|---|
-  | 1 | `return hours.closeMinute > MINUTES_PER_DAY;` | `>= MINUTES_PER_DAY` | `isOvernight > 閉店ちょうど 1440（翌 0:00）は日跨ぎではない` |
-  | 2 | `.sort((left, right) => left.openMinute - right.openMinute)` | `right.openMinute - left.openMinute`（降順） | `formatBusinessHours > 昼夜 2 部営業をスラッシュ区切りで表示する`、`formatBusinessHours > 入力順が逆でも開店時刻の昇順に並べ替えて表示する`（2 件） |
+  | #   | 変更する行（`src/business-hours.ts`）                        | 変更後                                       | 期待: FAIL するテスト（実測）                                                                                                                       |
+  | --- | ------------------------------------------------------------ | -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | 1   | `return hours.closeMinute > MINUTES_PER_DAY;`                | `>= MINUTES_PER_DAY`                         | `isOvernight > 閉店ちょうど 1440（翌 0:00）は日跨ぎではない`                                                                                        |
+  | 2   | `.sort((left, right) => left.openMinute - right.openMinute)` | `right.openMinute - left.openMinute`（降順） | `formatBusinessHours > 昼夜 2 部営業をスラッシュ区切りで表示する`、`formatBusinessHours > 入力順が逆でも開店時刻の昇順に並べ替えて表示する`（2 件） |
 
 ---
 
@@ -1968,13 +1971,13 @@ export function getOpenStatus(
 }
 ```
 
-  判定の要点（すべて実測で固定した仕様）:
+判定の要点（すべて実測で固定した仕様）:
 
-  - **開店ちょうどは営業中、閉店ちょうどは営業時間外**（`>= openMinute && < closeMinute`）。
-  - **前日から続く分**は、現在の分に +1440 してから前日の行と比較する。`shifted` は必ず 1440 以上になるので、当日中に閉まる行（`closeMinute <= 1440`）は条件から自然に外れる。`isOvernight` による事前判定は結果を変えない冗長な条件なので**置かない**（ミューテーションテストで等価変異として生き残ることを実測済み）。
-  - **臨時休業は日付で判定する。** 日跨ぎ分は「前日の日付」で臨時休業を見る（前日が臨時休業なら、その夜から続く営業も無い）。
-  - 最短の残り時間を選ぶのに `if (remaining < shortest)` と書くと `<=` に変えても結果が同じ**等価変異**が残るため、`Math.min` を使う（実測で残った変異を潰した形）。
-  - `getOpenStatus` の優先順: 営業中なら残り 30 分以下で `closing-soon`、それ以外は `open`。営業時間外のときは、当日が臨時休業なら `closed`、その曜日に営業行が無ければ `regular-holiday`、行はあるが時間外（開店前・中休み）なら `closed`。
+- **開店ちょうどは営業中、閉店ちょうどは営業時間外**（`>= openMinute && < closeMinute`）。
+- **前日から続く分**は、現在の分に +1440 してから前日の行と比較する。`shifted` は必ず 1440 以上になるので、当日中に閉まる行（`closeMinute <= 1440`）は条件から自然に外れる。`isOvernight` による事前判定は結果を変えない冗長な条件なので**置かない**（ミューテーションテストで等価変異として生き残ることを実測済み）。
+- **臨時休業は日付で判定する。** 日跨ぎ分は「前日の日付」で臨時休業を見る（前日が臨時休業なら、その夜から続く営業も無い）。
+- 最短の残り時間を選ぶのに `if (remaining < shortest)` と書くと `<=` に変えても結果が同じ**等価変異**が残るため、`Math.min` を使う（実測で残った変異を潰した形）。
+- `getOpenStatus` の優先順: 営業中なら残り 30 分以下で `closing-soon`、それ以外は `open`。営業時間外のときは、当日が臨時休業なら `closed`、その曜日に営業行が無ければ `regular-holiday`、行はあるが時間外（開店前・中休み）なら `closed`。
 
 - [x] **Step 2: `packages/core/src/open-status.test.ts` を作る**
 
@@ -2300,11 +2303,11 @@ describe('日付が変わってから開く前日の行', () => {
 
 - [x] **Step 4: 意図的に壊してテストが検知することを確認する**
 
-  | # | 変更する行（`src/open-status.ts`） | 変更後 | 期待: FAIL するテスト（実測） |
-  |---|---|---|---|
-  | 1 | `if (clock.minuteOfDay >= entry.openMinute && clock.minuteOfDay < entry.closeMinute) {` | `clock.minuteOfDay <= entry.closeMinute` | `minutesUntilClose（境界と重複した営業帯） > 昼の部の閉店ちょうど（14:00）は null を返す` |
-  | 2 | `return remaining <= CLOSING_SOON_THRESHOLD_MINUTES ? 'closing-soon' : 'open';` | `remaining < CLOSING_SOON_THRESHOLD_MINUTES` | `getOpenStatus > 閉店ちょうど 30 分前は closing-soon を返す`（バレル実装後は `@meshimap/core の公開 API > 日跨ぎ営業の残り時間からステータスを判定できる` も FAIL して 2 件） |
-  | 3 | `if (shifted >= entry.openMinute && shifted < entry.closeMinute) {` | `if (true && shifted < entry.closeMinute) {` | `日付が変わってから開く前日の行 > 開店前（火曜 0:30）は営業時間外` |
+  | #   | 変更する行（`src/open-status.ts`）                                                      | 変更後                                       | 期待: FAIL するテスト（実測）                                                                                                                                                 |
+  | --- | --------------------------------------------------------------------------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | 1   | `if (clock.minuteOfDay >= entry.openMinute && clock.minuteOfDay < entry.closeMinute) {` | `clock.minuteOfDay <= entry.closeMinute`     | `minutesUntilClose（境界と重複した営業帯） > 昼の部の閉店ちょうど（14:00）は null を返す`                                                                                     |
+  | 2   | `return remaining <= CLOSING_SOON_THRESHOLD_MINUTES ? 'closing-soon' : 'open';`         | `remaining < CLOSING_SOON_THRESHOLD_MINUTES` | `getOpenStatus > 閉店ちょうど 30 分前は closing-soon を返す`（バレル実装後は `@meshimap/core の公開 API > 日跨ぎ営業の残り時間からステータスを判定できる` も FAIL して 2 件） |
+  | 3   | `if (shifted >= entry.openMinute && shifted < entry.closeMinute) {`                     | `if (true && shifted < entry.closeMinute) {` | `日付が変わってから開く前日の行 > 開店前（火曜 0:30）は営業時間外`                                                                                                            |
 
 ---
 
@@ -2419,9 +2422,9 @@ export function generateSlots(
 }
 ```
 
-  `let start: number = entry.openMinute;` と**型注釈を明示する**理由: 注釈が無いと `start` が `MinuteOfDay` に推論され、`start += seatSettings.slotMinutes` が `Type 'number' is not assignable to type 'MinuteOfDay'` になる。ループ中は素の `number` として扱い、枠を作る瞬間に `toMinuteOfDay` で検証して戻す。
+`let start: number = entry.openMinute;` と**型注釈を明示する**理由: 注釈が無いと `start` が `MinuteOfDay` に推論され、`start += seatSettings.slotMinutes` が `Type 'number' is not assignable to type 'MinuteOfDay'` になる。ループ中は素の `number` として扱い、枠を作る瞬間に `toMinuteOfDay` で検証して戻す。
 
-  `acceptsReservation` を**ここで見ない**理由: 「枠が存在するか」と「いま受け付けているか」は別の関心事で、受付停止中でも枠の一覧（満席表示）は出したい。受付可否は `canReserve`（Task 2-8）の責務。
+`acceptsReservation` を**ここで見ない**理由: 「枠が存在するか」と「いま受け付けているか」は別の関心事で、受付停止中でも枠の一覧（満席表示）は出したい。受付可否は `canReserve`（Task 2-8）の責務。
 
 - [x] **Step 2: `packages/core/src/reservation-slot.test.ts` を作る**
 
@@ -2626,10 +2629,10 @@ describe('assertSeatSettings（境界ちょうどは受け入れる）', () => {
 
 - [x] **Step 4: 意図的に壊してテストが検知することを確認する**
 
-  | # | 変更する行（`src/reservation-slot.ts`） | 変更後 | 期待: FAIL するテスト（実測） |
-  |---|---|---|---|
-  | 1 | `start + seatSettings.slotMinutes <= entry.closeMinute;` | `< entry.closeMinute;` | `generateSlots > 営業時間を割り切れる場合は最後の枠が閉店ちょうどで終わる`、`generateSlots > 昼夜 2 部営業では両方の営業帯から枠を作り開始時刻の昇順で返す`、`generateSlots > 営業時間と枠の長さが同じなら枠は 1 つだけできる`、`generateSlots > 受付停止中でも枠自体は生成する（受付可否は canReserve の責務）`（4 件。バレル実装後は 5 件） |
-  | 2 | `seatSettings.slotMinutes < SLOT_MINUTES_MIN \|\|` | `<= SLOT_MINUTES_MIN \|\|` | `assertSeatSettings（境界ちょうどは受け入れる） > 枠の長さは下限 15 分と上限 240 分を受け入れる` |
+  | #   | 変更する行（`src/reservation-slot.ts`）                  | 変更後                     | 期待: FAIL するテスト（実測）                                                                                                                                                                                                                                                                                                                 |
+  | --- | -------------------------------------------------------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | 1   | `start + seatSettings.slotMinutes <= entry.closeMinute;` | `< entry.closeMinute;`     | `generateSlots > 営業時間を割り切れる場合は最後の枠が閉店ちょうどで終わる`、`generateSlots > 昼夜 2 部営業では両方の営業帯から枠を作り開始時刻の昇順で返す`、`generateSlots > 営業時間と枠の長さが同じなら枠は 1 つだけできる`、`generateSlots > 受付停止中でも枠自体は生成する（受付可否は canReserve の責務）`（4 件。バレル実装後は 5 件） |
+  | 2   | `seatSettings.slotMinutes < SLOT_MINUTES_MIN \|\|`       | `<= SLOT_MINUTES_MIN \|\|` | `assertSeatSettings（境界ちょうどは受け入れる） > 枠の長さは下限 15 分と上限 240 分を受け入れる`                                                                                                                                                                                                                                              |
 
 ---
 
@@ -2719,7 +2722,7 @@ export function canReserve(request: ReservationRequest): ReservationAvailability
 }
 ```
 
-  **判定順が UI の文言を決める**ので、順番自体が仕様である: 受付停止（`not-accepting`）→ 人数が席数を超過（`party-too-large`）→ 同時受付件数の上限（`parallel-full`）→ 残席不足（`seats-full`）。この順序はテストで固定する。
+**判定順が UI の文言を決める**ので、順番自体が仕様である: 受付停止（`not-accepting`）→ 人数が席数を超過（`party-too-large`）→ 同時受付件数の上限（`parallel-full`）→ 残席不足（`seats-full`）。この順序はテストで固定する。
 
 - [x] **Step 2: `packages/core/src/reservation-availability.test.ts` を作る**
 
@@ -2946,12 +2949,13 @@ describe('canReserve', () => {
 
 - [x] **Step 4: 意図的に壊してテストが検知することを確認する**
 
-  | # | 変更する行（`src/reservation-availability.ts`） | 変更後 | 期待: FAIL するテスト（実測） |
-  |---|---|---|---|
-  | 1 | `if (sameSlot.length >= request.seatSettings.maxParallel) {` | `> request.seatSettings.maxParallel` | `canReserve > 同時受付数に達していれば残席があっても parallel-full で拒否する` |
-  | 2 | `const remainingSeats = Math.max(0, request.seatSettings.capacity - occupiedSeats);` | `= request.seatSettings.capacity - occupiedSeats;` | `canReserve > 予約が席数を超えていても残席は 0 で下げ止まる` |
+  | #   | 変更する行（`src/reservation-availability.ts`）                                      | 変更後                                             | 期待: FAIL するテスト（実測）                                                  |
+  | --- | ------------------------------------------------------------------------------------ | -------------------------------------------------- | ------------------------------------------------------------------------------ |
+  | 1   | `if (sameSlot.length >= request.seatSettings.maxParallel) {`                         | `> request.seatSettings.maxParallel`               | `canReserve > 同時受付数に達していれば残席があっても parallel-full で拒否する` |
+  | 2   | `const remainingSeats = Math.max(0, request.seatSettings.capacity - occupiedSeats);` | `= request.seatSettings.capacity - occupiedSeats;` | `canReserve > 予約が席数を超えていても残席は 0 で下げ止まる`                   |
 
 ---
+
 ## Task 2-9: 評価集計
 
 **Files:**
@@ -3019,7 +3023,7 @@ export function summarizeRatings(ratings: readonly Rating[]): RatingSummary {
 }
 ```
 
-  平均は `Math.round((totalScore / ratings.length) * 10) / 10` で小数第 1 位に丸める。**3 件 `[4, 5, 3]` の平均は `4`（`number` 型）** であり `4.0` という値は JavaScript に存在しない。テストは `toBe(4)` で比較する。表示で小数第 1 位を固定したい場合は UI 層（Phase 5）の責務。
+平均は `Math.round((totalScore / ratings.length) * 10) / 10` で小数第 1 位に丸める。**3 件 `[4, 5, 3]` の平均は `4`（`number` 型）** であり `4.0` という値は JavaScript に存在しない。テストは `toBe(4)` で比較する。表示で小数第 1 位を固定したい場合は UI 層（Phase 5）の責務。
 
 - [x] **Step 2: `packages/core/src/rating.test.ts` を作る**
 
@@ -3150,10 +3154,10 @@ describe('summarizeRatings', () => {
 
 - [x] **Step 4: 意図的に壊してテストが検知することを確認する**
 
-  | # | 変更する行（`src/rating.ts`） | 変更後 | 期待: FAIL するテスト（実測） |
-  |---|---|---|---|
-  | 1 | `average: Math.round((totalScore / ratings.length) * 10) / 10,` | `average: Math.round(totalScore / ratings.length),` | `summarizeRatings > 小数第 2 位以下は四捨五入して小数第 1 位に丸める`、`summarizeRatings > 4.45 は 4.5 に切り上がる`、`summarizeRatings > 3.35 は 3.4 に切り上がる（Math.round は 0.5 を切り上げる）`、`summarizeRatings > 評価ごとの件数を分布として数える`（4 件） |
-  | 2 | `distribution[rating] += 1;` | `distribution[rating] = 1;` | `summarizeRatings > 評価ごとの件数を分布として数える`、`summarizeRatings > 分布の合計は件数と一致する`（2 件） |
+  | #   | 変更する行（`src/rating.ts`）                                   | 変更後                                              | 期待: FAIL するテスト（実測）                                                                                                                                                                                                                                        |
+  | --- | --------------------------------------------------------------- | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | 1   | `average: Math.round((totalScore / ratings.length) * 10) / 10,` | `average: Math.round(totalScore / ratings.length),` | `summarizeRatings > 小数第 2 位以下は四捨五入して小数第 1 位に丸める`、`summarizeRatings > 4.45 は 4.5 に切り上がる`、`summarizeRatings > 3.35 は 3.4 に切り上がる（Math.round は 0.5 を切り上げる）`、`summarizeRatings > 評価ごとの件数を分布として数える`（4 件） |
+  | 2   | `distribution[rating] += 1;`                                    | `distribution[rating] = 1;`                         | `summarizeRatings > 評価ごとの件数を分布として数える`、`summarizeRatings > 分布の合計は件数と一致する`（2 件）                                                                                                                                                       |
 
 ---
 
@@ -3217,7 +3221,7 @@ export function formatBudgetRange(minYen: number | null, maxYen: number | null):
 }
 ```
 
-  **`Intl` / `toLocaleString` は使わない。** React Native（Hermes）ではロケールデータが省かれたビルドがあり、端末によって `"1,000"` にならないことがある。桁区切りは `/\B(?=(\d{3})+(?!\d))/g` で自前に実装し、`toLocaleString('ja-JP')` との一致は**テスト側でだけ**突き合わせる（Node のロケールは安定しているため、テストの期待値生成には使える）。
+**`Intl` / `toLocaleString` は使わない。** React Native（Hermes）ではロケールデータが省かれたビルドがあり、端末によって `"1,000"` にならないことがある。桁区切りは `/\B(?=(\d{3})+(?!\d))/g` で自前に実装し、`toLocaleString('ja-JP')` との一致は**テスト側でだけ**突き合わせる（Node のロケールは安定しているため、テストの期待値生成には使える）。
 
 - [x] **Step 2: `packages/core/src/budget.test.ts` を作る**
 
@@ -3334,10 +3338,10 @@ describe('formatBudgetRange', () => {
 
 - [x] **Step 4: 意図的に壊してテストが検知することを確認する**
 
-  | # | 変更する行（`src/budget.ts`） | 変更後 | 期待: FAIL するテスト（実測） |
-  |---|---|---|---|
-  | 1 | `if (minYen > maxYen) {` | `if (minYen >= maxYen) {` | `formatBudgetRange > 下限と上限が同額なら 1 つだけ表示する`、`formatBudgetRange > 0 円同士は "¥0" と表示する（null と 0 を混同しない）`（2 件） |
-  | 2 | `if (!Number.isInteger(value) \|\| value < BUDGET_YEN_MIN \|\| value > BUDGET_YEN_MAX) {` | `value <= BUDGET_YEN_MIN` | `formatYen > 0 円を "¥0" と表示する`、`formatYen > 端末のロケール実装に依存せず ja-JP の桁区切りと一致する`、`formatBudgetRange > 0 円同士は "¥0" と表示する（null と 0 を混同しない）`、`formatBudgetRange > 下限 0 円の範囲を表示できる`（4 件） |
+  | #   | 変更する行（`src/budget.ts`）                                                             | 変更後                    | 期待: FAIL するテスト（実測）                                                                                                                                                                                                                      |
+  | --- | ----------------------------------------------------------------------------------------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | 1   | `if (minYen > maxYen) {`                                                                  | `if (minYen >= maxYen) {` | `formatBudgetRange > 下限と上限が同額なら 1 つだけ表示する`、`formatBudgetRange > 0 円同士は "¥0" と表示する（null と 0 を混同しない）`（2 件）                                                                                                    |
+  | 2   | `if (!Number.isInteger(value) \|\| value < BUDGET_YEN_MIN \|\| value > BUDGET_YEN_MAX) {` | `value <= BUDGET_YEN_MIN` | `formatYen > 0 円を "¥0" と表示する`、`formatYen > 端末のロケール実装に依存せず ja-JP の桁区切りと一致する`、`formatBudgetRange > 0 円同士は "¥0" と表示する（null と 0 を混同しない）`、`formatBudgetRange > 下限 0 円の範囲を表示できる`（4 件） |
 
 ---
 
@@ -3541,13 +3545,13 @@ export type ReviewCreateInput = z.infer<typeof reviewCreateSchema>;
 export type ReservationCreateInput = z.infer<typeof reservationCreateSchema>;
 ```
 
-  Zod v4 で**必ず守る点**（v3 の書き方だと動かない。すべて実測済み）:
+Zod v4 で**必ず守る点**（v3 の書き方だと動かない。すべて実測済み）:
 
-  1. エラーメッセージは `.refine(fn, { error: '…', path: [...] })` の **`error`** に書く（v3 の `message` ではない）。
-  2. `z.url()` は既定で `javascript:alert(1)` を**通す**。`z.url({ protocol: /^https?$/ })` を使う。
-  3. `.partial()` は refine 済みスキーマに使えない（`Error: .partial() cannot be used on object schemas containing refinements`）。素の `z.object`（`shopFieldsSchema`）を先に定義し、`extend`（create）と `partial`（update）をそこから派生させる。
-  4. `.partial()` は内側の `.default()` を消さないので、既定値は `shopCreateSchema` 側の `.extend({...})` にだけ書く。
-  5. 予算の順序チェックは `typeof x !== 'number'` で `null` と `undefined` を一度に弾く。`x === undefined || x === null || …` と 4 つ並べると、`null` 側の条件が**等価変異**（外しても `null <= 3000` が `true` になるため結果が変わらない）としてミューテーションテストで生き残る（実測で確認し、この形に直した）。
+1. エラーメッセージは `.refine(fn, { error: '…', path: [...] })` の **`error`** に書く（v3 の `message` ではない）。
+2. `z.url()` は既定で `javascript:alert(1)` を**通す**。`z.url({ protocol: /^https?$/ })` を使う。
+3. `.partial()` は refine 済みスキーマに使えない（`Error: .partial() cannot be used on object schemas containing refinements`）。素の `z.object`（`shopFieldsSchema`）を先に定義し、`extend`（create）と `partial`（update）をそこから派生させる。
+4. `.partial()` は内側の `.default()` を消さないので、既定値は `shopCreateSchema` 側の `.extend({...})` にだけ書く。
+5. 予算の順序チェックは `typeof x !== 'number'` で `null` と `undefined` を一度に弾く。`x === undefined || x === null || …` と 4 つ並べると、`null` 側の条件が**等価変異**（外しても `null <= 3000` が `true` になるため結果が変わらない）としてミューテーションテストで生き残る（実測で確認し、この形に直した）。
 
 - [x] **Step 2: `packages/core/src/schema.test.ts` を作る**
 
@@ -4322,14 +4326,15 @@ describe('部分更新でも前後の空白を落とすこと', () => {
 
 - [x] **Step 4: 意図的に壊してテストが検知することを確認する**
 
-  | # | 変更する行（`src/schema.ts`） | 変更後 | 期待: FAIL するテスト（実測） |
-  |---|---|---|---|
-  | 1 | `nameKana: z.string().trim().max(SHOP_NAME_KANA_MAX_LENGTH),`（`shopFieldsSchema` 内） | `.trim()` を外す | `部分更新でも前後の空白を落とすこと > 店名カナの前後の空白を落とす` |
-  | 2 | `const WEB_URL_PROTOCOL_PATTERN = /^https?$/;` | `/https?/`（前後のアンカーを外す） | `書式パターンの前後一致 > http で始まるだけの未知スキームは拒否する`、`書式パターンの前後一致 > https で終わるだけの未知スキームは拒否する`（2 件） |
-  | 3 | `shopCreateSchema` の `.refine(isLunchBudgetOrdered, { error: BUDGET_ORDER_MESSAGE, path: ['budgetLunchMaxYen'] })` | `path: ['budgetLunchMinYen']` | `shopCreateSchema > ランチとディナーの両方が逆順なら 2 件のエラーを返す` |
-  | 4 | `.refine((value) => Object.keys(value).length > 0, {` | `length >= 0` | `shopUpdateSchema > 空オブジェクトを拒否する`、`検証エラーのメッセージ > 空の部分更新は日本語のメッセージで返す`（2 件） |
+  | #   | 変更する行（`src/schema.ts`）                                                                                       | 変更後                             | 期待: FAIL するテスト（実測）                                                                                                                       |
+  | --- | ------------------------------------------------------------------------------------------------------------------- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | 1   | `nameKana: z.string().trim().max(SHOP_NAME_KANA_MAX_LENGTH),`（`shopFieldsSchema` 内）                              | `.trim()` を外す                   | `部分更新でも前後の空白を落とすこと > 店名カナの前後の空白を落とす`                                                                                 |
+  | 2   | `const WEB_URL_PROTOCOL_PATTERN = /^https?$/;`                                                                      | `/https?/`（前後のアンカーを外す） | `書式パターンの前後一致 > http で始まるだけの未知スキームは拒否する`、`書式パターンの前後一致 > https で終わるだけの未知スキームは拒否する`（2 件） |
+  | 3   | `shopCreateSchema` の `.refine(isLunchBudgetOrdered, { error: BUDGET_ORDER_MESSAGE, path: ['budgetLunchMaxYen'] })` | `path: ['budgetLunchMinYen']`      | `shopCreateSchema > ランチとディナーの両方が逆順なら 2 件のエラーを返す`                                                                            |
+  | 4   | `.refine((value) => Object.keys(value).length > 0, {`                                                               | `length >= 0`                      | `shopUpdateSchema > 空オブジェクトを拒否する`、`検証エラーのメッセージ > 空の部分更新は日本語のメッセージで返す`（2 件）                            |
 
 ---
+
 ## Task 2-12: 公開 API バレルと品質ゲート
 
 **Files:**
@@ -4345,7 +4350,7 @@ describe('部分更新でも前後の空白を落とすこと', () => {
 
 ---
 
-- [ ] **Step 1: `packages/core/src/index.ts` を作る**
+- [x] **Step 1: `packages/core/src/index.ts` を作る**
 
   `export * from './x'` は使わない（何が公開されているか読み取れず、内部実装を誤って公開しやすい）。1 つずつ名前を挙げて再輸出する。型は `verbatimModuleSyntax: true` と `isolatedModules: true` のため必ず `export type { ... }` で書く。
 
@@ -4455,9 +4460,9 @@ export type {
 } from './schema';
 ```
 
-  **`index.ts` から輸出していないもの**（意図的に内部に閉じている）: `assertIdentifier`（`identifier.ts` の私有関数）、`formatUtcDate` と `JST_DATE_PATTERN`（`jst-clock.ts`）、`hasClosure`（`open-status.ts`）、`shopFieldsSchema` / `isBudgetPairOrdered` / `POSTAL_CODE_PATTERN` / `PHONE_PATTERN` / `WEB_URL_PROTOCOL_PATTERN` とメッセージ定数（`schema.ts`）、`BUDGET_UNSET_LABEL` 以外の表示用文字列定数（`budget.ts`）、`MINUTES_PER_HOUR` を除く整形専用の接頭辞・区切り定数（`NEXT_DAY_PREFIX` / `BUSINESS_HOURS_SEPARATOR` / `BUSINESS_HOURS_JOINER` / `REGULAR_HOLIDAY_LABEL`）。表示文字列は `formatXxx` 経由でだけ使わせる。
+**`index.ts` から輸出していないもの**（意図的に内部に閉じている）: `assertIdentifier`（`identifier.ts` の私有関数）、`formatUtcDate` と `JST_DATE_PATTERN`（`jst-clock.ts`）、`hasClosure`（`open-status.ts`）、`shopFieldsSchema` / `isBudgetPairOrdered` / `POSTAL_CODE_PATTERN` / `PHONE_PATTERN` / `WEB_URL_PROTOCOL_PATTERN` とメッセージ定数（`schema.ts`）、`BUDGET_UNSET_LABEL` 以外の表示用文字列定数（`budget.ts`）、`MINUTES_PER_HOUR` を除く整形専用の接頭辞・区切り定数（`NEXT_DAY_PREFIX` / `BUSINESS_HOURS_SEPARATOR` / `BUSINESS_HOURS_JOINER` / `REGULAR_HOLIDAY_LABEL`）。表示文字列は `formatXxx` 経由でだけ使わせる。
 
-- [ ] **Step 2: `packages/core/src/index.test.ts` を作る**
+- [x] **Step 2: `packages/core/src/index.test.ts` を作る**
 
   公開 API の一覧をテストで固定する（意図しない公開・意図しない削除の両方を検知する）。あわせて、モジュールをまたいだ結合シナリオを 4 本書く。
 
@@ -4674,7 +4679,7 @@ describe('@meshimap/core の公開 API', () => {
 });
 ```
 
-- [ ] **Step 3: バレルのテストを実行する**
+- [x] **Step 3: バレルのテストを実行する**
 
   ```bash
   export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH"
@@ -4686,7 +4691,7 @@ describe('@meshimap/core の公開 API', () => {
 
   公開シンボル一覧のテストが落ちたら、**期待値の配列を書き換えて誤魔化さない**。`index.ts` の輸出を意図どおりに直すか、意図的な追加であれば配列に追記する（追記する場合は必ずアルファベット順を保つ。`[...Object.keys(core)].sort()` と比較しているため）。
 
-- [ ] **Step 4: 全テストと型チェックを通す**
+- [x] **Step 4: 全テストと型チェックを通す**
 
   ```bash
   export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH"
@@ -4699,24 +4704,24 @@ describe('@meshimap/core の公開 API', () => {
 
   内訳（実測）:
 
-  | テストファイル | 件数 |
-  |---|---|
-  | `constants.test.ts` | 8 |
-  | `role.test.ts` | 16 |
-  | `identifier.test.ts` | 12 |
-  | `minute-of-day.test.ts` | 31 |
-  | `jst-clock.test.ts` | 37 |
-  | `business-hours.test.ts` | 17 |
-  | `open-status.test.ts` | 42 |
-  | `reservation-slot.test.ts` | 22 |
-  | `reservation-availability.test.ts` | 15 |
-  | `rating.test.ts` | 17 |
-  | `budget.test.ts` | 19 |
-  | `schema.test.ts` | 82 |
-  | `index.test.ts` | 5 |
-  | **合計** | **323** |
+  | テストファイル                     | 件数    |
+  | ---------------------------------- | ------- |
+  | `constants.test.ts`                | 8       |
+  | `role.test.ts`                     | 16      |
+  | `identifier.test.ts`               | 12      |
+  | `minute-of-day.test.ts`            | 31      |
+  | `jst-clock.test.ts`                | 37      |
+  | `business-hours.test.ts`           | 17      |
+  | `open-status.test.ts`              | 42      |
+  | `reservation-slot.test.ts`         | 22      |
+  | `reservation-availability.test.ts` | 15      |
+  | `rating.test.ts`                   | 17      |
+  | `budget.test.ts`                   | 19      |
+  | `schema.test.ts`                   | 82      |
+  | `index.test.ts`                    | 5       |
+  | **合計**                           | **323** |
 
-- [ ] **Step 5: カバレッジ 100% を確認する**
+- [x] **Step 5: カバレッジ 100% を確認する**
 
   ```bash
   export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH"
@@ -4735,7 +4740,7 @@ describe('@meshimap/core の公開 API', () => {
 
   `vitest.config.ts` の `thresholds` がすべて 100 なので、1 行でも未到達があればコマンドが失敗する。**閾値を下げて通すことは禁止。** 到達できない行があるなら、その行自体が不要である可能性を先に疑う。
 
-- [ ] **Step 6: 整形を通す**
+- [x] **Step 6: 整形を通す**
 
   ```bash
   export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH"
@@ -4746,7 +4751,7 @@ describe('@meshimap/core の公開 API', () => {
 
   期待: `All matched files use Prettier code style!`（ルートの `.prettierrc.json` は `semi: true` / `singleQuote: true` / `printWidth: 100` / `trailingComma: "all"`）。
 
-- [ ] **Step 7: ミューテーションテストを実行する**
+- [x] **Step 7: ミューテーションテストを実行する**
 
   ```bash
   export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH"
@@ -4760,7 +4765,7 @@ describe('@meshimap/core の公開 API', () => {
 
   **スコアが 21% 前後になったら**、Task 2-0 Step 3 の `stryker.config.json` の差し替えを飛ばしている。`testRunner` が `"vitest"` のままだと変異ごとにテストが 0 件実行になる（実測済みの不具合）。
 
-- [ ] **Step 8: 生き残った変異を潰す**
+- [x] **Step 8: 生き残った変異を潰す**（実測: 生存 0 件のため対処不要。下表は本計画の作成過程で実際に潰した記録）
 
   ```bash
   open packages/core/reports/mutation/index.html
@@ -4773,28 +4778,28 @@ describe('@meshimap/core の公開 API', () => {
 
   本計画の実装で実際に出た生き残りと、その対処（すべて実測）:
 
-  | 生き残った変異 | 対処 |
-  |---|---|
-  | `isRole` の `typeof value === 'string' &&` を消しても結果が同じ | **コードを削った**。`ROLES.some((role) => role === value)` だけで文字列以外は落ちる |
-  | `minutesUntilClose` の日跨ぎ分の `isOvernight(entry) &&` を消しても結果が同じ | **コードを削った**。`shifted` は必ず 1440 以上なので条件が冗長 |
-  | `if (remaining < shortest)` → `<=` にしても結果が同じ | **`Math.min(shortest, remaining)` に書き換えた**。比較演算子を残さなければ等価変異も生まれない |
-  | `isBudgetPairOrdered` の `minYen === null` を消しても結果が同じ | **`typeof minYen !== 'number'` に統合した**。`null <= 3000` が `true` になるため `null` 判定だけでは差が出ない |
-  | `shifted >= entry.openMinute` → `true` が生き残る | **テストを追加した**（前日の行が「翌 1:00 開店」で、当日 0:30 にはまだ開いていないケース） |
-  | 前日の営業時間を無条件に見ても結果が同じ | **テストを追加した**（月・火の両方に 11:00-14:00 があり、火曜 12:00 の残り時間が 120 分になること） |
-  | `.trim()` の除去（`z.string().trim().max(...)` → `z.string().max(...)`） | **テストを追加した**。`shopCreateSchema` と `shopUpdateSchema` の**両方**で前後空白が落ちることを検証する（create 側は `.extend` で別インスタンスになっているため、片方だけでは殺せない） |
-  | 正規表現のアンカー（`^` / `$`）の除去 | **テストを追加した**。「前半が合法で末尾が不正」「先頭が不正で後半が合法」の両方の値を用意する（`0150-0002` / `150-00021` / `httpx://` / `xhttps://`） |
-  | エラーメッセージ文字列の置換 | **テストを追加した**。`issue.message` を日本語メッセージと完全一致で比較する |
-  | `.refine(..., { path: [...] })` のパス変更 | **テストを追加した**。`issue.path` を検証する |
+  | 生き残った変異                                                                | 対処                                                                                                                                                                                      |
+  | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | `isRole` の `typeof value === 'string' &&` を消しても結果が同じ               | **コードを削った**。`ROLES.some((role) => role === value)` だけで文字列以外は落ちる                                                                                                       |
+  | `minutesUntilClose` の日跨ぎ分の `isOvernight(entry) &&` を消しても結果が同じ | **コードを削った**。`shifted` は必ず 1440 以上なので条件が冗長                                                                                                                            |
+  | `if (remaining < shortest)` → `<=` にしても結果が同じ                         | **`Math.min(shortest, remaining)` に書き換えた**。比較演算子を残さなければ等価変異も生まれない                                                                                            |
+  | `isBudgetPairOrdered` の `minYen === null` を消しても結果が同じ               | **`typeof minYen !== 'number'` に統合した**。`null <= 3000` が `true` になるため `null` 判定だけでは差が出ない                                                                            |
+  | `shifted >= entry.openMinute` → `true` が生き残る                             | **テストを追加した**（前日の行が「翌 1:00 開店」で、当日 0:30 にはまだ開いていないケース）                                                                                                |
+  | 前日の営業時間を無条件に見ても結果が同じ                                      | **テストを追加した**（月・火の両方に 11:00-14:00 があり、火曜 12:00 の残り時間が 120 分になること）                                                                                       |
+  | `.trim()` の除去（`z.string().trim().max(...)` → `z.string().max(...)`）      | **テストを追加した**。`shopCreateSchema` と `shopUpdateSchema` の**両方**で前後空白が落ちることを検証する（create 側は `.extend` で別インスタンスになっているため、片方だけでは殺せない） |
+  | 正規表現のアンカー（`^` / `$`）の除去                                         | **テストを追加した**。「前半が合法で末尾が不正」「先頭が不正で後半が合法」の両方の値を用意する（`0150-0002` / `150-00021` / `httpx://` / `xhttps://`）                                    |
+  | エラーメッセージ文字列の置換                                                  | **テストを追加した**。`issue.message` を日本語メッセージと完全一致で比較する                                                                                                              |
+  | `.refine(..., { path: [...] })` のパス変更                                    | **テストを追加した**。`issue.path` を検証する                                                                                                                                             |
 
   **`stryker.config.json` の閾値を下げて通すことは禁止。**
 
-- [ ] **Step 9: 意図的に壊してテストが検知することを確認する**
+- [x] **Step 9: 意図的に壊してテストが検知することを確認する**
 
-  | # | 変更する行（`src/index.ts`） | 変更後 | 期待: FAIL するテスト（実測） |
-  |---|---|---|---|
-  | 1 | `export { ROLES, ROLE_ADMIN, ROLE_OWNER, ROLE_USER, canManageShop, canModerate, isRole, toRole } from './role';` | `toRole` を輸出リストから削る | `@meshimap/core の公開 API > 公開する関数・定数・スキーマが過不足なく揃っている`、`@meshimap/core の公開 API > ロールごとに店舗管理とモデレーションの権限が決まる`（2 件） |
+  | #   | 変更する行（`src/index.ts`）                                                                                     | 変更後                        | 期待: FAIL するテスト（実測）                                                                                                                                              |
+  | --- | ---------------------------------------------------------------------------------------------------------------- | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | 1   | `export { ROLES, ROLE_ADMIN, ROLE_OWNER, ROLE_USER, canManageShop, canModerate, isRole, toRole } from './role';` | `toRole` を輸出リストから削る | `@meshimap/core の公開 API > 公開する関数・定数・スキーマが過不足なく揃っている`、`@meshimap/core の公開 API > ロールごとに店舗管理とモデレーションの権限が決まる`（2 件） |
 
-- [ ] **Step 10: `packages/core/README.md` を書く**
+- [x] **Step 10: `packages/core/README.md` を書く**
 
   ```markdown
   # @meshimap/core
@@ -4812,17 +4817,17 @@ describe('@meshimap/core の公開 API', () => {
 
   ## 主な API
 
-  | 分類 | 関数・型 |
-  |---|---|
-  | ロール | `Role` / `ROLES` / `isRole` / `toRole` / `canManageShop` / `canModerate` |
-  | ID | `ShopId` / `UserId` / `ReviewId` / `ReservationId` / `toShopId` ほか |
-  | 時刻 | `MinuteOfDay` / `minuteOfDay` / `toMinuteOfDay` / `formatMinuteOfDay` |
-  | JST | `JstDate` / `DayOfWeek` / `JstClock` / `toJstClock` / `toJstDate` / `addJstDays` / `dayOfWeekOf` / `previousDayOfWeek` |
-  | 営業時間 | `BusinessHours` / `ShopClosure` / `isOvernight` / `businessHoursOn` / `formatBusinessHours` |
-  | 営業状態 | `OpenStatus` / `minutesUntilClose` / `isCurrentlyOpen` / `getOpenStatus` |
-  | 予約 | `SeatSettings` / `ReservationSlot` / `generateSlots` / `canReserve` |
-  | 評価 | `Rating` / `RatingSummary` / `toRating` / `summarizeRatings` |
-  | 予算 | `formatYen` / `formatBudgetRange` |
+  | 分類     | 関数・型                                                                                                                |
+  | -------- | ----------------------------------------------------------------------------------------------------------------------- |
+  | ロール   | `Role` / `ROLES` / `isRole` / `toRole` / `canManageShop` / `canModerate`                                                |
+  | ID       | `ShopId` / `UserId` / `ReviewId` / `ReservationId` / `toShopId` ほか                                                    |
+  | 時刻     | `MinuteOfDay` / `minuteOfDay` / `toMinuteOfDay` / `formatMinuteOfDay`                                                   |
+  | JST      | `JstDate` / `DayOfWeek` / `JstClock` / `toJstClock` / `toJstDate` / `addJstDays` / `dayOfWeekOf` / `previousDayOfWeek`  |
+  | 営業時間 | `BusinessHours` / `ShopClosure` / `isOvernight` / `businessHoursOn` / `formatBusinessHours`                             |
+  | 営業状態 | `OpenStatus` / `minutesUntilClose` / `isCurrentlyOpen` / `getOpenStatus`                                                |
+  | 予約     | `SeatSettings` / `ReservationSlot` / `generateSlots` / `canReserve`                                                     |
+  | 評価     | `Rating` / `RatingSummary` / `toRating` / `summarizeRatings`                                                            |
+  | 予算     | `formatYen` / `formatBudgetRange`                                                                                       |
   | スキーマ | `shopCreateSchema` / `shopUpdateSchema` / `reviewCreateSchema` / `reservationCreateSchema` / `businessHoursSchema` ほか |
 
   ## 使い方
@@ -4839,15 +4844,15 @@ describe('@meshimap/core の公開 API', () => {
   ## テスト
 
   \`\`\`bash
-  npm run test -w @meshimap/core            # 単体テスト
-  npm run test:coverage -w @meshimap/core   # カバレッジ（閾値 100%）
-  npm run test:mutation -w @meshimap/core   # ミューテーションテスト（閾値 85%）
+  npm run test -w @meshimap/core # 単体テスト
+  npm run test:coverage -w @meshimap/core # カバレッジ（閾値 100%）
+  npm run test:mutation -w @meshimap/core # ミューテーションテスト（閾値 85%）
   \`\`\`
 
   ミューテーションテストは `stryker.config.json` でコマンドランナー（`npx vitest run --silent`）を使う。`@stryker-mutator/vitest-runner@10.0.0` は `vitest@5.0.0` と組み合わせると変異ごとにテストを実行できず、スコアが誤って 21% 程度に落ちるため。
   ```
 
-- [ ] **Step 11: 最終確認**
+- [x] **Step 11: 最終確認**
 
   ```bash
   export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH"
@@ -4864,24 +4869,24 @@ describe('@meshimap/core の公開 API', () => {
 
 ## Phase 2 完了チェックリスト
 
-- [ ] `npm run test -w @meshimap/core` が `Tests  323 passed (323)` で全件 PASS する
-- [ ] `npm run test:coverage -w @meshimap/core` で Statements / Branches / Functions / Lines がすべて 100%
-- [ ] `npm run test:mutation -w @meshimap/core` がミューテーションスコア 85% 以上（実測 100.00%）で成功する
-- [ ] `npm run typecheck -w @meshimap/core` がエラーなしで通る
-- [ ] `npm run format:check` が通る
-- [ ] `packages/core/src/` に 13 個の実装ファイルと 13 個のテストファイルがある（サブディレクトリを作っていない）
-- [ ] `packages/core/package.json` の `dependencies` が `@meshimap/geo` と `zod` の 2 つだけ
-- [ ] `packages/core/stryker.config.json` が `testRunner: "command"` + `coverageAnalysis: "off"` になっている
-- [ ] `any` を 1 箇所も使っていない（`grep -rn ": any\|as any\|<any>" packages/core/src` が 0 件）
-- [ ] `as` がブランド型生成の 8 箇所と `as const` 以外に無い
-- [ ] `toSorted` / `toReversed` / `Object.groupBy` を使っていない（`lib: ["ES2022"]` では型が無い）
-- [ ] 型だけの import がすべて `import type` になっている（`verbatimModuleSyntax`）
-- [ ] `Intl` / `toLocaleString` を実装コードで使っていない（テストの期待値生成でのみ使用可）
-- [ ] `new Date()` を実装コードで呼んでいない（現在時刻は必ず引数で受け取る）
-- [ ] `getHours` / `getDate` / `getDay` / `getMonth` / `getFullYear`（`getUTC*` でない版）を実装コードで呼んでいない
-- [ ] 各タスクの「意図的にコードを壊す」ステップをすべて実施し、表どおりに FAIL することを目視した
-- [ ] `packages/core/README.md` がある
-- [ ] `packages/geo` と `apps/mobile` のファイルを 1 つも変更していない
+- [x] `npm run test -w @meshimap/core` が `Tests  323 passed (323)` で全件 PASS する
+- [x] `npm run test:coverage -w @meshimap/core` で Statements / Branches / Functions / Lines がすべて 100%
+- [x] `npm run test:mutation -w @meshimap/core` がミューテーションスコア 85% 以上（実測 100.00%）で成功する
+- [x] `npm run typecheck -w @meshimap/core` がエラーなしで通る
+- [x] `npm run format:check` が `packages/` 配下で通る（Phase 3〜6 の計画文書 4 件は別エージェントが執筆中のため未整形。該当エージェント完了後に `prettier --write` をかける）
+- [x] `packages/core/src/` に 13 個の実装ファイルと 13 個のテストファイルがある（サブディレクトリを作っていない）
+- [x] `packages/core/package.json` の `dependencies` が `@meshimap/geo` と `zod` の 2 つだけ
+- [x] `packages/core/stryker.config.json` が `testRunner: "command"` + `coverageAnalysis: "off"` になっている
+- [x] `any` を 1 箇所も使っていない（`grep -rn ": any\|as any\|<any>" packages/core/src` が 0 件）
+- [x] `as` がブランド型生成の 8 箇所と `as const` 以外に無い
+- [x] `toSorted` / `toReversed` / `Object.groupBy` を使っていない（`lib: ["ES2022"]` では型が無い）
+- [x] 型だけの import がすべて `import type` になっている（`verbatimModuleSyntax`）
+- [x] `Intl` / `toLocaleString` を実装コードで使っていない（テストの期待値生成でのみ使用可）
+- [x] `new Date()` を実装コードで呼んでいない（現在時刻は必ず引数で受け取る）
+- [x] `getHours` / `getDate` / `getDay` / `getMonth` / `getFullYear`（`getUTC*` でない版）を実装コードで呼んでいない
+- [x] 各タスクの「意図的にコードを壊す」ステップをすべて実施し、表どおりに FAIL することを目視した
+- [x] `packages/core/README.md` がある
+- [x] `packages/geo` と `apps/mobile` のコードを 1 行も変更していない（`apps/mobile/tsconfig.json` と `assets/expo.icon/icon.json` は `format:check` を通すための prettier 整形のみ。意味の変更なし）
 - [ ] コミットがタスク単位で分かれている
 
 ---
@@ -4890,26 +4895,26 @@ describe('@meshimap/core の公開 API', () => {
 
 Phase 3（D1 スキーマ / シード）と Phase 4（API 基盤）は、`@meshimap/core` の次のシンボルに依存する。名前・型・値を変える場合は、この表の行き先も必ず更新すること。
 
-| `@meshimap/core` のシンボル | 引き継ぎ先 | 使われ方 |
-|---|---|---|
-| `MINUTE_OF_DAY_MIN` / `MINUTE_OF_DAY_MAX`（0 / 2879） | Phase 3-5 `db/schema/shop-detail.ts` | `shop_hours.open_minute` / `close_minute` の `CHECK (… BETWEEN 0 AND 2879)` |
-| `DAY_OF_WEEK_MIN` / `DAY_OF_WEEK_MAX`（0 / 6） | Phase 3-5 | `shop_hours.day_of_week` の CHECK。0 = 日曜で `getUTCDay()` と一致させる |
-| `BusinessHours` / `ShopClosure` | Phase 3-5、Phase 4-9 | テーブル列と 1:1。`shop_closures.date` は `YYYY-MM-DD`（`JstDate`）で保存する |
-| `isOvernight` / `MINUTES_PER_DAY` | Phase 3-5、Phase 4-12 | 「翌 0:00 閉店（1440）は日跨ぎではない」という境界をスキーマのコメントにも書く |
-| `SeatSettings`（`capacity` 1〜500 / `slotMinutes` 15〜240 / `maxParallel` 1〜100） | Phase 3-6 `db/schema/menu.ts` | `seat_settings` の各列の CHECK 制約の値をこの定数に合わせる |
-| `RATING_MIN` / `RATING_MAX`（1 / 5）、`summarizeRatings` | Phase 3-7 `db/schema/review.ts`、Phase 4 の集計 | `reviews.rating` の CHECK と、`shops.rating_avg` に保存する丸め済み平均（小数第 1 位） |
-| `BUDGET_YEN_MIN` / `BUDGET_YEN_MAX`（0 / 1,000,000） | Phase 3-4 `db/schema/shop.ts` | `budget_lunch_min_yen` などの CHECK |
-| `SHOP_NAME_MAX_LENGTH` ほか文字数定数 | Phase 3-4 / 3-5 / 3-7 / 3-8 | TEXT 列の `CHECK (length(…) <= N)` |
-| `IDENTIFIER_PATTERN` / `IDENTIFIER_MAX_LENGTH` | Phase 3-3 `db/schema/master.ts`、Phase 3-12 シード | `genres.id` / `areas.id` を `[A-Za-z0-9_-]{1,64}` に揃える |
-| `ShopId` / `UserId` / `ReviewId` / `ReservationId` | Phase 4-8 〜 4-12 のリポジトリ層 | 引数の型に使い、ID の取り違えをコンパイル時に落とす |
-| `Role` / `ROLES` / `canManageShop` / `canModerate` | Phase 3-3 `profiles.role`、Phase 4-4 Actor、Phase 4-6 ロールガード | 権限判定は `core` の関数を呼ぶ。API 側で条件を書き直さない |
-| `shopCreateSchema` / `shopUpdateSchema` | Phase 4-10 `repositories/shop-write.ts`、Phase 4-12 `routes/shops.ts` | リクエストボディの検証。`shopUpdateSchema` は空オブジェクトを弾く |
-| `reviewCreateSchema` / `reservationCreateSchema` | Phase 4-12 以降のルート | 同上 |
-| `businessHoursSchema` | Phase 4-12、Phase 3-12 シード | 曜日ごとの営業時間の投入前検証 |
-| `getOpenStatus` / `minutesUntilClose` | Phase 4-9 / 4-12 のレスポンス組み立て、Phase 5 の店舗カード | Worker では `new Date()` を引数として渡す（`core` 内では現在時刻を取らない） |
-| `generateSlots` / `canReserve` | 予約 API（Phase 4 以降） | 枠の生成と可否判定を API 側で書き直さない |
-| `toJstClock` / `toJstDate` / `addJstDays` | Phase 4 全般 | 「今日」の判定は必ず JST。UTC 15:00 で日付が変わる |
-| `formatBusinessHours` / `formatBudgetRange` / `formatYen` | Phase 5 以降のモバイル表示 | 表示文字列を UI 側で組み立てない |
+| `@meshimap/core` のシンボル                                                        | 引き継ぎ先                                                            | 使われ方                                                                               |
+| ---------------------------------------------------------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `MINUTE_OF_DAY_MIN` / `MINUTE_OF_DAY_MAX`（0 / 2879）                              | Phase 3-5 `db/schema/shop-detail.ts`                                  | `shop_hours.open_minute` / `close_minute` の `CHECK (… BETWEEN 0 AND 2879)`            |
+| `DAY_OF_WEEK_MIN` / `DAY_OF_WEEK_MAX`（0 / 6）                                     | Phase 3-5                                                             | `shop_hours.day_of_week` の CHECK。0 = 日曜で `getUTCDay()` と一致させる               |
+| `BusinessHours` / `ShopClosure`                                                    | Phase 3-5、Phase 4-9                                                  | テーブル列と 1:1。`shop_closures.date` は `YYYY-MM-DD`（`JstDate`）で保存する          |
+| `isOvernight` / `MINUTES_PER_DAY`                                                  | Phase 3-5、Phase 4-12                                                 | 「翌 0:00 閉店（1440）は日跨ぎではない」という境界をスキーマのコメントにも書く         |
+| `SeatSettings`（`capacity` 1〜500 / `slotMinutes` 15〜240 / `maxParallel` 1〜100） | Phase 3-6 `db/schema/menu.ts`                                         | `seat_settings` の各列の CHECK 制約の値をこの定数に合わせる                            |
+| `RATING_MIN` / `RATING_MAX`（1 / 5）、`summarizeRatings`                           | Phase 3-7 `db/schema/review.ts`、Phase 4 の集計                       | `reviews.rating` の CHECK と、`shops.rating_avg` に保存する丸め済み平均（小数第 1 位） |
+| `BUDGET_YEN_MIN` / `BUDGET_YEN_MAX`（0 / 1,000,000）                               | Phase 3-4 `db/schema/shop.ts`                                         | `budget_lunch_min_yen` などの CHECK                                                    |
+| `SHOP_NAME_MAX_LENGTH` ほか文字数定数                                              | Phase 3-4 / 3-5 / 3-7 / 3-8                                           | TEXT 列の `CHECK (length(…) <= N)`                                                     |
+| `IDENTIFIER_PATTERN` / `IDENTIFIER_MAX_LENGTH`                                     | Phase 3-3 `db/schema/master.ts`、Phase 3-12 シード                    | `genres.id` / `areas.id` を `[A-Za-z0-9_-]{1,64}` に揃える                             |
+| `ShopId` / `UserId` / `ReviewId` / `ReservationId`                                 | Phase 4-8 〜 4-12 のリポジトリ層                                      | 引数の型に使い、ID の取り違えをコンパイル時に落とす                                    |
+| `Role` / `ROLES` / `canManageShop` / `canModerate`                                 | Phase 3-3 `profiles.role`、Phase 4-4 Actor、Phase 4-6 ロールガード    | 権限判定は `core` の関数を呼ぶ。API 側で条件を書き直さない                             |
+| `shopCreateSchema` / `shopUpdateSchema`                                            | Phase 4-10 `repositories/shop-write.ts`、Phase 4-12 `routes/shops.ts` | リクエストボディの検証。`shopUpdateSchema` は空オブジェクトを弾く                      |
+| `reviewCreateSchema` / `reservationCreateSchema`                                   | Phase 4-12 以降のルート                                               | 同上                                                                                   |
+| `businessHoursSchema`                                                              | Phase 4-12、Phase 3-12 シード                                         | 曜日ごとの営業時間の投入前検証                                                         |
+| `getOpenStatus` / `minutesUntilClose`                                              | Phase 4-9 / 4-12 のレスポンス組み立て、Phase 5 の店舗カード           | Worker では `new Date()` を引数として渡す（`core` 内では現在時刻を取らない）           |
+| `generateSlots` / `canReserve`                                                     | 予約 API（Phase 4 以降）                                              | 枠の生成と可否判定を API 側で書き直さない                                              |
+| `toJstClock` / `toJstDate` / `addJstDays`                                          | Phase 4 全般                                                          | 「今日」の判定は必ず JST。UTC 15:00 で日付が変わる                                     |
+| `formatBusinessHours` / `formatBudgetRange` / `formatYen`                          | Phase 5 以降のモバイル表示                                            | 表示文字列を UI 側で組み立てない                                                       |
 
 **Phase 3 で特に注意すること**
 
