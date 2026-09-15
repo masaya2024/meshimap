@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "9278b24d-4771-4312-a0e9-0a11a8326162",
+  "id": "956ffbc2-70ef-40c5-bc79-d4f125db5c25",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "account": {
@@ -365,6 +365,258 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "checkConstraints": {}
+    },
+    "areas": {
+      "name": "areas",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "parent_id": {
+          "name": "parent_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "prefecture": {
+          "name": "prefecture",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "idx_areas_parent_id": {
+          "name": "idx_areas_parent_id",
+          "columns": [
+            "parent_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "areas_parent_id_areas_id_fk": {
+          "name": "areas_parent_id_areas_id_fk",
+          "tableFrom": "areas",
+          "tableTo": "areas",
+          "columnsFrom": [
+            "parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "ck_areas_id_length": {
+          "name": "ck_areas_id_length",
+          "value": "length(\"areas\".\"id\") <= 64"
+        },
+        "ck_areas_name_length": {
+          "name": "ck_areas_name_length",
+          "value": "length(\"areas\".\"name\") <= 50"
+        },
+        "ck_areas_prefecture_length": {
+          "name": "ck_areas_prefecture_length",
+          "value": "length(\"areas\".\"prefecture\") <= 20"
+        }
+      }
+    },
+    "genres": {
+      "name": "genres",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "slug": {
+          "name": "slug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "icon_key": {
+          "name": "icon_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        }
+      },
+      "indexes": {
+        "genres_slug_unique": {
+          "name": "genres_slug_unique",
+          "columns": [
+            "slug"
+          ],
+          "isUnique": true
+        },
+        "idx_genres_sort_order": {
+          "name": "idx_genres_sort_order",
+          "columns": [
+            "sort_order"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "ck_genres_id_length": {
+          "name": "ck_genres_id_length",
+          "value": "length(\"genres\".\"id\") <= 64"
+        },
+        "ck_genres_name_length": {
+          "name": "ck_genres_name_length",
+          "value": "length(\"genres\".\"name\") <= 50"
+        },
+        "ck_genres_slug_format": {
+          "name": "ck_genres_slug_format",
+          "value": "\"genres\".\"slug\" <> '' AND \"genres\".\"slug\" NOT GLOB '*[^a-z0-9-]*'"
+        },
+        "ck_genres_sort_order": {
+          "name": "ck_genres_sort_order",
+          "value": "\"genres\".\"sort_order\" >= 0"
+        }
+      }
+    },
+    "profiles": {
+      "name": "profiles",
+      "columns": {
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "role": {
+          "name": "role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'user'"
+        },
+        "display_name": {
+          "name": "display_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "avatar_key": {
+          "name": "avatar_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "bio": {
+          "name": "bio",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'active'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
+        }
+      },
+      "indexes": {
+        "idx_profiles_role": {
+          "name": "idx_profiles_role",
+          "columns": [
+            "role"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "profiles_user_id_user_id_fk": {
+          "name": "profiles_user_id_user_id_fk",
+          "tableFrom": "profiles",
+          "tableTo": "user",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "ck_profiles_role": {
+          "name": "ck_profiles_role",
+          "value": "\"profiles\".\"role\" IN ('user', 'owner', 'admin')"
+        },
+        "ck_profiles_status": {
+          "name": "ck_profiles_status",
+          "value": "\"profiles\".\"status\" IN ('active', 'suspended', 'deleted')"
+        },
+        "ck_profiles_display_name_length": {
+          "name": "ck_profiles_display_name_length",
+          "value": "length(\"profiles\".\"display_name\") <= 50"
+        },
+        "ck_profiles_bio_length": {
+          "name": "ck_profiles_bio_length",
+          "value": "length(\"profiles\".\"bio\") <= 500"
+        }
+      }
     }
   },
   "views": {},

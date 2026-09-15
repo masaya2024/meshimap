@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { applyMigrations, createLocalD1, type LocalD1 } from '../testing/local-d1';
+import { createMigratedD1, type LocalD1 } from '../testing/local-d1';
 
 /** 固定のエポックミリ秒。テスト間で値がぶれると原因の切り分けが難しくなるため固定値を使う */
 const FIXED_EPOCH_MS = 1_757_900_000_000;
@@ -10,10 +10,7 @@ const CLOCK_SKEW_TOLERANCE_MS = 1_000;
 let local: LocalD1;
 
 beforeAll(async () => {
-  // NOTE: 計画の createMigratedD1() は local-d1.ts への追記が必要だが、
-  // 当該ファイルは本タスクの担当外のため、同じ 2 行をここで直接呼ぶ。
-  local = await createLocalD1();
-  await applyMigrations(local.d1);
+  local = await createMigratedD1();
 });
 
 afterAll(async () => {
