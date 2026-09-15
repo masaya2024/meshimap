@@ -52,6 +52,12 @@ module.exports = {
     '/node_modules/@react-native/babel-preset/',
   ],
   collectCoverageFrom: ['src/**/*.{ts,tsx}', '!src/**/*.test.{ts,tsx}', '!src/app/**'],
+  // 型しか持たないファイル（features/auth/types.ts など）はここに残したままでよい。
+  // babel が型を消すと中身が空になり istanbul の分母が 0 になるので、表では 0% と
+  // 出るが global の集計には 1 行も加わらない（分子も分母も 0）。
+  // 除外しないのは、いつか実装が紛れ込んだときに気づけるようにするため。
+  // ただしファイル単位の閾値を入れると 0% で落ちるので、そのときは除外が要る。
+  //
   // packages/core・packages/geo の vitest.config.ts と同じ思想で 100% を要求する。
   // 現状 src/app/ 以外は実測 100%（下げる余地を作ると、埋め戻す機会は二度と来ない）。
   // src/app/ は collectCoverageFrom で除外済み。画面は Phase 5 以降に作るため、
