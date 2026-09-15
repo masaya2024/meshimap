@@ -128,3 +128,25 @@ jobs:
         run: npm run typecheck -w @meshimap/api
       - name: Vitest（miniflare でローカル D1 を起動）
         run: npm run test -w @meshimap/api
+
+  mutation:
+    name: ミューテーションテスト（core / geo・しきい値 85%）
+    runs-on: ubuntu-latest
+    # ローカル実測で core 1m52s + geo 49s。CI ランナーはこれより遅いので余裕を取る。
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+      - name: 依存をインストール
+        run: npm ci
+      - name: Stryker
+        # ルートの `test:mutation` は `--workspaces --if-present` で回るが、
+        # apps/mobile と apps/api はまだ stryker.config.json を持たないため対象を明示する。
+        # しきい値は stryker.config.json の thresholds.break: 85。
+        # 2026-09-15 時点の実測はどちらも 100%（core 610 変異 / geo 360 変異、Survived 0）で、
+        # 85 はあくまで下限。下回ったらテストが変異を殺せていないということなので、
+        # しきい値を下げて通すのではなくテストを足すこと。
+        run: npm run test:mutation -w @meshimap/core -w @meshimap/geo
