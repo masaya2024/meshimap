@@ -167,6 +167,23 @@ const NEIGHBOR_OFFSETS = [
 ] as const;
 
 /**
+ * 緯度方向に 1 セル進んだ先が存在するかを、自セルの端の緯度で判定する。
+ *
+ * 「中心 ± 1 ステップ」の緯度で範囲外を弾くと、中心は必ず格子の中心（-90 + (k + 0.5) * ステップ）に
+ * 乗るため値が ±90 ちょうどにならず、`>` を `>=` に変えても結果が変わらない（= 等価変異が残る）。
+ * セルの端は最北セルで厳密に +90、最南セルで厳密に -90 になるので、ここで判定すれば等号が意味を持つ。
+ */
+function hasNeighborRow(bounds: GeohashBounds, latitudeOffset: number): boolean {
+  if (latitudeOffset > 0) {
+    return bounds.latitudeMax < LATITUDE_MAX;
+  }
+  if (latitudeOffset < 0) {
+    return bounds.latitudeMin > LATITUDE_MIN;
+  }
+  return true;
+}
+
+/**
  * 8 近傍のセルを時計回り（北→北東→…→北西）で返す。
  *
  * ルックアップ表ではなく「セル中心をセル 1 個分ずらして再エンコードする」方式。
@@ -174,7 +191,7 @@ const NEIGHBOR_OFFSETS = [
  * 極付近では緯度が ±90 度を超える近傍が存在しないため、その分だけ要素数が減る。
  *
  * 重複除去は不要。geohash の格子は最小の precision 1 でも経度 8 列・緯度 4 行あり、
- * 東西へ 1 列ずらしても自セルへは戻らない。南北の折り返しは上の緯度ガードで除外される。
+ * 東西へ 1 列ずらしても自セルへは戻らない。南北の折り返しは `hasNeighborRow` で除外される。
  */
 export function neighborCells(hash: Geohash): readonly Geohash[] {
   const bounds = decodeGeohash(hash);
@@ -185,12 +202,10 @@ export function neighborCells(hash: Geohash): readonly Geohash[] {
   const neighbors: Geohash[] = [];
 
   for (const [latitudeOffset, longitudeOffset] of NEIGHBOR_OFFSETS) {
-    const latitude = bounds.center.latitude + latitudeOffset * latitudeStep;
-    // 近傍の中心は格子の中心（-90 + (k + 0.5) * ステップ）にしか乗らないため、
-    // ±90 ちょうどには決してならない。よって等号の有無は結果を変えない
-    if (latitude > LATITUDE_MAX || latitude < LATITUDE_MIN) {
+    if (!hasNeighborRow(bounds, latitudeOffset)) {
       continue;
     }
+    const latitude = bounds.center.latitude + latitudeOffset * latitudeStep;
     const longitude = wrapLongitude(bounds.center.longitude + longitudeOffset * longitudeStep);
     neighbors.push(encodeGeohash(coordinate(latitude, longitude), precision));
   }
