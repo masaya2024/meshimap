@@ -4,3 +4,4 @@ export * from './master';
 export * from './shop';
 export * from './shop-detail';
 export * from './menu';
+export * from './review';

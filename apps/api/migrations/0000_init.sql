@@ -247,3 +247,54 @@ CREATE TABLE `seat_settings` (
 	CONSTRAINT "ck_seat_settings_max_parallel" CHECK("seat_settings"."max_parallel" BETWEEN 1 AND 100),
 	CONSTRAINT "ck_seat_settings_accepts_reservation" CHECK("seat_settings"."accepts_reservation" IN (0, 1))
 );
+--> statement-breakpoint
+CREATE TABLE `review_photos` (
+	`id` text PRIMARY KEY NOT NULL,
+	`review_id` text NOT NULL,
+	`r2_key` text NOT NULL,
+	`sort_order` integer DEFAULT 0 NOT NULL,
+	FOREIGN KEY (`review_id`) REFERENCES `reviews`(`id`) ON UPDATE no action ON DELETE cascade,
+	CONSTRAINT "ck_review_photos_id_length" CHECK(length("review_photos"."id") <= 64),
+	CONSTRAINT "ck_review_photos_r2_key_length" CHECK(length("review_photos"."r2_key") <= 200),
+	CONSTRAINT "ck_review_photos_r2_key" CHECK("review_photos"."r2_key" <> '' AND "review_photos"."r2_key" NOT GLOB '*[^a-z0-9/._-]*'),
+	CONSTRAINT "ck_review_photos_sort_order" CHECK("review_photos"."sort_order" >= 0)
+);
+--> statement-breakpoint
+CREATE INDEX `idx_review_photos_review_sort` ON `review_photos` (`review_id`,`sort_order`);--> statement-breakpoint
+CREATE UNIQUE INDEX `uq_review_photos_r2_key` ON `review_photos` (`r2_key`);--> statement-breakpoint
+CREATE TABLE `review_replies` (
+	`review_id` text PRIMARY KEY NOT NULL,
+	`shop_id` text NOT NULL,
+	`body` text NOT NULL,
+	`created_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
+	FOREIGN KEY (`shop_id`) REFERENCES `shops`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`review_id`,`shop_id`) REFERENCES `reviews`(`id`,`shop_id`) ON UPDATE no action ON DELETE cascade,
+	CONSTRAINT "ck_review_replies_body_length" CHECK(length("review_replies"."body") <= 1000)
+);
+--> statement-breakpoint
+CREATE INDEX `idx_review_replies_shop` ON `review_replies` (`shop_id`);--> statement-breakpoint
+CREATE TABLE `reviews` (
+	`id` text PRIMARY KEY NOT NULL,
+	`shop_id` text NOT NULL,
+	`user_id` text NOT NULL,
+	`rating` integer NOT NULL,
+	`body` text NOT NULL,
+	`visited_on` text,
+	`budget` integer,
+	`status` text DEFAULT 'published' NOT NULL,
+	`created_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
+	FOREIGN KEY (`shop_id`) REFERENCES `shops`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade,
+	CONSTRAINT "ck_reviews_id_length" CHECK(length("reviews"."id") <= 64),
+	CONSTRAINT "ck_reviews_rating" CHECK("reviews"."rating" BETWEEN 1 AND 5),
+	CONSTRAINT "ck_reviews_body_length" CHECK(length("reviews"."body") <= 2000),
+	CONSTRAINT "ck_reviews_status" CHECK("reviews"."status" IN ('published', 'hidden', 'deleted')),
+	CONSTRAINT "ck_reviews_visited_on_format" CHECK("reviews"."visited_on" GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+	CONSTRAINT "ck_reviews_budget" CHECK("reviews"."budget" BETWEEN 0 AND 1000000)
+);
+--> statement-breakpoint
+CREATE INDEX `idx_reviews_shop_created` ON `reviews` (`shop_id`,"created_at" desc);--> statement-breakpoint
+CREATE INDEX `idx_reviews_shop_status_created` ON `reviews` (`shop_id`,`status`,"created_at" desc);--> statement-breakpoint
+CREATE INDEX `idx_reviews_user_created` ON `reviews` (`user_id`,"created_at" desc);--> statement-breakpoint
+CREATE UNIQUE INDEX `uq_reviews_shop_user` ON `reviews` (`shop_id`,`user_id`);--> statement-breakpoint
+CREATE UNIQUE INDEX `uq_reviews_id_shop` ON `reviews` (`id`,`shop_id`);
