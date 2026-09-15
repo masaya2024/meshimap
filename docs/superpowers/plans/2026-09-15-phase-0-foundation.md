@@ -321,11 +321,32 @@ module.exports = {
         'body-medium': ['NotoSansJP_500Medium'],
         'body-bold': ['NotoSansJP_700Bold'],
       },
+      // Tailwind 既定の text-xs/sm/base/lg/xl を同名で上書きする。
+      // 上書きしないと text-base が既定の 16px になり、FONT_SIZES.base の 15px と食い違う
+      fontSize: {
+        xs: '11px', sm: '13px', base: '15px', lg: '17px',
+        xl: '20px', xxl: '24px', display: '32px',
+      },
+      // 数値の Tailwind 既定スケール（p-4 など）に加えて意味で引ける別名を足す
+      spacing: {
+        xs: '4px', sm: '8px', md: '16px', lg: '24px', xl: '32px', xxl: '48px',
+      },
+      // 重なり順は用途名で指定する。キー名は theme.ts と同じ camelCase（z-bottomSheet）
+      zIndex: {
+        mapMarker: '10', mapOverlayButton: '20', bottomSheet: '30',
+        modal: '40', toast: '50',
+      },
     },
   },
   plugins: [],
 };
 ```
+
+> **なぜ fontSize を必ず上書きするか**
+> Tailwind の既定値は `text-base` = 16px / `text-sm` = 14px / `text-xs` = 12px。
+> 本プロジェクトの `FONT_SIZES` は 15 / 13 / 11px なので、上書きしないと
+> `text-base` を書いた全コンポーネントが設計と 1px ずれる。しかもクラス名は
+> 有効なので**エラーにならず静かにずれる**。同期テストでこれを固定する。
 
 - [ ] **Step 2: theme.ts と tailwind.config.js の同期テストを追加する**
 
@@ -348,16 +369,45 @@ describe('theme.ts と tailwind.config.js の同期', () => {
   it('カードの角丸が一致する', () => {
     expect(tailwindConfig.theme.extend.borderRadius.card).toBe(`${RADIUS.card}px`);
   });
+
+  // 期待値を定数から導出する。Tailwind 側にキーの過不足があっても検知できる
+  const toPixels = (values: Readonly<Record<string, number>>): Record<string, string> =>
+    Object.fromEntries(Object.entries(values).map(([key, value]) => [key, `${value}px`]));
+
+  it('フォントサイズの全キーが一致する', () => {
+    expect(tailwindConfig.theme.extend.fontSize).toEqual(toPixels(FONT_SIZES));
+  });
+
+  it('余白の全キーが一致する', () => {
+    expect(tailwindConfig.theme.extend.spacing).toEqual(toPixels(SPACING));
+  });
+
+  it('重なり順の全キーが一致する', () => {
+    const expectedZIndex = Object.fromEntries(
+      Object.entries(Z_INDEX).map(([key, value]) => [key, String(value)]),
+    );
+    expect(tailwindConfig.theme.extend.zIndex).toEqual(expectedZIndex);
+  });
 });
 ```
+
+`toEqual` でオブジェクト全体を比較しているため、片側にキーを足し忘れた場合も落ちる。
 
 - [ ] **Step 3: テストが通ることを確認する**
 
 Run: `npm test -w @meshimap/mobile -- theme`
-Expected: PASS（8 件）
+Expected: PASS（11 件）
 
-わざと `tailwind.config.js` の `primary.500` を `#FF0000` に変えて**テストが失敗すること**を確認し、
-元に戻す。これで同期テストが実際に機能していることが分かる。
+わざと `tailwind.config.js` の `primary.500` を `#FF0000` に変えて**テストが失敗すること**
+（`primary の全スケールが一致する` が FAIL）を確認し、元に戻す。
+同様に `fontSize.base` を `'16px'` に変えて `フォントサイズの全キーが一致する` が FAIL することも
+確認する。これで同期テストが実際に機能していることが分かる。
+
+生成 CSS でも裏取りできる:
+`npx tailwindcss -c tailwind.config.js -i ./src/global.css -o /tmp/out.css` を実行し、
+`.text-base { font-size: 15px }` `.p-md { padding: 16px }` `.z-bottomSheet { z-index: 30 }`
+が出力されることを確認する（クラスを使っているファイルが content に必要なので、
+一時的にクラスを並べた tsx を置いてから実行する）。
 
 - [ ] **Step 4: コミットする**
 
