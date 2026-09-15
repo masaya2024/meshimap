@@ -41,7 +41,7 @@ jobs:
         run: npm run typecheck -w @meshimap/geo -w @meshimap/core -w @meshimap/mobile
 
   lint:
-    name: Lint（mobile・ESLint）
+    name: Lint（ESLint）
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -52,9 +52,15 @@ jobs:
           cache: 'npm'
       - name: 依存をインストール
         run: npm ci
-      - name: eslint
+      - name: eslint（packages/* と apps/api）
+        # ルートの eslint.config.mjs が packages/* と apps/api を見る。
+        # apps/mobile は ignores で外してあり、次のステップが担当する。
+        # 型情報を使うルール（no-floating-promises など）も含むため、
+        # ここが通ることは tsc とは別の保証になる。
+        run: npx eslint .
+      - name: eslint（apps/mobile）
         # `expo lint` は未設定なら対話で設定を作ろうとするため、CI では eslint を直接叩く。
-        # 現状 ESLint 設定を持つのは apps/mobile だけなので、対象もそこに限定する。
+        # ルートの `npm run lint` は expo lint 経由だが、CI では対話に入る余地を残さない。
         run: npx eslint .
         working-directory: apps/mobile
 

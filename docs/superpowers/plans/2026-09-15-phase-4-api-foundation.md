@@ -5540,14 +5540,15 @@ function notExported(): void {}
 | Vitest         | `apps/api/vitest.config.ts` の `include: ['src/**/*.test.ts']`                      | 拾われない                        |
 | カバレッジ     | 同ファイルの `coverage.include: ['src/**/*.ts']`                                    | 拾われない                        |
 | Prettier       | ルートの `format` / `format:check` が `"**/*.{ts,tsx,js,json,md}"`                  | 拾われない                        |
-| ESLint         | `apps/api` に ESLint の設定も依存も無い（`apps/mobile` のみ）                       | そもそも走らない                  |
+| ESLint         | ルートの `eslint.config.mjs` が `apps/api/src/**/*.ts` を対象にする                 | 拾われない（`*.ts` に一致しない） |
 
 ```bash
 npm run typecheck -w @meshimap/api
 npm run format:check
+npx eslint .
 ```
 
-期待: どちらもエラー 0。`__fixtures__` の中身は**わざと壊してある**ので、
+期待: 3 つともエラー 0。`__fixtures__` の中身は**わざと壊してある**ので、
 ここでエラーが出たら「拾われてしまっている」ということ。その場合に限り
 `tsconfig.json` に `"exclude": ["src/**/__fixtures__/**"]` を足す。
 
@@ -8696,15 +8697,15 @@ npm run format:check
 
 ### C. リポジトリの現状に起因する未整備
 
-| #   | 事項                                                                          | 状況                                                                                                                                                                                                                                                        |
-| --- | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| C-1 | **解消済み（2026-09-15）。** `apps/api/stryker.config.mjs` を追加した         | 設定は `stryker.base.mjs` に集約し、api 固有なのは `mutate` の除外・`vitestArgs`・`timeoutMS: 20_000` の 3 つだけ。Phase 4 直前の実測は 98 変異 / 100% / Survived 0。**Task 4-14 Step 8-b で流すのが Phase 4 の完了条件に入った**（`thresholds.break: 85`） |
-| C-2 | リポジトリ全体に lint スクリプトが無い                                        | ルートは `format` / `format:check`（prettier）のみ。eslint は `apps/mobile` の `expo lint` だけ。**Task 4-1 に書いた `// eslint-disable-next-line no-console` は現状では何も抑制していない**（将来 eslint を入れたときのための注記として残す）              |
-| C-3 | `apps/api/worker-configuration.d.ts` が存在しない                             | `tsconfig.json` の `include` に書かれているが未生成。`npm run cf-typegen -w @meshimap/api` で作れるが、存在しなくても `tsc` は通る（実測 `EXIT=0`）。Phase 4 では生成しない                                                                                 |
-| C-4 | `apps/api/tsconfig.json` の `types` に `"node"` が無い                        | 現状は `["@cloudflare/workers-types", "vitest/globals"]`。Task 4-3 で `"node"` を足す（`node:fs` を使うソース走査テストのため）。この変更が `@cloudflare/workers-types` のグローバル型と衝突しないことは未検証                                              |
-| C-5 | `apps/api` に `vitest` / `typescript` / `@types/node` の devDependency が無い | ルートから hoist されている。`npm run test -w @meshimap/api` は動くが、`apps/api` 単体で切り出すと壊れる                                                                                                                                                    |
-| C-6 | `apps/mobile/package.json` に `expo-network` が無い                           | `@better-auth/expo@1.7.5` の peerDependencies は `expo-network >= 8.0.7` を要求している。Phase 5 でモバイル認証を組むときに追加が要る可能性が高い。**Phase 4 では `npm install` を実行しないため未対応**                                                    |
-| C-7 | `apps/mobile` は `@meshimap/api` に依存していない                             | `hc<AppType>` を書くには `AppType` を import する必要がある。Phase 5 で依存追加か型の置き場所の決定が要る                                                                                                                                                   |
+| #   | 事項                                                                                     | 状況                                                                                                                                                                                                                                                                                                                                                                                          |
+| --- | ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| C-1 | **解消済み（2026-09-15）。** `apps/api/stryker.config.mjs` を追加した                    | 設定は `stryker.base.mjs` に集約し、api 固有なのは `mutate` の除外・`vitestArgs`・`timeoutMS: 20_000` の 3 つだけ。Phase 4 直前の実測は 98 変異 / 100% / Survived 0。**Task 4-14 Step 8-b で流すのが Phase 4 の完了条件に入った**（`thresholds.break: 85`）                                                                                                                                   |
+| C-2 | **解消済み（2026-09-15）。** ルートに `eslint.config.mjs` と `lint` スクリプトを追加した | `packages/*` と `apps/api` が対象（`apps/mobile` は自前の設定があるので `ignores` で除外）。`no-console` を `error` で有効にしてあるので、**Task 4-1 に書いた `// eslint-disable-next-line no-console` は実際に抑制として働く**（同じ関数の別行に素の `console.log` を置くと `no-console` で落ちることを実測して確認済み）。CI の `lint` ジョブもルートと `apps/mobile` の 2 ステップに広げた |
+| C-3 | `apps/api/worker-configuration.d.ts` が存在しない                                        | `tsconfig.json` の `include` に書かれているが未生成。`npm run cf-typegen -w @meshimap/api` で作れるが、存在しなくても `tsc` は通る（実測 `EXIT=0`）。Phase 4 では生成しない                                                                                                                                                                                                                   |
+| C-4 | `apps/api/tsconfig.json` の `types` に `"node"` が無い                                   | 現状は `["@cloudflare/workers-types", "vitest/globals"]`。Task 4-3 で `"node"` を足す（`node:fs` を使うソース走査テストのため）。この変更が `@cloudflare/workers-types` のグローバル型と衝突しないことは未検証                                                                                                                                                                                |
+| C-5 | `apps/api` に `vitest` / `typescript` / `@types/node` の devDependency が無い            | ルートから hoist されている。`npm run test -w @meshimap/api` は動くが、`apps/api` 単体で切り出すと壊れる                                                                                                                                                                                                                                                                                      |
+| C-6 | `apps/mobile/package.json` に `expo-network` が無い                                      | `@better-auth/expo@1.7.5` の peerDependencies は `expo-network >= 8.0.7` を要求している。Phase 5 でモバイル認証を組むときに追加が要る可能性が高い。**Phase 4 では `npm install` を実行しないため未対応**                                                                                                                                                                                      |
+| C-7 | `apps/mobile` は `@meshimap/api` に依存していない                                        | `hc<AppType>` を書くには `AppType` を import する必要がある。Phase 5 で依存追加か型の置き場所の決定が要る                                                                                                                                                                                                                                                                                     |
 
 ### D. Phase 3 との並行作業に起因する不安定さ
 

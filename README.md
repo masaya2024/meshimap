@@ -131,15 +131,15 @@ updateShopAsOwner(db: Db, actor: OwnerActor, shopId: ShopId, data: ShopUpdate): 
 
 ### 共有パッケージ・開発基盤
 
-| 領域                       | 採用                                             | バージョン                          |
-| -------------------------- | ------------------------------------------------ | ----------------------------------- |
-| 言語                       | TypeScript                                       | `6.0.3`                             |
-| モノレポ                   | npm workspaces                                   | Node `>=22.0.0`（`.nvmrc` 22.23.2） |
-| テスト（パッケージ / API） | Vitest + @vitest/coverage-v8                     | `5.0.0` / `5.0.0`                   |
-| テスト（モバイル）         | Jest + jest-expo + @testing-library/react-native | `30.5.1` / `57.0.5` / `14.0.1`      |
-| ミューテーションテスト     | Stryker                                          | `10.0.0`                            |
-| Lint                       | ESLint + eslint-config-expo                      | `apps/mobile` のみ                  |
-| フォーマッタ               | Prettier + prettier-plugin-tailwindcss           | `3.9.6` / `0.8.1`                   |
+| 領域                       | 採用                                                       | バージョン                          |
+| -------------------------- | ---------------------------------------------------------- | ----------------------------------- |
+| 言語                       | TypeScript                                                 | `6.0.3`                             |
+| モノレポ                   | npm workspaces                                             | Node `>=22.0.0`（`.nvmrc` 22.23.2） |
+| テスト（パッケージ / API） | Vitest + @vitest/coverage-v8                               | `5.0.0` / `5.0.0`                   |
+| テスト（モバイル）         | Jest + jest-expo + @testing-library/react-native           | `30.5.1` / `57.0.5` / `14.0.1`      |
+| ミューテーションテスト     | Stryker                                                    | `10.0.0`                            |
+| Lint                       | ESLint + typescript-eslint（mobile は eslint-config-expo） | `9.39.5` / `8.70.0` / `57.0.2`      |
+| フォーマッタ               | Prettier + prettier-plugin-tailwindcss                     | `3.9.6` / `0.8.1`                   |
 
 ---
 
@@ -154,7 +154,7 @@ meshimap/
 ├── apps/
 │   ├── mobile/                    # Expo アプリ
 │   │   ├── jest.config.js         # カバレッジしきい値 100%（src/app/ は除外）
-│   │   ├── eslint.config.js       # リポジトリ内で唯一の ESLint 設定
+│   │   ├── eslint.config.js       # mobile 専用（eslint-config-expo が土台）
 │   │   └── src/
 │   │       ├── app/               # 画面。現状は _layout / index / _dev/catalog のみ
 │   │       ├── components/ui/     # 汎用プリミティブ 8 種（badge / button / card /
@@ -179,6 +179,8 @@ meshimap/
 ├── packages/
 │   ├── geo/                       # geohash / Haversine / 境界ボックス / クラスタリング（完了）
 │   └── core/                      # ロール / 営業時間 / 予約枠 / 評価 / Zod スキーマ（完了）
+├── eslint.config.mjs              # packages/* と apps/api（apps/mobile は ignores で除外）
+├── stryker.base.mjs               # ミューテーションテストの共通設定
 ├── .github/workflows/             # ci.yml（6 ジョブ）/ mutation.yml（週次・手動）
 └── docs/
     ├── CODING_GUIDELINES.md
@@ -414,14 +416,14 @@ GitHub Actions のワークフローは 2 本です。
 同一ブランチへの連続 push では古い実行を打ち切ります（`concurrency.cancel-in-progress: true`）。
 Node のバージョンは YAML に直書きせず `.nvmrc` を唯一の正とし、依存は `npm ci` で入れます。
 
-| ジョブ          | 実行内容                                                                   | ねらい                                                                                 |
-| --------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| `typecheck`     | `npm run typecheck -w @meshimap/geo -w @meshimap/core -w @meshimap/mobile` | `apps/api` は `test-api` 側へ隔離しているのでここでは対象を明示                        |
-| `lint`          | `apps/mobile` で `npx eslint .`                                            | ESLint 設定を持つのは `apps/mobile` だけ。`expo lint` は未設定時に対話に入るため直叩き |
-| `format`        | `npm run format:check`                                                     | Prettier の差分検出                                                                    |
-| `test-packages` | `npm run test:coverage -w @meshimap/geo -w @meshimap/core`                 | `test` ではなく `test:coverage`。100% しきい値はカバレッジ経由でしか効かない           |
-| `test-mobile`   | `npm run test:coverage -w @meshimap/mobile`                                | 同上。`coverageThreshold` は `--coverage` 時のみ評価される                             |
-| `test-api`      | `npm run typecheck -w @meshimap/api` → `npm run test -w @meshimap/api`     | miniflare でローカル D1 を起動するため時間がかかる（timeout 20 分）                    |
+| ジョブ          | 実行内容                                                                   | ねらい                                                                               |
+| --------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `typecheck`     | `npm run typecheck -w @meshimap/geo -w @meshimap/core -w @meshimap/mobile` | `apps/api` は `test-api` 側へ隔離しているのでここでは対象を明示                      |
+| `lint`          | ルートで `npx eslint .` → `apps/mobile` で `npx eslint .`                  | 設定が 2 つあるため 2 ステップ。`expo lint` は未設定時に対話に入るため CI では直叩き |
+| `format`        | `npm run format:check`                                                     | Prettier の差分検出                                                                  |
+| `test-packages` | `npm run test:coverage -w @meshimap/geo -w @meshimap/core`                 | `test` ではなく `test:coverage`。100% しきい値はカバレッジ経由でしか効かない         |
+| `test-mobile`   | `npm run test:coverage -w @meshimap/mobile`                                | 同上。`coverageThreshold` は `--coverage` 時のみ評価される                           |
+| `test-api`      | `npm run typecheck -w @meshimap/api` → `npm run test -w @meshimap/api`     | miniflare でローカル D1 を起動するため時間がかかる（timeout 20 分）                  |
 
 ### [`.github/workflows/mutation.yml`](./.github/workflows/mutation.yml) — 週次 / 手動
 
@@ -514,11 +516,17 @@ README に書かれていても、以下は**まだ動きません**。
 | `npm run test:watch`                               | 同上（watch）                                  | —                                 |
 | `npm run test:mutation`                            | 全ワークスペースのミューテーションテストを実行 | 直列で約 7 分（api → core → geo） |
 | `npm run typecheck`                                | 全ワークスペースの型検査                       | —                                 |
+| `npm run lint`                                     | `eslint .` → `apps/mobile` の `lint`           | 設定が 2 つあるため 2 段構え      |
 | `npm run format` / `format:check`                  | Prettier による整形 / 検査                     | —                                 |
 | `npm run mobile` / `mobile:ios` / `mobile:android` | Expo 開発サーバ                                | —                                 |
 | `npm run api:dev`                                  | `wrangler dev`                                 | **現在は起動しない**（Phase 4）   |
 
-ルートに Lint スクリプトはありません。ESLint 設定を持つのは `apps/mobile` だけです。
+ESLint の設定はリポジトリに 2 つあります。ルートの [`eslint.config.mjs`](./eslint.config.mjs) が
+`packages/*` と `apps/api` を、[`apps/mobile/eslint.config.js`](./apps/mobile/eslint.config.js) が
+モバイルを見ます。フラット設定はカレントディレクトリ直近の 1 ファイルしか読まないため、
+ルートから `apps/mobile` を `ignores` で外したうえで、ルートの `lint` が両方を順に呼びます
+（前者が落ちれば後者は走りません）。ルート側は `recommendedTypeChecked` を有効にしているので、
+`no-floating-promises` のような**型情報を使うルール**が効き、`tsc` とは別の保証になります。
 
 ### `apps/mobile`（`-w @meshimap/mobile`）
 
