@@ -8769,7 +8769,7 @@ Phase 3 の成果物を「次の人がまっさらな環境で再現できる」
 
 - [ ] **Step 7.5: CHECK 制約にテストの漏れがないことを機械的に保証する**
 
-  Task 3-2 〜 3-9 を素直に進めると、**CHECK 制約は 72 個あるのにテストが名指ししているのは 31 個**という状態になる（Task 3-7 完了時点の実測）。長さ上限や真偽値のような機械的な制約は書き忘れやすく、書き忘れても誰も気づけない。境界値を `<` と `<=` で書き違えても緑のまま通る。
+  Task 3-2 〜 3-9 を素直に進めると、**CHECK 制約は 72 個あるのにテストが名指ししているのは 31 個**という状態になる（Task 3-7 完了時点の実測。Task 3-9 まで終えると CHECK は 104 個になる）。長さ上限や真偽値のような機械的な制約は書き忘れやすく、書き忘れても誰も気づけない。境界値を `<` と `<=` で書き違えても緑のまま通る。
 
   ここで「制約を足したらテストも足す」を人間の注意力に頼らず強制する。
 
@@ -8853,6 +8853,48 @@ Phase 3 の成果物を「次の人がまっさらな環境で再現できる」
 
   1 件も落ちないなら、その `accepted` / `rejected` が境界を跨いでいない。想定より多く落ちるなら、他のテストがその制約に依存している（親行の作り方を見直す）。確認したら戻してマイグレーションを再生成する。
 
+- [ ] **Step 7.8: 部分索引の `WHERE` 句が消えていないことを確認する**
+
+  部分索引は `WHERE` を外しても**ほとんどのテストが緑のまま通る**。Task 3-9 で実測した例を挙げる。
+
+  `idx_notifications_user_unread`（`WHERE read_at IS NULL`）から `.where()` を外しても、「未読一覧が部分索引を使う」テストは**通ってしまう**。EXPLAIN QUERY PLAN が返す索引名は変わらないためだ。代わりに落ちたのは「全件一覧は通常の索引を使う」ほうだった。SQLite が全件クエリにも条件の消えた索引を選ぶようになったからで、**検知はできたが、検知した理由が意図と違う**。
+
+  索引名の一致だけを見るテストでは、部分索引が部分索引であることを保証できない。`sqlite_master` に格納された DDL を直接見る。
+
+  ```ts
+  /** 部分索引は WHERE 句まで含めて sqlite_master に格納される */
+  const PARTIAL_INDEXES = [
+    { name: 'uq_shop_photos_cover', where: 'is_cover' },
+    { name: 'idx_notifications_user_unread', where: 'read_at" IS NULL' },
+    { name: 'uq_shop_applications_shop_pending', where: "status\" = 'pending'" },
+  ] as const;
+
+  it.each(PARTIAL_INDEXES)('$name は WHERE 付きの部分索引である', async ({ name, where }) => {
+    const row = await local.d1
+      .prepare('SELECT sql FROM sqlite_master WHERE type = ? AND name = ?')
+      .bind('index', name)
+      .first<{ sql: string }>();
+    // 索引そのものが無ければ null。名前の打ち間違いをここで弾く
+    expect(row).not.toBeNull();
+    expect(row?.sql).toContain('WHERE');
+    expect(row?.sql).toContain(where);
+  });
+  ```
+
+  部分索引を足したらこの表にも足す。**表に足し忘れても落ちない**ので、CHECK 制約と同じくメタテストで縛る。
+
+  ```ts
+  it('マイグレーション上の部分索引はすべて表に載っている', () => {
+    const sql = readFileSync(MIGRATION_PATH, 'utf8');
+    // drizzle-kit は部分索引を `CREATE [UNIQUE] INDEX `名前` ON ... WHERE ...` で出力する
+    const declared = [...sql.matchAll(/CREATE (?:UNIQUE )?INDEX `([a-z0-9_]+)`[^;]*WHERE/g)].map(
+      (match) => match[1] ?? '',
+    );
+    const listed = PARTIAL_INDEXES.map((index) => index.name);
+    expect(declared.sort()).toEqual([...listed].sort());
+  });
+  ```
+
 - [ ] **Step 8: 型検査を通す**
 
   ```bash
@@ -8920,7 +8962,9 @@ Phase 3 の成果物を「次の人がまっさらな環境で再現できる」
 - [ ] 渋谷駅起点の 3 段階検索が
       200m→5 / 500m→5 / 1000m→5 / 2000m→15 / 3000m→20 / 5000m→25 件を返す
 - [ ] 段 1 の SQL が `MULTI-INDEX OR` で `idx_shops_status_geohash` を 9 本使う
-- [ ] `check-constraints.test.ts` のメタテストが緑（CHECK 制約 72 個すべてにテストがある）
+- [ ] `check-constraints.test.ts` のメタテストが緑（マイグレーション上の CHECK 制約が
+      1 つ残らずテストで名指しされている。Task 3-9 完了時点で 104 個）
+- [ ] 部分索引 3 本の `WHERE` 句が `sqlite_master` の DDL で検証されている
 - [ ] `apps/api` の全テストが緑
 - [ ] `npm run typecheck` が `apps/api` と全ワークスペースで通る
 - [ ] `packages/core` 配下のファイルを 1 つも作っていない・触っていない
