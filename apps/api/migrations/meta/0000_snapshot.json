@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "956ffbc2-70ef-40c5-bc79-d4f125db5c25",
+  "id": "7886426c-a91b-4dc6-9a51-f0f2208c8023",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "account": {
@@ -617,6 +617,366 @@
           "value": "length(\"profiles\".\"bio\") <= 500"
         }
       }
+    },
+    "shops": {
+      "name": "shops",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name_kana": {
+          "name": "name_kana",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "genre_id": {
+          "name": "genre_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "area_id": {
+          "name": "area_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "postal_code": {
+          "name": "postal_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "address": {
+          "name": "address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "lat": {
+          "name": "lat",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "lng": {
+          "name": "lng",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "geohash": {
+          "name": "geohash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "phone": {
+          "name": "phone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "website": {
+          "name": "website",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "budget_lunch_min": {
+          "name": "budget_lunch_min",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "budget_lunch_max": {
+          "name": "budget_lunch_max",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "budget_dinner_min": {
+          "name": "budget_dinner_min",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "budget_dinner_max": {
+          "name": "budget_dinner_max",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'draft'"
+        },
+        "rating_avg": {
+          "name": "rating_avg",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "rating_count": {
+          "name": "rating_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "view_count": {
+          "name": "view_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
+        }
+      },
+      "indexes": {
+        "idx_shops_geohash": {
+          "name": "idx_shops_geohash",
+          "columns": [
+            "geohash"
+          ],
+          "isUnique": false
+        },
+        "idx_shops_status_geohash": {
+          "name": "idx_shops_status_geohash",
+          "columns": [
+            "status",
+            "geohash"
+          ],
+          "isUnique": false
+        },
+        "idx_shops_lat_lng": {
+          "name": "idx_shops_lat_lng",
+          "columns": [
+            "lat",
+            "lng"
+          ],
+          "isUnique": false
+        },
+        "idx_shops_genre_status": {
+          "name": "idx_shops_genre_status",
+          "columns": [
+            "genre_id",
+            "status"
+          ],
+          "isUnique": false
+        },
+        "idx_shops_area_status": {
+          "name": "idx_shops_area_status",
+          "columns": [
+            "area_id",
+            "status"
+          ],
+          "isUnique": false
+        },
+        "idx_shops_owner_id": {
+          "name": "idx_shops_owner_id",
+          "columns": [
+            "owner_id"
+          ],
+          "isUnique": false
+        },
+        "idx_shops_status_rating": {
+          "name": "idx_shops_status_rating",
+          "columns": [
+            "status",
+            "\"rating_avg\" desc"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "shops_owner_id_user_id_fk": {
+          "name": "shops_owner_id_user_id_fk",
+          "tableFrom": "shops",
+          "tableTo": "user",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "shops_genre_id_genres_id_fk": {
+          "name": "shops_genre_id_genres_id_fk",
+          "tableFrom": "shops",
+          "tableTo": "genres",
+          "columnsFrom": [
+            "genre_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "shops_area_id_areas_id_fk": {
+          "name": "shops_area_id_areas_id_fk",
+          "tableFrom": "shops",
+          "tableTo": "areas",
+          "columnsFrom": [
+            "area_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "ck_shops_id_length": {
+          "name": "ck_shops_id_length",
+          "value": "length(\"shops\".\"id\") <= 64"
+        },
+        "ck_shops_status": {
+          "name": "ck_shops_status",
+          "value": "\"shops\".\"status\" IN ('draft', 'pending', 'published', 'suspended', 'closed')"
+        },
+        "ck_shops_name_length": {
+          "name": "ck_shops_name_length",
+          "value": "length(\"shops\".\"name\") <= 100"
+        },
+        "ck_shops_name_kana_length": {
+          "name": "ck_shops_name_kana_length",
+          "value": "length(\"shops\".\"name_kana\") <= 200"
+        },
+        "ck_shops_description_length": {
+          "name": "ck_shops_description_length",
+          "value": "length(\"shops\".\"description\") <= 2000"
+        },
+        "ck_shops_address_length": {
+          "name": "ck_shops_address_length",
+          "value": "length(\"shops\".\"address\") <= 200"
+        },
+        "ck_shops_phone_length": {
+          "name": "ck_shops_phone_length",
+          "value": "length(\"shops\".\"phone\") <= 20"
+        },
+        "ck_shops_website_length": {
+          "name": "ck_shops_website_length",
+          "value": "length(\"shops\".\"website\") <= 500"
+        },
+        "ck_shops_postal_code_format": {
+          "name": "ck_shops_postal_code_format",
+          "value": "\"shops\".\"postal_code\" GLOB '[0-9][0-9][0-9]-[0-9][0-9][0-9][0-9]'"
+        },
+        "ck_shops_lat": {
+          "name": "ck_shops_lat",
+          "value": "\"shops\".\"lat\" BETWEEN -90 AND 90"
+        },
+        "ck_shops_lng": {
+          "name": "ck_shops_lng",
+          "value": "\"shops\".\"lng\" BETWEEN -180 AND 180"
+        },
+        "ck_shops_geohash_length": {
+          "name": "ck_shops_geohash_length",
+          "value": "length(\"shops\".\"geohash\") = 7"
+        },
+        "ck_shops_geohash_alphabet": {
+          "name": "ck_shops_geohash_alphabet",
+          "value": "\"shops\".\"geohash\" <> '' AND \"shops\".\"geohash\" NOT GLOB '*[^0-9bcdefghjkmnpqrstuvwxyz]*'"
+        },
+        "ck_shops_budget_lunch_range": {
+          "name": "ck_shops_budget_lunch_range",
+          "value": "\"shops\".\"budget_lunch_min\" BETWEEN 0 AND 1000000 AND \"shops\".\"budget_lunch_max\" BETWEEN 0 AND 1000000"
+        },
+        "ck_shops_budget_dinner_range": {
+          "name": "ck_shops_budget_dinner_range",
+          "value": "\"shops\".\"budget_dinner_min\" BETWEEN 0 AND 1000000 AND \"shops\".\"budget_dinner_max\" BETWEEN 0 AND 1000000"
+        },
+        "ck_shops_budget_lunch_order": {
+          "name": "ck_shops_budget_lunch_order",
+          "value": "\"shops\".\"budget_lunch_min\" <= \"shops\".\"budget_lunch_max\""
+        },
+        "ck_shops_budget_dinner_order": {
+          "name": "ck_shops_budget_dinner_order",
+          "value": "\"shops\".\"budget_dinner_min\" <= \"shops\".\"budget_dinner_max\""
+        },
+        "ck_shops_rating_avg": {
+          "name": "ck_shops_rating_avg",
+          "value": "\"shops\".\"rating_avg\" BETWEEN 0 AND 5"
+        },
+        "ck_shops_rating_count": {
+          "name": "ck_shops_rating_count",
+          "value": "\"shops\".\"rating_count\" >= 0"
+        },
+        "ck_shops_view_count": {
+          "name": "ck_shops_view_count",
+          "value": "\"shops\".\"view_count\" >= 0"
+        }
+      }
     }
   },
   "views": {},
@@ -627,6 +987,14 @@
     "columns": {}
   },
   "internal": {
-    "indexes": {}
+    "indexes": {
+      "idx_shops_status_rating": {
+        "columns": {
+          "\"rating_avg\" desc": {
+            "isExpression": true
+          }
+        }
+      }
+    }
   }
 }

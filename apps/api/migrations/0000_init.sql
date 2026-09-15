@@ -93,4 +93,61 @@ CREATE TABLE `profiles` (
 	CONSTRAINT "ck_profiles_bio_length" CHECK(length("profiles"."bio") <= 500)
 );
 --> statement-breakpoint
-CREATE INDEX `idx_profiles_role` ON `profiles` (`role`);
+CREATE INDEX `idx_profiles_role` ON `profiles` (`role`);--> statement-breakpoint
+CREATE TABLE `shops` (
+	`id` text PRIMARY KEY NOT NULL,
+	`owner_id` text,
+	`name` text NOT NULL,
+	`name_kana` text,
+	`genre_id` text NOT NULL,
+	`area_id` text NOT NULL,
+	`description` text,
+	`postal_code` text,
+	`address` text NOT NULL,
+	`lat` real NOT NULL,
+	`lng` real NOT NULL,
+	`geohash` text NOT NULL,
+	`phone` text,
+	`website` text,
+	`budget_lunch_min` integer,
+	`budget_lunch_max` integer,
+	`budget_dinner_min` integer,
+	`budget_dinner_max` integer,
+	`status` text DEFAULT 'draft' NOT NULL,
+	`rating_avg` real DEFAULT 0 NOT NULL,
+	`rating_count` integer DEFAULT 0 NOT NULL,
+	`view_count` integer DEFAULT 0 NOT NULL,
+	`created_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
+	`updated_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
+	FOREIGN KEY (`owner_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE set null,
+	FOREIGN KEY (`genre_id`) REFERENCES `genres`(`id`) ON UPDATE no action ON DELETE restrict,
+	FOREIGN KEY (`area_id`) REFERENCES `areas`(`id`) ON UPDATE no action ON DELETE restrict,
+	CONSTRAINT "ck_shops_id_length" CHECK(length("shops"."id") <= 64),
+	CONSTRAINT "ck_shops_status" CHECK("shops"."status" IN ('draft', 'pending', 'published', 'suspended', 'closed')),
+	CONSTRAINT "ck_shops_name_length" CHECK(length("shops"."name") <= 100),
+	CONSTRAINT "ck_shops_name_kana_length" CHECK(length("shops"."name_kana") <= 200),
+	CONSTRAINT "ck_shops_description_length" CHECK(length("shops"."description") <= 2000),
+	CONSTRAINT "ck_shops_address_length" CHECK(length("shops"."address") <= 200),
+	CONSTRAINT "ck_shops_phone_length" CHECK(length("shops"."phone") <= 20),
+	CONSTRAINT "ck_shops_website_length" CHECK(length("shops"."website") <= 500),
+	CONSTRAINT "ck_shops_postal_code_format" CHECK("shops"."postal_code" GLOB '[0-9][0-9][0-9]-[0-9][0-9][0-9][0-9]'),
+	CONSTRAINT "ck_shops_lat" CHECK("shops"."lat" BETWEEN -90 AND 90),
+	CONSTRAINT "ck_shops_lng" CHECK("shops"."lng" BETWEEN -180 AND 180),
+	CONSTRAINT "ck_shops_geohash_length" CHECK(length("shops"."geohash") = 7),
+	CONSTRAINT "ck_shops_geohash_alphabet" CHECK("shops"."geohash" <> '' AND "shops"."geohash" NOT GLOB '*[^0-9bcdefghjkmnpqrstuvwxyz]*'),
+	CONSTRAINT "ck_shops_budget_lunch_range" CHECK("shops"."budget_lunch_min" BETWEEN 0 AND 1000000 AND "shops"."budget_lunch_max" BETWEEN 0 AND 1000000),
+	CONSTRAINT "ck_shops_budget_dinner_range" CHECK("shops"."budget_dinner_min" BETWEEN 0 AND 1000000 AND "shops"."budget_dinner_max" BETWEEN 0 AND 1000000),
+	CONSTRAINT "ck_shops_budget_lunch_order" CHECK("shops"."budget_lunch_min" <= "shops"."budget_lunch_max"),
+	CONSTRAINT "ck_shops_budget_dinner_order" CHECK("shops"."budget_dinner_min" <= "shops"."budget_dinner_max"),
+	CONSTRAINT "ck_shops_rating_avg" CHECK("shops"."rating_avg" BETWEEN 0 AND 5),
+	CONSTRAINT "ck_shops_rating_count" CHECK("shops"."rating_count" >= 0),
+	CONSTRAINT "ck_shops_view_count" CHECK("shops"."view_count" >= 0)
+);
+--> statement-breakpoint
+CREATE INDEX `idx_shops_geohash` ON `shops` (`geohash`);--> statement-breakpoint
+CREATE INDEX `idx_shops_status_geohash` ON `shops` (`status`,`geohash`);--> statement-breakpoint
+CREATE INDEX `idx_shops_lat_lng` ON `shops` (`lat`,`lng`);--> statement-breakpoint
+CREATE INDEX `idx_shops_genre_status` ON `shops` (`genre_id`,`status`);--> statement-breakpoint
+CREATE INDEX `idx_shops_area_status` ON `shops` (`area_id`,`status`);--> statement-breakpoint
+CREATE INDEX `idx_shops_owner_id` ON `shops` (`owner_id`);--> statement-breakpoint
+CREATE INDEX `idx_shops_status_rating` ON `shops` (`status`,"rating_avg" desc);
