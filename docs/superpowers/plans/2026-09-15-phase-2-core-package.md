@@ -1887,7 +1887,7 @@ describe('formatBusinessHours', () => {
 
 ---
 
-- [ ] **Step 1: `packages/core/src/open-status.ts` を作る**
+- [x] **Step 1: `packages/core/src/open-status.ts` を作る**
 
 ```ts
 // 「いま営業中か」の判定。当日分と、前日から続く日跨ぎ分の両方を見る必要がある。
@@ -1976,7 +1976,7 @@ export function getOpenStatus(
   - 最短の残り時間を選ぶのに `if (remaining < shortest)` と書くと `<=` に変えても結果が同じ**等価変異**が残るため、`Math.min` を使う（実測で残った変異を潰した形）。
   - `getOpenStatus` の優先順: 営業中なら残り 30 分以下で `closing-soon`、それ以外は `open`。営業時間外のときは、当日が臨時休業なら `closed`、その曜日に営業行が無ければ `regular-holiday`、行はあるが時間外（開店前・中休み）なら `closed`。
 
-- [ ] **Step 2: `packages/core/src/open-status.test.ts` を作る**
+- [x] **Step 2: `packages/core/src/open-status.test.ts` を作る**
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -2287,7 +2287,7 @@ describe('日付が変わってから開く前日の行', () => {
 });
 ```
 
-- [ ] **Step 3: 型チェックとテストを実行する**
+- [x] **Step 3: 型チェックとテストを実行する**
 
   ```bash
   export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH"
@@ -2298,7 +2298,7 @@ describe('日付が変わってから開く前日の行', () => {
 
   期待: `Tests  42 passed (42)`。
 
-- [ ] **Step 4: 意図的に壊してテストが検知することを確認する**
+- [x] **Step 4: 意図的に壊してテストが検知することを確認する**
 
   | # | 変更する行（`src/open-status.ts`） | 変更後 | 期待: FAIL するテスト（実測） |
   |---|---|---|---|
