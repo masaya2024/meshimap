@@ -5,7 +5,7 @@ export type CardPadding = 'none' | 'sm' | 'md';
 
 export interface CardProps {
   children: ReactNode;
-  onPress?: () => void | undefined;
+  onPress?: (() => void) | undefined;
   padding?: CardPadding | undefined;
   testID?: string | undefined;
 }

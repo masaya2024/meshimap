@@ -111,3 +111,16 @@ describe('Card', () => {
     expect(screen.getByTestId('shop-card')).toBeOnTheScreen();
   });
 });
+
+/**
+ * 任意の onPress をそのまま転送できることの型レベル回帰テスト。
+ * exactOptionalPropertyTypes 下では `onPress?: () => void` と書くと undefined を渡せず、
+ * 呼び出し側が条件付きスプレッドを強いられる。実行時ではなく tsc が検知する。
+ */
+interface OptionalPressConsumer {
+  onPress?: (() => void) | undefined;
+}
+
+export function ForwardsOptionalPress({ onPress }: OptionalPressConsumer) {
+  return <Card onPress={onPress}>{null}</Card>;
+}
