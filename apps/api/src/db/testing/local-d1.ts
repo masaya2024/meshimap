@@ -53,6 +53,16 @@ export async function createLocalD1(): Promise<LocalD1> {
 }
 
 /**
+ * 起動してマイグレーションまで済ませた D1 を返す。
+ * スキーマのテストは全部この状態から始まるためまとめてある。
+ */
+export async function createMigratedD1(): Promise<LocalD1> {
+  const local = await createLocalD1();
+  await applyMigrations(local.d1);
+  return local;
+}
+
+/**
  * migrations/ 配下の .sql をファイル名順に全部流し込み、実行した文の数を返す。
  * wrangler の d1_migrations テーブルは作らない（テストでは常にまっさらから作るため不要）。
  */
