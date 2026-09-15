@@ -1,0 +1,36 @@
+{
+  "name": "@meshimap/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Cloudflare Workers 上の API（Hono + D1 + Drizzle + R2 + Better Auth）",
+  "main": "./src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:mutation": "stryker run",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate:local": "wrangler d1 migrations apply meshimap-db --local",
+    "db:migrate:remote": "wrangler d1 migrations apply meshimap-db --remote",
+    "db:seed:local": "wrangler d1 execute meshimap-db --local --file=./seeds/seed.sql",
+    "db:studio": "drizzle-kit studio",
+    "cf-typegen": "wrangler types"
+  },
+  "dependencies": {
+    "@meshimap/core": "*",
+    "@meshimap/geo": "*",
+    "hono": "^4.13.7",
+    "drizzle-orm": "^0.45.2",
+    "better-auth": "^1.7.5",
+    "@better-auth/expo": "^1.7.5",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "wrangler": "^4.131.2",
+    "drizzle-kit": "^0.31.10",
+    "@cloudflare/workers-types": "^5.20260915.1"
+  }
+}

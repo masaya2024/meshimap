@@ -1,0 +1,22 @@
+{
+  "name": "@meshimap/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "ドメインロジックと共有スキーマ（ロール定義 / 営業時間判定 / 予約枠算出 / 評価集計 / Zod スキーマ）。API とモバイルの両方から参照する。",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:mutation": "stryker run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
+  }
+}

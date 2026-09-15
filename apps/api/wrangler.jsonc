@@ -1,0 +1,52 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "meshimap-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true
+  },
+
+  // グルメデータ本体（店舗 / レビュー / 予約 / 認証テーブル）
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "meshimap-db",
+      "database_id": "PLACEHOLDER_SET_BY_WRANGLER_D1_CREATE",
+      "migrations_dir": "migrations"
+    }
+  ],
+
+  // 店舗写真・レビュー写真・アバター
+  "r2_buckets": [
+    {
+      "binding": "MEDIA",
+      "bucket_name": "meshimap-media"
+    }
+  ],
+
+  // 人気店ランキング等の集計キャッシュ
+  "kv_namespaces": [
+    {
+      "binding": "CACHE",
+      "id": "PLACEHOLDER_SET_BY_WRANGLER_KV_CREATE"
+    }
+  ],
+
+  // 予約枠の同時押さえを直列化する（店舗ごとに 1 インスタンス）
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "RESERVATION_LOCK",
+        "class_name": "ReservationLock"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["ReservationLock"]
+    }
+  ]
+}

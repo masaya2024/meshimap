@@ -1,0 +1,19 @@
+{
+  "name": "@meshimap/geo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "地理計算（geohash / Haversine 距離 / 境界ボックス / マーカークラスタリング）。D1 が地理空間拡張を持たないため自前実装する。",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:mutation": "stryker run",
+    "typecheck": "tsc --noEmit"
+  }
+}
