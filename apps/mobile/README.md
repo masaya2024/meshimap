@@ -1,56 +1,57 @@
-# Welcome to your Expo app 👋
+# @meshimap/mobile
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+MeshiMap のモバイルアプリ（Expo / React Native / NativeWind）。
+プロジェクト全体の説明は[ルート README](../../README.md) を参照してください。
 
-## Get started
+## 起動
 
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+Expo Dev Client を使うため **Expo Go では動きません**。実機またはシミュレータが必要です。
 
 ```bash
-npm run reset-project
+nvm use                # Node 22.23.2
+npm install            # ルートで実行する
+
+npm run mobile         # 開発サーバ（ルートから実行する。以下も同じ）
+npm run mobile:ios     # iOS シミュレータ
+npm run mobile:android # Android エミュレータ
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+ネイティブプロジェクト（`ios/` / `android/`）は生成物なのでコミットしていません。
+実機ビルドが要るときは `npm run prebuild -w @meshimap/mobile` で生成します（`.gitignore` の `/ios` `/android`）。
 
-### Other setup steps
+## ディレクトリ
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+| パス              | 責務                                                             |
+| ----------------- | ---------------------------------------------------------------- |
+| `src/app/`        | 画面。expo-router のファイルベースルーティング。組み立てのみ行う |
+| `src/components/` | `ui/` にドメインを知らないプリミティブ 8 種（実装済み）          |
+| `src/constants/`  | デザイントークン（`theme.ts` / `fonts.ts`）                      |
+| `src/hooks/`      | 画面から切り出した状態ロジック                                   |
+| `src/lib/`        | ロガーなどの薄いユーティリティ                                   |
 
-## Learn more
+判断ロジック（営業時間・予約枠・評価・地理計算）はこの階層に置かず、
+`packages/core` と `packages/geo` に置いて Workers 側と共有しています。
 
-To learn more about developing your project with Expo, look at the following resources:
+## スタイル
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+NativeWind（Tailwind）を使います。色・余白・角丸・フォントは `tailwind.config.js` の
+トークンに集約してあるので、`#RRGGBB` や `px` の直書きはしません。
 
-## Join the community
+```tsx
+<View className="gap-sm rounded-card bg-neutral-50 p-md">
+```
 
-Join our community of developers creating universal apps.
+`ActivityIndicator` の `color` のように className が効かない props だけ、
+`src/constants/theme.ts` の定数から JS で渡します。
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## テスト
+
+```bash
+npm test          -w @meshimap/mobile   # Jest + jest-expo + React Native Testing Library
+npm run test:coverage -w @meshimap/mobile
+npm run typecheck -w @meshimap/mobile
+npm run lint      -w @meshimap/mobile
+```
+
+テストは実装の詳細ではなく、ユーザーから見える振る舞い（表示されるテキスト、
+アクセシビリティロール、押したときに何が起きるか）を対象にします。
