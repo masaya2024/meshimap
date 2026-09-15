@@ -1,4 +1,6 @@
+import { cellsForRadius, coordinate, encodeGeohash, type Geohash } from '@meshimap/geo';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { SHOP_GEOHASH_PRECISION } from '../constants';
 import { createMigratedD1, type LocalD1 } from '../testing/local-d1';
 
 let local: LocalD1;
@@ -239,6 +241,8 @@ describe('shops の索引', () => {
   });
 
   it('geohash の前方一致は GLOB なら索引を使う', async () => {
+    // バインド変数でも索引は効く。その実測は
+    // 「第 1 段の近傍検索と shops.geohash の契約」の GLOB 系テストにある
     const plan = await local.d1
       .prepare("EXPLAIN QUERY PLAN SELECT id FROM shops WHERE geohash GLOB 'xn76f*'")
       .all<{ detail: string }>();
@@ -292,5 +296,160 @@ describe('shops の索引', () => {
     const detail = plan.results.map((row) => row.detail).join(' ');
 
     expect(detail).toContain('idx_shops_genre_status');
+  });
+});
+
+describe('第 1 段の近傍検索と shops.geohash の契約', () => {
+  /** 渋谷駅ちょうどに置いた 1 件。第 1 段の SQL がこれを拾えるかどうかを見る */
+  const TARGET_ID = 'shp_geo_contract';
+  const CENTER = coordinate(SHIBUYA.lat, SHIBUYA.lng);
+
+  /** 精度 3 が必要になる広域検索まで含めた、設計上サポートする半径 */
+  const SUPPORTED_RADII_M = [100, 600, 3000, 19000, 50000] as const;
+
+  /**
+   * 先頭の中心セルを取り出す。`cellsForRadius` は必ず 9 セルを返すが、
+   * noUncheckedIndexedAccess の下では添字アクセスが `undefined` を含むため明示的に潰す。
+   */
+  function centerCellOf(cells: readonly Geohash[]): Geohash {
+    const [center] = cells;
+    if (center === undefined) {
+      throw new Error('cellsForRadius が空配列を返した');
+    }
+    return center;
+  }
+
+  /**
+   * 第 1 段の SQL を組み立てる。
+   * 前方一致を `GLOB` ではなく範囲比較で書くのは、`GLOB ?` の索引利用がバインド値に
+   * 依存する（NULL や先頭ワイルドカードで全表走査へ落ちる）ため。
+   * 上限に足す `{` は base32 の最大文字 `z`（U+007A）の次の文字。
+   */
+  function prefixMatchSql(cells: readonly string[]): { sql: string; binds: string[] } {
+    const condition = cells.map(() => '(geohash >= ? AND geohash < ?)').join(' OR ');
+    return {
+      sql: `SELECT id FROM shops WHERE id = ? AND (${condition})`,
+      binds: cells.flatMap((cell) => [cell, `${cell}{`]),
+    };
+  }
+
+  async function findTargetIdsBy(sql: string, binds: readonly string[]): Promise<string[]> {
+    const rows = await local.d1
+      .prepare(sql)
+      .bind(TARGET_ID, ...binds)
+      .all<{ id: string }>();
+    return rows.results.map((row) => row.id);
+  }
+
+  beforeAll(async () => {
+    await insertShop({ id: TARGET_ID });
+  });
+
+  it('保存する geohash は SHOP_GEOHASH_PRECISION 桁で固定される', async () => {
+    const stored = await local.d1
+      .prepare('SELECT geohash FROM shops WHERE id = ?')
+      .bind(TARGET_ID)
+      .first<{ geohash: string }>();
+
+    expect(stored?.geohash).toBe(SHIBUYA.geohash);
+    expect(stored?.geohash).toHaveLength(SHOP_GEOHASH_PRECISION);
+    expect(encodeGeohash(CENTER, SHOP_GEOHASH_PRECISION)).toBe(SHIBUYA.geohash);
+  });
+
+  it.each(SUPPORTED_RADII_M)(
+    '半径 %i m のセルは保存 precision 以下なので、保存値の前方一致になれる',
+    (radiusM) => {
+      const cells = cellsForRadius(CENTER, radiusM);
+
+      // セルが保存値より長いと前方一致の向きが逆転し、第 1 段が成立しなくなる
+      for (const cell of cells) {
+        expect(cell.length).toBeLessThanOrEqual(SHOP_GEOHASH_PRECISION);
+      }
+      // 中心セルは必ず保存値の接頭辞
+      expect(SHIBUYA.geohash.startsWith(centerCellOf(cells))).toBe(true);
+    },
+  );
+
+  it.each(SUPPORTED_RADII_M)('半径 %i m の範囲比較は中心の店舗を拾える', async (radiusM) => {
+    const cells = cellsForRadius(CENTER, radiusM);
+    const { sql, binds } = prefixMatchSql(cells);
+
+    expect(await findTargetIdsBy(sql, binds)).toEqual([TARGET_ID]);
+  });
+
+  it('等値比較（IN）にすると半径 100 m 以外は 0 件になる（だから IN を使わない）', async () => {
+    // これが「第 1 段は IN で書けばよい」という誤解を潰すための回帰テスト。
+    // cellsForRadius は半径に応じて精度 3〜7 のセルを返すのに対し、
+    // shops.geohash は精度 7 固定。桁が違えば等値は絶対に一致しない。
+    for (const radiusM of SUPPORTED_RADII_M) {
+      const cells = cellsForRadius(CENTER, radiusM);
+      const placeholders = cells.map(() => '?').join(', ');
+      const matched = await findTargetIdsBy(
+        `SELECT id FROM shops WHERE id = ? AND geohash IN (${placeholders})`,
+        cells,
+      );
+
+      // 精度 7 = SHOP_GEOHASH_PRECISION のときだけ、たまたま一致してしまう
+      const expected = centerCellOf(cells).length === SHOP_GEOHASH_PRECISION ? [TARGET_ID] : [];
+      expect(matched).toEqual(expected);
+    }
+  });
+
+  it('範囲比較は GLOB のリテラル前方一致と同じ行を返す', async () => {
+    const cell = centerCellOf(cellsForRadius(CENTER, 3000));
+
+    const byRange = await findTargetIdsBy(
+      'SELECT id FROM shops WHERE id = ? AND geohash >= ? AND geohash < ?',
+      [cell, `${cell}{`],
+    );
+    const byGlob = await local.d1
+      // cell は cellsForRadius が返す base32 文字列なので、リテラル埋め込みでも安全
+      .prepare(`SELECT id FROM shops WHERE id = ? AND geohash GLOB '${cell}*'`)
+      .bind(TARGET_ID)
+      .all<{ id: string }>();
+
+    expect(byRange).toEqual([TARGET_ID]);
+    expect(byRange).toEqual(byGlob.results.map((row) => row.id));
+  });
+
+  it('GLOB はバインド引数でも索引を使う（プランは範囲比較と同じ形になる）', async () => {
+    // SQLite の LIKE 最適化は、パターンが実行時に前方一致だと分かれば範囲制約へ書き換える。
+    // プランに出る (geohash>? AND geohash<?) がその書き換えの跡。
+    // つまり GLOB と範囲比較は速度では選べない
+    const plan = await local.d1
+      .prepare('EXPLAIN QUERY PLAN SELECT id FROM shops WHERE geohash GLOB ?')
+      .bind('xn76f*')
+      .all<{ detail: string }>();
+    const detail = plan.results.map((row) => row.detail).join(' ');
+
+    expect(detail).toContain('idx_shops_geohash');
+    expect(detail).toContain('geohash>? AND geohash<?');
+  });
+
+  it.each([
+    ['NULL', null],
+    ['先頭ワイルドカード', '*n76f*'],
+  ])('GLOB はバインド値が %s だと索引が効かない（範囲比較を選ぶ理由）', async (_label, pattern) => {
+    // 索引を使うかどうかが実行時の値に左右される。ここが範囲比較との唯一の差で、
+    // 実装に範囲比較を選ぶ根拠そのもの。将来 SQLite 側が変わってここが落ちたら、
+    // GLOB に寄せてよい合図になる
+    const plan = await local.d1
+      .prepare('EXPLAIN QUERY PLAN SELECT id FROM shops WHERE geohash GLOB ?')
+      .bind(pattern)
+      .all<{ detail: string }>();
+    const detail = plan.results.map((row) => row.detail).join(' ');
+
+    expect(detail).toContain('SCAN shops');
+  });
+
+  it('範囲比較はバインド値に関係なく索引を使う', async () => {
+    const plan = await local.d1
+      .prepare('EXPLAIN QUERY PLAN SELECT id FROM shops WHERE geohash >= ? AND geohash < ?')
+      .bind('xn76f', 'xn76f{')
+      .all<{ detail: string }>();
+    const detail = plan.results.map((row) => row.detail).join(' ');
+
+    expect(detail).toContain('idx_shops_geohash');
+    expect(detail).not.toContain('SCAN shops');
   });
 });

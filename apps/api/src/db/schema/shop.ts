@@ -55,7 +55,7 @@ const INITIAL_RATING_AVG = 0;
  *
  * 地理空間検索（設計書 §3.1）のために、緯度経度に加えて geohash（precision 7）を冗長に持つ。
  * D1 には R*Tree も三角関数もないため、
- *   段 1: geohash の前方一致（GLOB。索引が効く）
+ *   段 1: geohash の前方一致（範囲比較で書く。GLOB でも索引は効くがバインド値次第で落ちる）
  *   段 2: lat / lng の範囲比較（索引が効く）
  *   段 3: Worker 上の Haversine
  * の 3 段で絞る。段 1・2 に必要な索引をこのテーブルで定義する。

@@ -14,11 +14,61 @@ D1 には `ST_DWithin` が無く、SQLite の三角関数も環境差がある�
 
 | 段  | 使う関数         | SQL / TS                                                       | 役割                                   |
 | --- | ---------------- | -------------------------------------------------------------- | -------------------------------------- |
-| 1   | `cellsForRadius` | `WHERE geohash IN (?, …)`                                      | B-tree インデックスで数万件 → 数百件へ |
+| 1   | `cellsForRadius` | `WHERE (geohash >= ? AND geohash < ?) OR …`                    | B-tree インデックスで数万件 → 数百件へ |
 | 2   | `boundingBox`    | `WHERE latitude BETWEEN ? AND ? AND longitude BETWEEN ? AND ?` | 矩形で数百件 → 数十件へ                |
 | 3   | `distanceMeters` | Worker の TypeScript                                           | 正確な円内判定と距離順ソート           |
 
 `cellsForRadius` が返す 3×3 セルで半径の円を確実に覆えるよう、精度の閾値は日本国内（緯度 24〜46 度）のセル最小辺を実測して決めている。
+
+第 1 段を `IN` で書いてはいけない。`shops.geohash` は精度 7 固定で保存されるのに対し、
+`cellsForRadius` は半径に応じて精度 3〜7 のセルを返すので、桁数が違う以上 `IN` は等値比較として
+成立しない。渋谷（35.658034, 139.701636、保存値 `xn76fgr`）での実測:
+
+| 半径    | 返るセル  | 桁数 | `IN` で一致 | 前方一致 |
+| ------- | --------- | ---- | ----------- | -------- |
+| 100m    | `xn76fgr` | 7    | する        | する     |
+| 600m    | `xn76fg`  | 6    | しない      | する     |
+| 3,000m  | `xn76f`   | 5    | しない      | する     |
+| 19,000m | `xn76`    | 4    | しない      | する     |
+| 50,000m | `xn7`     | 3    | しない      | する     |
+
+前方一致の書き方は `GLOB` でも**範囲比較**でも索引は効く。採用するのは範囲比較。
+`EXPLAIN QUERY PLAN` の実測（60 件の shops、`idx_shops_geohash` / `idx_shops_status_geohash` あり、
+`ANALYZE` 済み。再現テストは `apps/api/src/db/schema/shop.test.ts`）:
+
+| WHERE 句                                           | プラン                                              |
+| -------------------------------------------------- | --------------------------------------------------- |
+| `geohash GLOB 'xn76fg*'`（リテラル）               | SEARCH shops USING INDEX idx_shops_geohash          |
+| `geohash GLOB ?` に `'xn76fg*'` をバインド         | SEARCH shops USING INDEX idx_shops_geohash          |
+| `geohash GLOB ?` に `NULL` をバインド              | **SCAN shops**                                      |
+| `geohash GLOB ?` に `'*fg*'`（先頭ワイルドカード） | **SCAN shops**                                      |
+| `geohash GLOB ? \|\| '*'`                          | **SCAN shops**                                      |
+| `geohash LIKE ?`                                   | **SCAN shops**                                      |
+| `substr(geohash,1,6) IN (?,?,?)`                   | **SCAN shops**                                      |
+| `geohash >= ? AND geohash < ?`                     | SEARCH shops USING INDEX idx_shops_geohash          |
+| `status = ?` + 9 セルの `GLOB ?` を `OR`           | MULTI-INDEX OR（9 本とも idx_shops_status_geohash） |
+| `status = ?` + 9 セルの範囲比較を `OR`             | MULTI-INDEX OR（9 本とも idx_shops_status_geohash） |
+
+`GLOB` がバインド変数でも索引を使えるのは、SQLite の LIKE 最適化が
+「パターンが実行時に前方一致だと分かれば範囲制約へ書き換える」仕組みだから。
+プランに出る `(geohash>? AND geohash<?)` がその書き換えの跡で、実体は範囲比較と同じものになる。
+
+それでも範囲比較を選ぶ理由は 2 つ:
+
+1. **索引が効くかどうかがバインド値に左右されない。** 上の表のとおり `GLOB ?` は
+   `NULL` や先頭ワイルドカードを渡された瞬間に全表走査へ落ちる。範囲比較は値に関係なく必ず索引を使う。
+2. **Drizzle にそのまま書ける。** `drizzle-orm` は `glob` ヘルパを持たない（`like` はある）ので
+   `GLOB` を使うと生 SQL テンプレートが要る。範囲比較なら `gte` / `lt` で書ける。
+
+`LIKE` は使えない。SQLite の LIKE 最適化は既定の `case_sensitive_like=OFF` では働かないため、
+リテラルでもバインド変数でも全表走査になる。
+
+範囲の上限はセル文字列の末尾に `{`（U+007B）を足した値にする。geohash の
+アルファベットは `0-9bcdefghjkmnpqrstuvwxyz` で最大が `z`（U+007A）であり、
+`shops` の `ck_shops_geohash_alphabet` 制約がこれを保証しているため、
+`{` は後続しうるどの文字より必ず大きい。列は `COLLATE` 指定の無い TEXT なので
+比較は BINARY で行われる。実測でも `GLOB 'xn76fg*'` と
+`>= 'xn76fg' AND < 'xn76fg{'` は同じ 60 件を返した。
 
 第 2 段の矩形は日付変更線を跨ぐと `longitudeMin > longitudeMax` になる。SQL の `BETWEEN` は
 この形を扱えないため、跨ぐ場合は `longitude >= ? OR longitude <= ?` の 2 条件へ展開する。
@@ -36,7 +86,7 @@ import {
 } from '@meshimap/geo';
 
 const center = coordinate(35.689592, 139.700413);
-const cells = cellsForRadius(center, 1000); // D1 の IN 句へ
+const cells = cellsForRadius(center, 1000); // D1 の前方一致（範囲比較）の OR 句へ
 const bounds = boundingBox(center, 1000); // D1 の BETWEEN 句へ
 const distance = distanceMeters(center, shop.location);
 const label = formatDistance(distance); // "850m" / "1.2km"

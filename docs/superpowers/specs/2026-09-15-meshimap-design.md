@@ -78,7 +78,10 @@ Supabase(PostgreSQL) から Cloudflare(D1/SQLite) に変えたことで、2 つ�
 
 `shops` テーブルは `lat` / `lng`（REAL）に加えて `geohash`（TEXT, precision 7 ≒ 152m 四方）を保持する。
 半径検索では中心セルとその 8 近傍を求め、半径に応じた precision に切り詰めて
-`WHERE geohash GLOB 'xn774c*' OR ...` の形で候補を取る。
+`WHERE (geohash >= ? AND geohash < ?) OR ...` の形で候補を取る（9 セルぶん）。
+前方一致を `GLOB` ではなく範囲比較で書くのは、`GLOB ?` の索引利用がバインド値に依存し、
+NULL や先頭ワイルドカードだと全表走査へ落ちるため（実測。根拠は `packages/geo/README.md`）。
+範囲の上限はセル文字列に `{` を足した値を使う。
 [3] は候補件数ぶんの計算しか走らないため、Worker の CPU 時間内に十分収まる。
 
 この [1][2][3] を担うのが `packages/geo`。**純粋関数のみで構成し、最も手厚くテストする。**

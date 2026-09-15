@@ -38,12 +38,24 @@ export function precisionForRadius(radiusM: number): GeohashPrecision {
 }
 
 /**
- * 中心と半径から、D1 の `WHERE geohash IN (…)` に渡すセル一覧を返す。
+ * 中心と半径から、第 1 段の SQL に渡すセル一覧を返す。
  * 先頭は必ず中心セル、以降は時計回りの 8 近傍。
  *
  * これは 3 段階検索の第 1 段。ここで候補を粗く絞り、
  * 第 2 段の境界ボックス（`boundingBox` / `isWithinBounds`）と
  * 第 3 段の Haversine（`distanceMeters`）で正確に仕上げる。
+ *
+ * 返すセルは半径に応じて精度 3〜7 と長さが変わるが、`shops.geohash` は
+ * 精度 7 固定で保存される。したがって SQL は等値（`IN`）ではなく
+ * 前方一致でなければならず、その前方一致は範囲比較で書く:
+ *
+ *     WHERE (geohash >= :cell AND geohash < :cell || '{') OR …（9 セルぶん）
+ *
+ * `GLOB ?` でも索引は効くが、バインド値が NULL や先頭ワイルドカードだと
+ * 全表走査へ落ちる。範囲比較なら値に関係なく必ず索引を使うのでこちらにする。
+ * 上限の `{`（U+007A の `z` の次）は、geohash のアルファベットの最大文字が
+ * `z` であることに依る。実測の根拠は packages/geo/README.md
+ * 「3 段階の近傍検索」にある。
  */
 export function cellsForRadius(center: Coordinate, radiusM: number): readonly Geohash[] {
   const precision = precisionForRadius(radiusM);

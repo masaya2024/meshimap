@@ -199,7 +199,7 @@ export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH"
 | F26 | CHECK 式が NULL に評価される行は**違反とみなされない**（SQLite の仕様）。`length(bio) <= 500` を NULL 可の列にそのまま書いてよい                                                                                                                                                                                                                                                              | `bio = NULL` の INSERT が通ることを確認                                                                        |
 | F27 | SQLite の `length()` は TEXT では**文字数**を返す（`length('あいう')` = 3）。BLOB ではバイト数（= 9）。文字数上限をそのまま書ける                                                                                                                                                                                                                                                             | D1 上で評価                                                                                                    |
 | F28 | `matchesGlob(col, '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]')` で `YYYY-MM-DD` 書式を DB で強制できる（`'2026-9-15'` は拒否される）                                                                                                                                                                                                                                                         | D1 上で CHECK を張って INSERT                                                                                  |
-| F29 | **`geohash GLOB 'xn76f*'` は索引を使うが `geohash LIKE 'xn76f%'` はフルスキャンになる**。SQLite の LIKE 最適化は既定の `case_sensitive_like=OFF` では効かないため。**Drizzle の `like()` を geohash 検索に使ってはいけない**                                                                                                                                                                  | `EXPLAIN QUERY PLAN` を両方で比較。GLOB → `SEARCH shops USING INDEX idx_shops_geohash`、LIKE → `SCAN shops`    |
+| F29 | **`geohash GLOB 'xn76f*'` は索引を使うが `geohash LIKE 'xn76f%'` はフルスキャンになる**。SQLite の LIKE 最適化は既定の `case_sensitive_like=OFF` では効かないため。**Drizzle の `like()` を geohash 検索に使ってはいけない**。なお `GLOB ?` はバインド値が前方一致パターンなら索引を使う（実装は範囲比較を採用。理由は `packages/geo/README.md`）                                             | `EXPLAIN QUERY PLAN` を両方で比較。GLOB → `SEARCH shops USING INDEX idx_shops_geohash`、LIKE → `SCAN shops`    |
 | F30 | `GLOB ?`（バインドパラメータ）でも索引が効く。9 セルを `OR` で並べると `MULTI-INDEX OR` になり 9 本とも索引検索になる                                                                                                                                                                                                                                                                         | 同上                                                                                                           |
 | F31 | `WHERE status = ? AND (geohash GLOB ? OR ...)` は `(geohash)` 単独索引だと status 側の索引に流れてしまう。**`(status, geohash)` の複合索引**を足すと 9 本とも `SEARCH ... (status=? AND geohash>? AND geohash<?)` になる                                                                                                                                                                      | 300 行投入 + `ANALYZE` 後に `EXPLAIN QUERY PLAN`                                                               |
 | F32 | 段 1（geohash）と段 2（bbox）を 1 本の SQL にまとめると、プランナはデータ分布に応じて `idx_shops_status_geohash` と `idx_shops_lat_lng` のどちらかを選ぶ。**どちらを選んでも索引検索であり全表走査にはならない**。テストでは「特定の索引名」ではなく「`SCAN shops` が出ないこと」を検証する                                                                                                   | 同上                                                                                                           |
@@ -8431,16 +8431,40 @@ SQL 側で計算する手段は無く、手で書くと 1 文字ずれても検�
       expect(detail).not.toContain('SCAN shops');
     });
 
-    it('GLOB をバインド引数で使うと索引が効かないことを示す（だから使わない）', async () => {
-      // この期待値は「GLOB は遅い」という主張の裏取り。
-      // 将来 SQLite 側が改善してここが落ちたら、実装を GLOB に戻してよい合図になる
+    it('GLOB はバインド値が前方一致パターンなら索引を使う（範囲比較と同じプランになる）', async () => {
+      // 「GLOB はバインド変数だと索引が効かない」は誤り。SQLite の LIKE 最適化は
+      // パターンが実行時に前方一致だと分かれば範囲制約へ書き換える。
+      // だから GLOB と範囲比較は等価で、選択理由は速度ではなく下の 2 件にある
       const plan = await local.d1
         .prepare('EXPLAIN QUERY PLAN SELECT id FROM shops WHERE status = ? AND geohash GLOB ?')
         .bind('published', 'xn76f*')
         .all<{ detail: string }>();
       const detail = plan.results.map((row) => row.detail).join(' ');
 
-      expect(detail).not.toContain('idx_shops_status_geohash');
+      expect(detail).toContain('idx_shops_status_geohash');
+      expect(detail).toContain('geohash>? AND geohash<?');
+    });
+
+    it('GLOB は先頭ワイルドカードを渡されると全表走査へ落ちる（範囲比較を選ぶ理由）', async () => {
+      // 索引が効くかどうかが実行時のバインド値に左右される。
+      // 範囲比較は値に関係なく必ず索引を使うので、こちらを実装に採用する
+      const plan = await local.d1
+        .prepare('EXPLAIN QUERY PLAN SELECT id FROM shops WHERE status = ? AND geohash GLOB ?')
+        .bind('published', '*n76f*')
+        .all<{ detail: string }>();
+      const detail = plan.results.map((row) => row.detail).join(' ');
+
+      expect(detail).not.toContain('geohash>? AND geohash<?');
+    });
+
+    it('LIKE は索引が効かない（case_sensitive_like が既定で OFF だから）', async () => {
+      const plan = await local.d1
+        .prepare('EXPLAIN QUERY PLAN SELECT id FROM shops WHERE geohash LIKE ?')
+        .bind('xn76f%')
+        .all<{ detail: string }>();
+      const detail = plan.results.map((row) => row.detail).join(' ');
+
+      expect(detail).toContain('SCAN shops');
     });
 
     it('D1 は 6 項以上の UNION を受け付けない（だから OR で並べる）', async () => {
