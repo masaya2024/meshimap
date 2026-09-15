@@ -35,6 +35,12 @@ module.exports = {
           800: '#2C2823',
           900: '#1A1714',
         },
+        // 以下は Tailwind 既定のスケールと同名だが値が異なる（green は既定の green ではなく
+        // emerald 相当）。明示しないと className 側だけ既定色になり theme.ts と食い違う
+        amber: { 50: '#FFFAEB', 400: '#FBBF24', 500: '#F59E0B', 700: '#B45309' },
+        green: { 50: '#ECFDF5', 500: '#10B981', 700: '#047857' },
+        red: { 50: '#FEF2F2', 500: '#EF4444', 700: '#B91C1C' },
+        white: '#FFFFFF',
       },
       borderRadius: {
         card: '16px',

@@ -32,7 +32,7 @@ describe('theme 定数', () => {
 interface TailwindThemeConfig {
   theme: {
     extend: {
-      colors: Record<string, Record<string, string>>;
+      colors: Record<string, Record<string, string> | string>;
       borderRadius: Record<string, string>;
       fontFamily: Record<string, readonly string[]>;
       fontSize: Record<string, string>;
@@ -47,12 +47,10 @@ interface TailwindThemeConfig {
 const tailwindConfig: TailwindThemeConfig = require('../../tailwind.config.js');
 
 describe('theme.ts と tailwind.config.js の同期', () => {
-  it('primary の全スケールが一致する', () => {
-    expect(tailwindConfig.theme.extend.colors.primary).toEqual(COLORS.primary);
-  });
-
-  it('neutral の全スケールが一致する', () => {
-    expect(tailwindConfig.theme.extend.colors.neutral).toEqual(COLORS.neutral);
+  // スケール単位ではなく COLORS 全体を比較する。theme.ts に色を足して
+  // tailwind.config.js への追記を忘れた場合もこれ 1 本で検知できる
+  it('カラートークンが過不足なく一致する', () => {
+    expect(tailwindConfig.theme.extend.colors).toEqual(COLORS);
   });
 
   it('カードの角丸が一致する', () => {
