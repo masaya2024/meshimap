@@ -65,6 +65,13 @@ const config = getDefaultConfig(__dirname);
 module.exports = withNativeWind(config, { input: './src/global.css' });
 ```
 
+> **この後 Phase 2 で `resolver.blockList` を足している（コミット `04f39da`）。**
+> expo-router が `src/app/` を require.context で走査する際、`*.test.tsx` も
+> ルートとして拾ってしまい、本番バンドルに `@testing-library/react-native` ごと
+> 混入して `expo export` が落ちたため。現在の `apps/mobile/metro.config.js` が
+> 正であり、上のコード片は Phase 0 実行時点のスナップショット。
+> 経緯と担保は `apps/mobile/src/lib/metro-config.test.ts` にある。
+
 - [x] **Step 3: tailwind.config.js を作る**
 
 `content` には `src` 配下の tsx を全て含める。テーマ値は Task 0-3 で追加するのでここでは空。
