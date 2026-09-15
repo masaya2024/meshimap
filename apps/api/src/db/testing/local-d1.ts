@@ -63,29 +63,34 @@ export async function createMigratedD1(): Promise<LocalD1> {
 }
 
 /**
+ * migrations/ 配下の .sql をファイル名順に連結して返す。
+ * D1 へ適用せずに DDL そのものを検査したいテスト（schema/index.test.ts）からも使うため、
+ * 「どこを読むか」の知識をこのファイルに閉じ込めておく。
+ */
+export function readMigrationSql(): string {
+  return readdirSync(MIGRATIONS_DIR)
+    .filter((fileName) => fileName.endsWith('.sql'))
+    .sort()
+    .map((fileName) => readFileSync(join(MIGRATIONS_DIR, fileName), 'utf8'))
+    .join(`\n${STATEMENT_SEPARATOR}\n`);
+}
+
+/**
  * migrations/ 配下の .sql をファイル名順に全部流し込み、実行した文の数を返す。
  * wrangler の d1_migrations テーブルは作らない（テストでは常にまっさらから作るため不要）。
  */
 export async function applyMigrations(d1: D1Database): Promise<number> {
-  const migrationFileNames = readdirSync(MIGRATIONS_DIR)
-    .filter((fileName) => fileName.endsWith('.sql'))
-    .sort();
-
   let executedStatementCount = 0;
 
-  for (const fileName of migrationFileNames) {
-    const sqlText = readFileSync(join(MIGRATIONS_DIR, fileName), 'utf8');
-
-    for (const rawStatement of sqlText.split(STATEMENT_SEPARATOR)) {
-      const statement = rawStatement.trim();
-      if (statement.length === 0) {
-        continue;
-      }
-      // D1 の exec() は複数行の SQL を受け付けない（改行があると構文解析に失敗する）。
-      // SQL の意味は改行の有無で変わらないため、空白へ潰して 1 行にしてから渡す。
-      await d1.exec(statement.replaceAll('\n', ' '));
-      executedStatementCount += 1;
+  for (const rawStatement of readMigrationSql().split(STATEMENT_SEPARATOR)) {
+    const statement = rawStatement.trim();
+    if (statement.length === 0) {
+      continue;
     }
+    // D1 の exec() は複数行の SQL を受け付けない（改行があると構文解析に失敗する）。
+    // SQL の意味は改行の有無で変わらないため、空白へ潰して 1 行にしてから渡す。
+    await d1.exec(statement.replaceAll('\n', ' '));
+    executedStatementCount += 1;
   }
 
   return executedStatementCount;
