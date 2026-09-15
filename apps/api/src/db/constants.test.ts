@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   APPLICATION_STATUSES,
+  ISO_DATE_GLOB_PATTERN,
   NOTIFICATION_TYPES,
   PROFILE_STATUSES,
   REPORT_STATUSES,
@@ -82,5 +83,13 @@ describe('列挙値の形式', () => {
       expect(values.length).toBeGreaterThan(0);
       expect(new Set(values).size).toBe(values.length);
     }
+  });
+});
+
+describe('GLOB パターン', () => {
+  it('ISO_DATE_GLOB_PATTERN は 4-2-2 桁の数字を並べた形になっている', () => {
+    // SQLite の GLOB に桁数指定（\d{4}）はないため、[0-9] を桁数ぶん並べるしかない。
+    // 数え間違いがあっても見た目では気づけないので、期待値を直接書いて固定する。
+    expect(ISO_DATE_GLOB_PATTERN).toBe('[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]');
   });
 });

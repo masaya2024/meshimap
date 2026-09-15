@@ -150,4 +150,53 @@ CREATE INDEX `idx_shops_lat_lng` ON `shops` (`lat`,`lng`);--> statement-breakpoi
 CREATE INDEX `idx_shops_genre_status` ON `shops` (`genre_id`,`status`);--> statement-breakpoint
 CREATE INDEX `idx_shops_area_status` ON `shops` (`area_id`,`status`);--> statement-breakpoint
 CREATE INDEX `idx_shops_owner_id` ON `shops` (`owner_id`);--> statement-breakpoint
-CREATE INDEX `idx_shops_status_rating` ON `shops` (`status`,"rating_avg" desc);
+CREATE INDEX `idx_shops_status_rating` ON `shops` (`status`,"rating_avg" desc);--> statement-breakpoint
+CREATE TABLE `shop_closures` (
+	`id` text PRIMARY KEY NOT NULL,
+	`shop_id` text NOT NULL,
+	`date` text NOT NULL,
+	`reason` text,
+	FOREIGN KEY (`shop_id`) REFERENCES `shops`(`id`) ON UPDATE no action ON DELETE cascade,
+	CONSTRAINT "ck_shop_closures_id_length" CHECK(length("shop_closures"."id") <= 64),
+	CONSTRAINT "ck_shop_closures_date_format" CHECK("shop_closures"."date" GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+	CONSTRAINT "ck_shop_closures_reason_length" CHECK(length("shop_closures"."reason") <= 100)
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX `uq_shop_closures_shop_date` ON `shop_closures` (`shop_id`,`date`);--> statement-breakpoint
+CREATE TABLE `shop_hours` (
+	`id` text PRIMARY KEY NOT NULL,
+	`shop_id` text NOT NULL,
+	`day_of_week` integer NOT NULL,
+	`open_minute` integer,
+	`close_minute` integer,
+	`is_closed` integer DEFAULT false NOT NULL,
+	FOREIGN KEY (`shop_id`) REFERENCES `shops`(`id`) ON UPDATE no action ON DELETE cascade,
+	CONSTRAINT "ck_shop_hours_id_length" CHECK(length("shop_hours"."id") <= 64),
+	CONSTRAINT "ck_shop_hours_day_of_week" CHECK("shop_hours"."day_of_week" BETWEEN 0 AND 6),
+	CONSTRAINT "ck_shop_hours_open_minute" CHECK("shop_hours"."open_minute" BETWEEN 0 AND 2879),
+	CONSTRAINT "ck_shop_hours_close_minute" CHECK("shop_hours"."close_minute" BETWEEN 0 AND 2879),
+	CONSTRAINT "ck_shop_hours_is_closed" CHECK("shop_hours"."is_closed" IN (0, 1)),
+	CONSTRAINT "ck_shop_hours_open_before_close" CHECK("shop_hours"."open_minute" < "shop_hours"."close_minute"),
+	CONSTRAINT "ck_shop_hours_closed_coherence" CHECK(("shop_hours"."is_closed" AND "shop_hours"."open_minute" IS NULL AND "shop_hours"."close_minute" IS NULL) OR (NOT "shop_hours"."is_closed" AND "shop_hours"."open_minute" IS NOT NULL AND "shop_hours"."close_minute" IS NOT NULL))
+);
+--> statement-breakpoint
+CREATE INDEX `idx_shop_hours_shop_day` ON `shop_hours` (`shop_id`,`day_of_week`);--> statement-breakpoint
+CREATE TABLE `shop_photos` (
+	`id` text PRIMARY KEY NOT NULL,
+	`shop_id` text NOT NULL,
+	`r2_key` text NOT NULL,
+	`caption` text,
+	`sort_order` integer DEFAULT 0 NOT NULL,
+	`is_cover` integer DEFAULT false NOT NULL,
+	FOREIGN KEY (`shop_id`) REFERENCES `shops`(`id`) ON UPDATE no action ON DELETE cascade,
+	CONSTRAINT "ck_shop_photos_id_length" CHECK(length("shop_photos"."id") <= 64),
+	CONSTRAINT "ck_shop_photos_r2_key_length" CHECK(length("shop_photos"."r2_key") <= 200),
+	CONSTRAINT "ck_shop_photos_r2_key" CHECK("shop_photos"."r2_key" <> '' AND "shop_photos"."r2_key" NOT GLOB '*[^a-z0-9/._-]*'),
+	CONSTRAINT "ck_shop_photos_caption_length" CHECK(length("shop_photos"."caption") <= 200),
+	CONSTRAINT "ck_shop_photos_sort_order" CHECK("shop_photos"."sort_order" >= 0),
+	CONSTRAINT "ck_shop_photos_is_cover" CHECK("shop_photos"."is_cover" IN (0, 1))
+);
+--> statement-breakpoint
+CREATE INDEX `idx_shop_photos_shop_sort` ON `shop_photos` (`shop_id`,`sort_order`);--> statement-breakpoint
+CREATE UNIQUE INDEX `uq_shop_photos_r2_key` ON `shop_photos` (`r2_key`);--> statement-breakpoint
+CREATE UNIQUE INDEX `uq_shop_photos_cover` ON `shop_photos` (`shop_id`) WHERE "shop_photos"."is_cover";

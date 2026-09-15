@@ -291,3 +291,15 @@ export const IDENTIFIER_MAX_LENGTH = 64;
 export const R2_KEY_MAX_LENGTH = 200;
 /** R2 オブジェクトキーに使える文字。`/` `.` `-` と小文字英数字のみ */
 export const R2_KEY_ALLOWED_CHARACTERS = 'a-z0-9/._-';
+
+// ──────────────────── GLOB パターン（CHECK 制約に埋め込む）────────────────────
+
+/**
+ * ISO 8601 の日付（YYYY-MM-DD）を表す GLOB パターン。
+ * SQLite の GLOB に `\d` はなく `[0-9]` を桁数ぶん並べるしかない。
+ * shop_closures.date と reviews.visited_on の 2 箇所で使うのでここに置く。
+ *
+ * 桁の形しか見ないため 2026-13-45 のような日付は通る。実在する日付かどうかは
+ * アプリ側（Zod スキーマ）で検証する。DB では「形が違うものを入れさせない」までを担う。
+ */
+export const ISO_DATE_GLOB_PATTERN = '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]';
