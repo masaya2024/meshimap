@@ -48,7 +48,7 @@ NativeWind（Tailwind）を使います。色・余白・角丸・フォント�
 
 ```bash
 npm test          -w @meshimap/mobile   # Jest + jest-expo + React Native Testing Library
-npm run test:coverage -w @meshimap/mobile
+npm run test:coverage -w @meshimap/mobile  # src/app/ を除く全ファイルに 100% を要求（CI もこちら）
 npm run typecheck -w @meshimap/mobile
 npm run lint      -w @meshimap/mobile
 ```

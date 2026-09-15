@@ -52,6 +52,18 @@ module.exports = {
     '/node_modules/@react-native/babel-preset/',
   ],
   collectCoverageFrom: ['src/**/*.{ts,tsx}', '!src/**/*.test.{ts,tsx}', '!src/app/**'],
+  // packages/core・packages/geo の vitest.config.ts と同じ思想で 100% を要求する。
+  // 現状 src/app/ 以外は実測 100%（下げる余地を作ると、埋め戻す機会は二度と来ない）。
+  // src/app/ は collectCoverageFrom で除外済み。画面は Phase 5 以降に作るため、
+  // 実装が入るタイミングで除外を外して同じ 100% を課すこと。
+  coverageThreshold: {
+    global: {
+      statements: 100,
+      branches: 100,
+      functions: 100,
+      lines: 100,
+    },
+  },
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
   },

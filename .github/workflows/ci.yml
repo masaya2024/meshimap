@@ -93,7 +93,7 @@ jobs:
         run: npm run test:coverage -w @meshimap/geo -w @meshimap/core
 
   test-mobile:
-    name: テスト（mobile・Jest）
+    name: テスト（mobile・Jest・カバレッジ 100% 必須）
     runs-on: ubuntu-latest
     # Jest + jest-expo は node_modules の変換が重く、packages 側より時間がかかる。
     timeout-minutes: 20
@@ -105,8 +105,11 @@ jobs:
           cache: 'npm'
       - name: 依存をインストール
         run: npm ci
-      - name: Jest
-        run: npm run test -w @meshimap/mobile
+      - name: Jest（カバレッジ付き）
+        # test-packages と同じ理由で `test` ではなく `test:coverage` を使う。
+        # jest.config.js の coverageThreshold は `--coverage` を付けたときしか評価されず、
+        # `npm test` のままではテストのないファイルが増えても CI が緑のまま通ってしまう。
+        run: npm run test:coverage -w @meshimap/mobile
 
   test-api:
     name: テスト（api・miniflare でローカル D1）

@@ -77,4 +77,13 @@ describe('Badge', () => {
 
     expect(screen.queryByTestId('open-badge-leading-icon')).toBeNull();
   });
+
+  it('testID を渡さなければ leadingIcon 枠に testID を付けない', async () => {
+    // testID 省略時に `undefined-leading-icon` のような文字列化した testID を作らないこと
+    await render(<Badge label="営業中" leadingIcon={<Text testID="clock-icon">🕒</Text>} />);
+
+    expect(screen.getByTestId('clock-icon')).toBeOnTheScreen();
+    expect(screen.queryByTestId('undefined-leading-icon')).toBeNull();
+    expect(screen.queryByTestId('-leading-icon')).toBeNull();
+  });
 });
