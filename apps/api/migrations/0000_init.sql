@@ -199,4 +199,51 @@ CREATE TABLE `shop_photos` (
 --> statement-breakpoint
 CREATE INDEX `idx_shop_photos_shop_sort` ON `shop_photos` (`shop_id`,`sort_order`);--> statement-breakpoint
 CREATE UNIQUE INDEX `uq_shop_photos_r2_key` ON `shop_photos` (`r2_key`);--> statement-breakpoint
-CREATE UNIQUE INDEX `uq_shop_photos_cover` ON `shop_photos` (`shop_id`) WHERE "shop_photos"."is_cover";
+CREATE UNIQUE INDEX `uq_shop_photos_cover` ON `shop_photos` (`shop_id`) WHERE "shop_photos"."is_cover";--> statement-breakpoint
+CREATE TABLE `menu_categories` (
+	`id` text PRIMARY KEY NOT NULL,
+	`shop_id` text NOT NULL,
+	`name` text NOT NULL,
+	`sort_order` integer DEFAULT 0 NOT NULL,
+	FOREIGN KEY (`shop_id`) REFERENCES `shops`(`id`) ON UPDATE no action ON DELETE cascade,
+	CONSTRAINT "ck_menu_categories_id_length" CHECK(length("menu_categories"."id") <= 64),
+	CONSTRAINT "ck_menu_categories_name_length" CHECK(length("menu_categories"."name") <= 50),
+	CONSTRAINT "ck_menu_categories_sort_order" CHECK("menu_categories"."sort_order" >= 0)
+);
+--> statement-breakpoint
+CREATE INDEX `idx_menu_categories_shop_sort` ON `menu_categories` (`shop_id`,`sort_order`);--> statement-breakpoint
+CREATE UNIQUE INDEX `uq_menu_categories_shop_id` ON `menu_categories` (`shop_id`,`id`);--> statement-breakpoint
+CREATE TABLE `menu_items` (
+	`id` text PRIMARY KEY NOT NULL,
+	`shop_id` text NOT NULL,
+	`category_id` text,
+	`name` text NOT NULL,
+	`price` integer NOT NULL,
+	`description` text,
+	`r2_key` text,
+	`is_recommended` integer DEFAULT false NOT NULL,
+	FOREIGN KEY (`shop_id`) REFERENCES `shops`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`shop_id`,`category_id`) REFERENCES `menu_categories`(`shop_id`,`id`) ON UPDATE no action ON DELETE cascade,
+	CONSTRAINT "ck_menu_items_id_length" CHECK(length("menu_items"."id") <= 64),
+	CONSTRAINT "ck_menu_items_name_length" CHECK(length("menu_items"."name") <= 100),
+	CONSTRAINT "ck_menu_items_description_length" CHECK(length("menu_items"."description") <= 500),
+	CONSTRAINT "ck_menu_items_price" CHECK("menu_items"."price" BETWEEN 0 AND 1000000),
+	CONSTRAINT "ck_menu_items_r2_key_length" CHECK(length("menu_items"."r2_key") <= 200),
+	CONSTRAINT "ck_menu_items_r2_key" CHECK("menu_items"."r2_key" <> '' AND "menu_items"."r2_key" NOT GLOB '*[^a-z0-9/._-]*'),
+	CONSTRAINT "ck_menu_items_is_recommended" CHECK("menu_items"."is_recommended" IN (0, 1))
+);
+--> statement-breakpoint
+CREATE INDEX `idx_menu_items_shop_category` ON `menu_items` (`shop_id`,`category_id`);--> statement-breakpoint
+CREATE INDEX `idx_menu_items_shop_recommended` ON `menu_items` (`shop_id`,`is_recommended`);--> statement-breakpoint
+CREATE TABLE `seat_settings` (
+	`shop_id` text PRIMARY KEY NOT NULL,
+	`capacity` integer NOT NULL,
+	`slot_minutes` integer DEFAULT 90 NOT NULL,
+	`max_parallel` integer DEFAULT 1 NOT NULL,
+	`accepts_reservation` integer DEFAULT false NOT NULL,
+	FOREIGN KEY (`shop_id`) REFERENCES `shops`(`id`) ON UPDATE no action ON DELETE cascade,
+	CONSTRAINT "ck_seat_settings_capacity" CHECK("seat_settings"."capacity" BETWEEN 1 AND 500),
+	CONSTRAINT "ck_seat_settings_slot_minutes" CHECK("seat_settings"."slot_minutes" BETWEEN 15 AND 240),
+	CONSTRAINT "ck_seat_settings_max_parallel" CHECK("seat_settings"."max_parallel" BETWEEN 1 AND 100),
+	CONSTRAINT "ck_seat_settings_accepts_reservation" CHECK("seat_settings"."accepts_reservation" IN (0, 1))
+);

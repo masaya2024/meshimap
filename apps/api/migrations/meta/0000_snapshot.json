@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "0807a875-09e0-4516-b9ce-aee9b6445296",
+  "id": "8f486c86-3389-4f34-bc8c-59eecef018b6",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "account": {
@@ -1271,6 +1271,310 @@
         "ck_shop_photos_is_cover": {
           "name": "ck_shop_photos_is_cover",
           "value": "\"shop_photos\".\"is_cover\" IN (0, 1)"
+        }
+      }
+    },
+    "menu_categories": {
+      "name": "menu_categories",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "shop_id": {
+          "name": "shop_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        }
+      },
+      "indexes": {
+        "idx_menu_categories_shop_sort": {
+          "name": "idx_menu_categories_shop_sort",
+          "columns": [
+            "shop_id",
+            "sort_order"
+          ],
+          "isUnique": false
+        },
+        "uq_menu_categories_shop_id": {
+          "name": "uq_menu_categories_shop_id",
+          "columns": [
+            "shop_id",
+            "id"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "menu_categories_shop_id_shops_id_fk": {
+          "name": "menu_categories_shop_id_shops_id_fk",
+          "tableFrom": "menu_categories",
+          "tableTo": "shops",
+          "columnsFrom": [
+            "shop_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "ck_menu_categories_id_length": {
+          "name": "ck_menu_categories_id_length",
+          "value": "length(\"menu_categories\".\"id\") <= 64"
+        },
+        "ck_menu_categories_name_length": {
+          "name": "ck_menu_categories_name_length",
+          "value": "length(\"menu_categories\".\"name\") <= 50"
+        },
+        "ck_menu_categories_sort_order": {
+          "name": "ck_menu_categories_sort_order",
+          "value": "\"menu_categories\".\"sort_order\" >= 0"
+        }
+      }
+    },
+    "menu_items": {
+      "name": "menu_items",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "shop_id": {
+          "name": "shop_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "category_id": {
+          "name": "category_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "price": {
+          "name": "price",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "r2_key": {
+          "name": "r2_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "is_recommended": {
+          "name": "is_recommended",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        }
+      },
+      "indexes": {
+        "idx_menu_items_shop_category": {
+          "name": "idx_menu_items_shop_category",
+          "columns": [
+            "shop_id",
+            "category_id"
+          ],
+          "isUnique": false
+        },
+        "idx_menu_items_shop_recommended": {
+          "name": "idx_menu_items_shop_recommended",
+          "columns": [
+            "shop_id",
+            "is_recommended"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "menu_items_shop_id_shops_id_fk": {
+          "name": "menu_items_shop_id_shops_id_fk",
+          "tableFrom": "menu_items",
+          "tableTo": "shops",
+          "columnsFrom": [
+            "shop_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "menu_items_shop_id_category_id_menu_categories_shop_id_id_fk": {
+          "name": "menu_items_shop_id_category_id_menu_categories_shop_id_id_fk",
+          "tableFrom": "menu_items",
+          "tableTo": "menu_categories",
+          "columnsFrom": [
+            "shop_id",
+            "category_id"
+          ],
+          "columnsTo": [
+            "shop_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "ck_menu_items_id_length": {
+          "name": "ck_menu_items_id_length",
+          "value": "length(\"menu_items\".\"id\") <= 64"
+        },
+        "ck_menu_items_name_length": {
+          "name": "ck_menu_items_name_length",
+          "value": "length(\"menu_items\".\"name\") <= 100"
+        },
+        "ck_menu_items_description_length": {
+          "name": "ck_menu_items_description_length",
+          "value": "length(\"menu_items\".\"description\") <= 500"
+        },
+        "ck_menu_items_price": {
+          "name": "ck_menu_items_price",
+          "value": "\"menu_items\".\"price\" BETWEEN 0 AND 1000000"
+        },
+        "ck_menu_items_r2_key_length": {
+          "name": "ck_menu_items_r2_key_length",
+          "value": "length(\"menu_items\".\"r2_key\") <= 200"
+        },
+        "ck_menu_items_r2_key": {
+          "name": "ck_menu_items_r2_key",
+          "value": "\"menu_items\".\"r2_key\" <> '' AND \"menu_items\".\"r2_key\" NOT GLOB '*[^a-z0-9/._-]*'"
+        },
+        "ck_menu_items_is_recommended": {
+          "name": "ck_menu_items_is_recommended",
+          "value": "\"menu_items\".\"is_recommended\" IN (0, 1)"
+        }
+      }
+    },
+    "seat_settings": {
+      "name": "seat_settings",
+      "columns": {
+        "shop_id": {
+          "name": "shop_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "capacity": {
+          "name": "capacity",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "slot_minutes": {
+          "name": "slot_minutes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 90
+        },
+        "max_parallel": {
+          "name": "max_parallel",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
+        },
+        "accepts_reservation": {
+          "name": "accepts_reservation",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "seat_settings_shop_id_shops_id_fk": {
+          "name": "seat_settings_shop_id_shops_id_fk",
+          "tableFrom": "seat_settings",
+          "tableTo": "shops",
+          "columnsFrom": [
+            "shop_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "ck_seat_settings_capacity": {
+          "name": "ck_seat_settings_capacity",
+          "value": "\"seat_settings\".\"capacity\" BETWEEN 1 AND 500"
+        },
+        "ck_seat_settings_slot_minutes": {
+          "name": "ck_seat_settings_slot_minutes",
+          "value": "\"seat_settings\".\"slot_minutes\" BETWEEN 15 AND 240"
+        },
+        "ck_seat_settings_max_parallel": {
+          "name": "ck_seat_settings_max_parallel",
+          "value": "\"seat_settings\".\"max_parallel\" BETWEEN 1 AND 100"
+        },
+        "ck_seat_settings_accepts_reservation": {
+          "name": "ck_seat_settings_accepts_reservation",
+          "value": "\"seat_settings\".\"accepts_reservation\" IN (0, 1)"
         }
       }
     }
