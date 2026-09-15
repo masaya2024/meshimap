@@ -654,7 +654,7 @@ describe('ドメインの範囲定数', () => {
 
 ---
 
-- [ ] **Step 1: `packages/core/src/role.ts` を作る**
+- [x] **Step 1: `packages/core/src/role.ts` を作る**
 
 ```ts
 // 利用者 / 店舗管理者 / システム管理者の 3 ロールと、その権限判定。
@@ -698,7 +698,7 @@ export function canModerate(role: Role): boolean {
 
   `isRole` に `typeof value === 'string'` の事前判定を**入れない**理由: `ROLES.some((role) => role === value)` は文字列以外に対して必ず `false` を返すので、事前判定は結果を変えない冗長なコードになる。ミューテーションテストでは「条件を消しても結果が変わらない＝生き残る変異」として検出される（実測で確認済み）。
 
-- [ ] **Step 2: `packages/core/src/role.test.ts` を作る**
+- [x] **Step 2: `packages/core/src/role.test.ts` を作る**
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -798,7 +798,7 @@ describe('canModerate', () => {
 });
 ```
 
-- [ ] **Step 3: 型チェックとテストを実行する**
+- [x] **Step 3: 型チェックとテストを実行する**
 
   ```bash
   export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH"
@@ -809,7 +809,7 @@ describe('canModerate', () => {
 
   期待: `Tests  16 passed (16)`。
 
-- [ ] **Step 4: 意図的に壊してテストが検知することを確認する**
+- [x] **Step 4: 意図的に壊してテストが検知することを確認する**
 
   | # | 変更する行（`src/role.ts`） | 変更後 | 期待: FAIL するテスト（実測） |
   |---|---|---|---|
@@ -837,7 +837,7 @@ describe('canModerate', () => {
 
 ---
 
-- [ ] **Step 1: `packages/core/src/identifier.ts` を作る**
+- [x] **Step 1: `packages/core/src/identifier.ts` を作る**
 
 ```ts
 // 各テーブルの ID をブランド型で区別する。shop_id を user_id の位置に渡す事故をコンパイル時に防ぐ。
@@ -894,7 +894,7 @@ export function toReservationId(value: string): ReservationId {
 
   `declare const xBrand: unique symbol;` は**型空間だけの宣言**で、実行時のコードを 1 バイトも生成しない。`as` を使ってよいのは各 `toXxxId` の `return value as XxxId;` だけ。
 
-- [ ] **Step 2: `packages/core/src/identifier.test.ts` を作る**
+- [x] **Step 2: `packages/core/src/identifier.test.ts` を作る**
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -991,7 +991,7 @@ describe('toUserId / toReviewId / toReservationId', () => {
 });
 ```
 
-- [ ] **Step 3: 型チェックとテストを実行する**
+- [x] **Step 3: 型チェックとテストを実行する**
 
   ```bash
   export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH"
@@ -1002,7 +1002,7 @@ describe('toUserId / toReviewId / toReservationId', () => {
 
   期待: `Tests  12 passed (12)`。
 
-- [ ] **Step 4: ブランド型が取り違えを弾くことを手で確認する**
+- [x] **Step 4: ブランド型が取り違えを弾くことを手で確認する**
 
   `packages/core/src/identifier.test.ts` の末尾に次の 3 行を**一時的に**追記して型エラーになることを確認し、確認できたら削除する（コンパイルが通らないので、このコードは絶対にコミットしない）。
 
@@ -1021,7 +1021,7 @@ describe('toUserId / toReviewId / toReservationId', () => {
 
   期待: `Argument of type 'ShopId' is not assignable to parameter of type 'UserId'.` というエラーが出る（`import type { UserId } from './identifier';` の追加も必要）。確認後、追記した行と import を削除して `npm run typecheck -w @meshimap/core` が通る状態に戻す。
 
-- [ ] **Step 5: 意図的に壊してテストが検知することを確認する**
+- [x] **Step 5: 意図的に壊してテストが検知することを確認する**
 
   | # | 変更する行（`src/identifier.ts`） | 変更後 | 期待: FAIL するテスト（実測） |
   |---|---|---|---|
@@ -1048,7 +1048,7 @@ describe('toUserId / toReviewId / toReservationId', () => {
 
 ---
 
-- [ ] **Step 1: `packages/core/src/minute-of-day.ts` を作る**
+- [x] **Step 1: `packages/core/src/minute-of-day.ts` を作る**
 
 ```ts
 // 営業時間を「0 時からの分」で表す型。1080 = 18:00、1530 = 翌 01:30。
@@ -1102,7 +1102,7 @@ export function formatMinuteOfDay(value: MinuteOfDay): string {
 }
 ```
 
-- [ ] **Step 2: `packages/core/src/minute-of-day.test.ts` を作る**
+- [x] **Step 2: `packages/core/src/minute-of-day.test.ts` を作る**
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -1259,7 +1259,7 @@ describe('formatMinuteOfDay', () => {
 });
 ```
 
-- [ ] **Step 3: 型チェックとテストを実行する**
+- [x] **Step 3: 型チェックとテストを実行する**
 
   ```bash
   export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH"
@@ -1270,12 +1270,12 @@ describe('formatMinuteOfDay', () => {
 
   期待: `Tests  31 passed (31)`。
 
-- [ ] **Step 4: 意図的に壊してテストが検知することを確認する**
+- [x] **Step 4: 意図的に壊してテストが検知することを確認する**
 
   | # | 変更する行（`src/minute-of-day.ts`） | 変更後 | 期待: FAIL するテスト（実測） |
   |---|---|---|---|
   | 1 | `if (value < MINUTE_OF_DAY_MIN \|\| value > MINUTE_OF_DAY_MAX) {` | `value >= MINUTE_OF_DAY_MAX` | `toMinuteOfDay > 上限 2879（翌 23:59）を受け入れる`、`minuteOfDay > 上限の 47 時 59 分を 2879 に変換する`、`formatMinuteOfDay > 上限 2879 分を "翌 23:59" と表示する`（3 件） |
-  | 2 | `String(minute).padStart(2, '0')` | `padStart(1, '0')` | `formatMinuteOfDay > 分は必ず 2 桁ゼロ埋めする`（`minute-of-day.test.ts` 単体では 1 件。全モジュール実装後は `formatBusinessHours` 系も含め 12 件が FAIL する） |
+  | 2 | `String(minute).padStart(2, '0')` | `padStart(1, '0')` | `formatMinuteOfDay` の 6 件（`分は必ず 2 桁ゼロ埋めする` / `0 分を "0:00" と表示する` / `60 分を "1:00" と表示する` / `1080 分を "18:00" と表示する` / `1440 分から翌日扱いになり "翌 0:00" と表示する` / `1560 分を "翌 2:00" と表示する`）。分が 1 桁の期待値を持つテストが全て落ちるため。計画作成時は 1 件と見積もっていたが実測は 6 件 |
 
 ---
 
@@ -1302,7 +1302,7 @@ describe('formatMinuteOfDay', () => {
 
 ---
 
-- [ ] **Step 1: `packages/core/src/jst-clock.ts` を作る**
+- [x] **Step 1: `packages/core/src/jst-clock.ts` を作る**
 
 ```ts
 // JST（UTC+9）での日付・曜日・時刻を、実行環境のタイムゾーンに依存せずに求める。
@@ -1398,7 +1398,7 @@ export function toJstClock(now: Date): JstClock {
 
   **`getHours()` / `getDate()` / `getDay()` などローカル時刻メソッドは 1 つも使わない。** 使った瞬間にテストが実行環境の TZ に依存する。エポックミリ秒に +540 分してから `getUTC*` で読む方式なら、UTC の Cloudflare Workers でも JST の端末でも同じ答えになる。
 
-- [ ] **Step 2: `packages/core/src/jst-clock.test.ts` を作る**
+- [x] **Step 2: `packages/core/src/jst-clock.test.ts` を作る**
 
   TZ 非依存であることを**テストで固定する**。`process.env.TZ` は使わない（`packages/core/tsconfig.json` の `types` は `["vitest/globals"]` だけなので `process` は `TS2591: Cannot find name 'process'` になる。実測済み）。代わりに `vi.stubEnv('TZ', ...)` を使い、`try/finally` で必ず戻す。
 
@@ -1631,7 +1631,7 @@ describe('toJstDate（前後の余分な文字）', () => {
 });
 ```
 
-- [ ] **Step 3: 型チェックとテストを実行する**
+- [x] **Step 3: 型チェックとテストを実行する**
 
   ```bash
   export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH"
@@ -1642,7 +1642,7 @@ describe('toJstDate（前後の余分な文字）', () => {
 
   期待: `Tests  37 passed (37)`。
 
-- [ ] **Step 4: 意図的に壊してテストが検知することを確認する**
+- [x] **Step 4: 意図的に壊してテストが検知することを確認する**
 
   | # | 変更する行（`src/jst-clock.ts`） | 変更後 | 期待: FAIL するテスト（実測） |
   |---|---|---|---|
@@ -1669,7 +1669,7 @@ describe('toJstDate（前後の余分な文字）', () => {
 
 ---
 
-- [ ] **Step 1: `packages/core/src/business-hours.ts` を作る**
+- [x] **Step 1: `packages/core/src/business-hours.ts` を作る**
 
 ```ts
 // 曜日ごとの営業時間と臨時休業日の型。D1 の shop_hours / shop_closures に対応する。
@@ -1734,7 +1734,7 @@ export function formatBusinessHours(hours: readonly BusinessHours[]): string {
 
   **`toSorted` は使えない。** `tsconfig.base.json` の `lib` は `["ES2022"]` なので `Array.prototype.toSorted`（ES2023）の型定義が存在せず、`Property 'toSorted' does not exist on type 'BusinessHours[]'` になる。引数配列を壊さないために `[...openEntries].sort(...)` と書く。`toReversed` / `Object.groupBy` も同じ理由で使えない。
 
-- [ ] **Step 2: `packages/core/src/business-hours.test.ts` を作る**
+- [x] **Step 2: `packages/core/src/business-hours.test.ts` を作る**
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -1849,7 +1849,7 @@ describe('formatBusinessHours', () => {
 });
 ```
 
-- [ ] **Step 3: 型チェックとテストを実行する**
+- [x] **Step 3: 型チェックとテストを実行する**
 
   ```bash
   export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH"
@@ -1860,7 +1860,7 @@ describe('formatBusinessHours', () => {
 
   期待: `Tests  17 passed (17)`。
 
-- [ ] **Step 4: 意図的に壊してテストが検知することを確認する**
+- [x] **Step 4: 意図的に壊してテストが検知することを確認する**
 
   | # | 変更する行（`src/business-hours.ts`） | 変更後 | 期待: FAIL するテスト（実測） |
   |---|---|---|---|
@@ -2971,7 +2971,7 @@ describe('canReserve', () => {
 
 ---
 
-- [ ] **Step 1: `packages/core/src/rating.ts` を作る**
+- [x] **Step 1: `packages/core/src/rating.ts` を作る**
 
 ```ts
 // レビュー評価の集計。D1 の reviews.rating（1〜5）を星の分布と平均にまとめる。
@@ -3021,7 +3021,7 @@ export function summarizeRatings(ratings: readonly Rating[]): RatingSummary {
 
   平均は `Math.round((totalScore / ratings.length) * 10) / 10` で小数第 1 位に丸める。**3 件 `[4, 5, 3]` の平均は `4`（`number` 型）** であり `4.0` という値は JavaScript に存在しない。テストは `toBe(4)` で比較する。表示で小数第 1 位を固定したい場合は UI 層（Phase 5）の責務。
 
-- [ ] **Step 2: `packages/core/src/rating.test.ts` を作る**
+- [x] **Step 2: `packages/core/src/rating.test.ts` を作る**
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -3137,7 +3137,7 @@ describe('summarizeRatings', () => {
 });
 ```
 
-- [ ] **Step 3: 型チェックとテストを実行する**
+- [x] **Step 3: 型チェックとテストを実行する**
 
   ```bash
   export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH"
@@ -3148,7 +3148,7 @@ describe('summarizeRatings', () => {
 
   期待: `Tests  17 passed (17)`。
 
-- [ ] **Step 4: 意図的に壊してテストが検知することを確認する**
+- [x] **Step 4: 意図的に壊してテストが検知することを確認する**
 
   | # | 変更する行（`src/rating.ts`） | 変更後 | 期待: FAIL するテスト（実測） |
   |---|---|---|---|
@@ -3174,7 +3174,7 @@ describe('summarizeRatings', () => {
 
 ---
 
-- [ ] **Step 1: `packages/core/src/budget.ts` を作る**
+- [x] **Step 1: `packages/core/src/budget.ts` を作る**
 
 ```ts
 // 予算帯の表示。Intl / toLocaleString は React Native（Hermes）で挙動が揺れるので使わない。
@@ -3219,7 +3219,7 @@ export function formatBudgetRange(minYen: number | null, maxYen: number | null):
 
   **`Intl` / `toLocaleString` は使わない。** React Native（Hermes）ではロケールデータが省かれたビルドがあり、端末によって `"1,000"` にならないことがある。桁区切りは `/\B(?=(\d{3})+(?!\d))/g` で自前に実装し、`toLocaleString('ja-JP')` との一致は**テスト側でだけ**突き合わせる（Node のロケールは安定しているため、テストの期待値生成には使える）。
 
-- [ ] **Step 2: `packages/core/src/budget.test.ts` を作る**
+- [x] **Step 2: `packages/core/src/budget.test.ts` を作る**
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -3321,7 +3321,7 @@ describe('formatBudgetRange', () => {
 });
 ```
 
-- [ ] **Step 3: 型チェックとテストを実行する**
+- [x] **Step 3: 型チェックとテストを実行する**
 
   ```bash
   export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH"
@@ -3332,7 +3332,7 @@ describe('formatBudgetRange', () => {
 
   期待: `Tests  19 passed (19)`。
 
-- [ ] **Step 4: 意図的に壊してテストが検知することを確認する**
+- [x] **Step 4: 意図的に壊してテストが検知することを確認する**
 
   | # | 変更する行（`src/budget.ts`） | 変更後 | 期待: FAIL するテスト（実測） |
   |---|---|---|---|
