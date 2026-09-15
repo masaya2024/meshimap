@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { coordinate } from './coordinate';
-import { decodeGeohash, encodeGeohash, neighborCells, toGeohash } from './geohash';
+import {
+  GEOHASH_LENGTH_MAX,
+  GEOHASH_LENGTH_MIN,
+  decodeGeohash,
+  encodeGeohash,
+  neighborCells,
+  toGeohash,
+} from './geohash';
+import type { GeohashPrecision } from './geohash';
 
 const TOKYO_STATION = coordinate(35.681236, 139.767125);
 const OSAKA_STATION = coordinate(34.702485, 135.495951);
@@ -237,5 +245,51 @@ describe('neighborCells', () => {
     const cell = encodeGeohash(coordinate(-90, 0), 3);
     expect(cell).toBe('h00');
     expect(neighborCells(cell)).toEqual(['h02', 'h03', 'h01', '5bp', '5br']);
+  });
+});
+
+/**
+ * `GeohashPrecision` が取りうる値の一覧。
+ *
+ * `satisfies` が「`GeohashPrecision` に無い値が混じっていないこと」を保証し、
+ * 下の `EVERY_PRECISION_IS_LISTED` が「取りこぼしが無いこと」を保証する。
+ * 両方あって初めて「過不足なく並んでいる」と言える。
+ */
+const ALL_GEOHASH_PRECISIONS = [
+  1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+] as const satisfies readonly GeohashPrecision[];
+
+/**
+ * 上の配列が `GeohashPrecision` を網羅していることの型レベル検査。
+ * 取りこぼすと型が `never` になり、この宣言が `tsc` で落ちる。
+ */
+const EVERY_PRECISION_IS_LISTED: GeohashPrecision extends (typeof ALL_GEOHASH_PRECISIONS)[number]
+  ? true
+  : never = true;
+
+describe('GeohashPrecision', () => {
+  /**
+   * `neighborCells` は `hash.length as GeohashPrecision` で桁数を精度へ読み替えている
+   * （geohash.ts の `neighborCells`）。これが成り立つのは `Geohash` を作れるのが
+   * `encodeGeohash` と `toGeohash` の 2 つだけで、どちらも桁数を
+   * `GEOHASH_LENGTH_MIN`〜`GEOHASH_LENGTH_MAX` に収めているから。
+   *
+   * その対応はコード上どこにも書かれていない。`GEOHASH_LENGTH_MAX` だけを増やすと
+   * `toGeohash` は長い文字列を通すようになり、`GeohashPrecision` に無い数値が
+   * `GeohashPrecision` を名乗ったまま `encodeGeohash` へ渡る。
+   * `as` が型検査を黙らせているので `tsc` も lint も気づかない。ここで縛る。
+   */
+  it('取りうる値が GEOHASH_LENGTH_MIN 〜 GEOHASH_LENGTH_MAX と過不足なく一致する', () => {
+    expect(EVERY_PRECISION_IS_LISTED).toBe(true);
+    expect(ALL_GEOHASH_PRECISIONS[0]).toBe(GEOHASH_LENGTH_MIN);
+    expect(ALL_GEOHASH_PRECISIONS.at(-1)).toBe(GEOHASH_LENGTH_MAX);
+    expect(ALL_GEOHASH_PRECISIONS).toHaveLength(GEOHASH_LENGTH_MAX - GEOHASH_LENGTH_MIN + 1);
+  });
+
+  it('toGeohash が通す最大桁の geohash でも近傍を 8 個返せる', () => {
+    // 上の一致が崩れたときに、型ではなく実際の呼び出しが壊れることを示す。
+    const longestHash = toGeohash('x'.repeat(GEOHASH_LENGTH_MAX));
+
+    expect(neighborCells(longestHash)).toHaveLength(8);
   });
 });

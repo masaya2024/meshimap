@@ -4,6 +4,8 @@
 
 import {
   DAYS_PER_WEEK,
+  DAY_OF_WEEK_MAX,
+  DAY_OF_WEEK_MIN,
   JST_OFFSET_MINUTES,
   MILLISECONDS_PER_DAY,
   MILLISECONDS_PER_MINUTE,
@@ -49,8 +51,10 @@ export function toJstDate(value: string): JstDate {
 }
 
 export function toDayOfWeek(value: number): DayOfWeek {
-  if (!Number.isInteger(value) || value < 0 || value >= DAYS_PER_WEEK) {
-    throw new RangeError(`曜日は 0 〜 ${DAYS_PER_WEEK - 1} の整数である必要があります: ${value}`);
+  if (!Number.isInteger(value) || value < DAY_OF_WEEK_MIN || value > DAY_OF_WEEK_MAX) {
+    throw new RangeError(
+      `曜日は ${DAY_OF_WEEK_MIN} 〜 ${DAY_OF_WEEK_MAX} の整数である必要があります: ${value}`,
+    );
   }
   // ブランド型ではなくリテラル union への絞り込み。検証済みなのでここだけ as を使う
   return value as DayOfWeek;

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { RATING_MAX, RATING_MIN } from './constants';
 import { summarizeRatings, toRating } from './rating';
 import type { Rating } from './rating';
 
@@ -107,5 +108,30 @@ describe('summarizeRatings', () => {
     const ratings = [5, 1, 3].map(toRating);
     summarizeRatings(ratings);
     expect(ratings).toEqual([5, 1, 3]);
+  });
+});
+
+/**
+ * `Rating` が取りうる値の一覧。
+ * `satisfies` が「`Rating` に無い値が混じっていないこと」を、
+ * `EVERY_RATING_IS_LISTED` が「取りこぼしが無いこと」を保証する。
+ */
+const ALL_RATINGS = [1, 2, 3, 4, 5] as const satisfies readonly Rating[];
+
+/** 上の配列が `Rating` を網羅していることの型レベル検査。取りこぼすと `tsc` が落ちる */
+const EVERY_RATING_IS_LISTED: Rating extends (typeof ALL_RATINGS)[number] ? true : never = true;
+
+describe('Rating', () => {
+  /**
+   * `toRating` は `RATING_MIN`〜`RATING_MAX` で検証してから `as Rating` で絞り込む。
+   * 成立するのは両者が一致しているからだが、その対応はコードのどこにも書かれていない。
+   * 定数側だけを広げると `Rating` に無い数値が `Rating` を名乗って通り、
+   * `as` が型検査を黙らせるので `tsc` も lint も気づかない。ここで縛る。
+   */
+  it('取りうる値が RATING_MIN 〜 RATING_MAX と過不足なく一致する', () => {
+    expect(EVERY_RATING_IS_LISTED).toBe(true);
+    expect(ALL_RATINGS[0]).toBe(RATING_MIN);
+    expect(ALL_RATINGS.at(-1)).toBe(RATING_MAX);
+    expect(ALL_RATINGS).toHaveLength(RATING_MAX - RATING_MIN + 1);
   });
 });

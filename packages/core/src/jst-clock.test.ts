@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { DAYS_PER_WEEK } from './constants';
 import {
   addJstDays,
   dayOfWeekOf,
@@ -7,6 +8,7 @@ import {
   toJstClock,
   toJstDate,
 } from './jst-clock';
+import type { DayOfWeek } from './jst-clock';
 
 describe('toJstDate', () => {
   it('YYYY-MM-DD 形式の実在する日付を受け入れる', () => {
@@ -222,5 +224,34 @@ describe('toJstDate（前後の余分な文字）', () => {
     // 年を 0 詰めしないと往復比較が壊れる（"999-12-31" !== "0999-12-31"）
     expect(toJstDate('0999-12-31')).toBe('0999-12-31');
     expect(addJstDays(toJstDate('1000-01-01'), -1)).toBe('0999-12-31');
+  });
+});
+
+/**
+ * `DayOfWeek` が取りうる値の一覧。日曜が 0 で `Date.getUTCDay()` と同じ並び。
+ * `satisfies` が「`DayOfWeek` に無い値が混じっていないこと」を、
+ * `EVERY_DAY_OF_WEEK_IS_LISTED` が「取りこぼしが無いこと」を保証する。
+ */
+const ALL_DAYS_OF_WEEK = [0, 1, 2, 3, 4, 5, 6] as const satisfies readonly DayOfWeek[];
+
+/** 上の配列が `DayOfWeek` を網羅していることの型レベル検査。取りこぼすと `tsc` が落ちる */
+const EVERY_DAY_OF_WEEK_IS_LISTED: DayOfWeek extends (typeof ALL_DAYS_OF_WEEK)[number]
+  ? true
+  : never = true;
+
+describe('DayOfWeek', () => {
+  /**
+   * `toDayOfWeek` は `0 <= value < DAYS_PER_WEEK` で検証してから `as DayOfWeek` で絞り込む。
+   * `DAYS_PER_WEEK` だけを増やすと `DayOfWeek` に無い数値が `DayOfWeek` を名乗って通り、
+   * `as` が型検査を黙らせるので `tsc` も lint も気づかない。ここで縛る。
+   */
+  it('取りうる値の個数が DAYS_PER_WEEK と一致する', () => {
+    expect(EVERY_DAY_OF_WEEK_IS_LISTED).toBe(true);
+    expect(ALL_DAYS_OF_WEEK).toHaveLength(DAYS_PER_WEEK);
+  });
+
+  it('すべての値が toDayOfWeek を通る', () => {
+    // 型の一覧と実行時の検証が食い違っていないことを、境界だけでなく全件で確かめる。
+    expect(ALL_DAYS_OF_WEEK.map(toDayOfWeek)).toEqual([...ALL_DAYS_OF_WEEK]);
   });
 });
