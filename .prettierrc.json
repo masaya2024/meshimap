@@ -4,5 +4,5 @@
   "printWidth": 100,
   "trailingComma": "all",
   "plugins": ["prettier-plugin-tailwindcss"],
-  "tailwindStylesheet": "./apps/mobile/src/global.css"
+  "tailwindConfig": "./apps/mobile/tailwind.config.js"
 }
