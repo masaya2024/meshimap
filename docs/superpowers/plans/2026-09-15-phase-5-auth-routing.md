@@ -162,7 +162,7 @@ apps/mobile/src/（app 以外）
 │   └── api.test.ts                          ★新規
 ├── hooks/
 │   ├── use-app-fonts.ts                     ★変更（読込失敗でも決着したことを表す hasFontLoadingSettled を追加）
-│   └── use-app-fonts.test.tsx               ★新規
+│   └── use-app-fonts.test.ts                ★変更（hasFontLoadingSettled の 3 件を追記）
 └── lib/
     ├── auth-client.ts                       ★新規
     ├── auth-client.test.ts                  ★新規
@@ -185,52 +185,75 @@ docs/superpowers/specs/2026-09-15-meshimap-design.md  ★変更（§5.1 の (use
 
 ### Task 5-1: ロール・ルート・HTTP の定数と認証状態の型を定義する
 
+**状態: 実装済み（2026-09-15）。**以下は実際にコミットされた内容に合わせて更新してある。
+
 **Files:**
 
 - Create: `apps/mobile/src/constants/auth.ts`
 - Create: `apps/mobile/src/constants/auth.test.ts`
 - Create: `apps/mobile/src/constants/api.ts`
+- Create: `apps/mobile/src/constants/api.test.ts`
 - Create: `apps/mobile/src/constants/http.ts`
+- Create: `apps/mobile/src/constants/http.test.ts`
 - Create: `apps/mobile/src/features/auth/types.ts`
+
+> `http.ts` / `api.ts` にも必ずテストを添える。`apps/mobile/jest.config.js` の
+> `collectCoverageFrom` は `src/**/*.{ts,tsx}`（`src/app/**` とテストのみ除外。この除外は
+> Phase 5 の最後の Task 5-21 Step 4-a で `!src/app/_dev/**` に差し替わる）で、
+> `coverageThreshold.global` は statements / branches / functions / lines すべて 100%。
+> どのテストからも import されないファイルは 0% として集計されるため、実装ファイルを
+> 足したら同じタスク内でテストも足さないと閾値で落ちる。
+> （`features/auth/types.ts` は型だけで実行文が無く statements 0 → 100% 扱いになるため、
+> 専用テストは不要。`apps/mobile/coverage/coverage-summary.json` の当該エントリで確認済み）
 
 **Interfaces:**
 
-- Consumes（`@meshimap/core` / Phase 2 が並行実装中。**このリポジトリでは絶対に作らない**）:
-  - `type UserRole = 'user' | 'owner' | 'admin'`
-  - `const USER_ROLES: { readonly user: 'user'; readonly owner: 'owner'; readonly admin: 'admin' }`
-  - `type UserId = string & { readonly __brand: 'UserId' }`
+- Consumes（`@meshimap/core`。**このリポジトリでは絶対に再定義しない**。
+  `packages/core/src/index.ts` の実 export 名に合わせること）:
+  - `type Role = 'user' | 'owner' | 'admin'`（型名は `Role`。`UserRole` は存在しない）
+  - `const ROLES: readonly ['user', 'owner', 'admin']`（`as const` の**タプル**。オブジェクトではないので `Object.values()` は使わず `[...ROLES]`。権限の弱い順に並んでいる）
+  - `const ROLE_USER: 'user'` / `const ROLE_OWNER: 'owner'` / `const ROLE_ADMIN: 'admin'`
+  - `type UserId`（`packages/core/src/identifier.ts` のブランド型）
 - Produces:
   - `const AUTH_STORAGE_PREFIX: 'meshimap-auth'`
   - `const APP_SCHEME: 'alee'`
   - `const AUTH_BASE_PATH: '/api/auth'`
   - `const PROFILE_QUERY_KEY: readonly ['auth', 'profile']`
-  - `const ROLE_HOME_ROUTES: Record<UserRole, Href>`
-  - `const SIGN_IN_ROUTE: Href`、`const WELCOME_ROUTE: Href`、`const VERIFY_EMAIL_ROUTE: Href`、`const FORGOT_PASSWORD_ROUTE: Href`、`const SIGN_UP_ROUTE: Href`、`const ROOT_ROUTE: Href`
-  - `const API_BASE_URL: string`
+  - `const PROFILE_QUERY_RETRY_COUNT: 0`、`const PROFILE_QUERY_STALE_TIME_MS: number`
+  - `const ROLE_HOME_ROUTES: Record<Role, Href>`
+  - `const SIGN_IN_ROUTE: Href`、`const WELCOME_ROUTE: Href`、`const VERIFY_EMAIL_ROUTE: Href`、`const FORGOT_PASSWORD_ROUTE: Href`、`const SIGN_UP_ROUTE: Href`、`const ROOT_ROUTE: Href`、`const SHOP_APPLICATION_ROUTE: Href`、`const OWNER_ONBOARDING_STATUS_ROUTE: Href`
+  - `const API_BASE_URL: string`、`const API_TIMEOUT_MS: number`
   - `const HTTP_STATUS: { readonly unauthorized: 401; readonly forbidden: 403; readonly conflict: 409; readonly tooManyRequests: 429 }`
-  - `type AuthState = { status: 'restoring' } | { status: 'unauthenticated' } | { status: 'profile-unavailable'; retry: () => void } | { status: 'authenticated'; userId: UserId; role: UserRole; displayName: string }`
+  - `type AuthState = { status: 'restoring' } | { status: 'unauthenticated' } | { status: 'profile-unavailable'; retry: () => void } | { status: 'authenticated'; userId: UserId; role: Role; displayName: string }`
 
-- [ ] **Step 1: `@meshimap/core` が必要な export を持っているか確認する**
+- [x] **Step 1: `@meshimap/core` が必要な export を持っているか確認する**
 
-Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && grep -rn "UserRole\|USER_ROLES\|UserId" /Users/hattori/Downloads/alee/packages/core/src/`
-Expected: `UserRole` / `USER_ROLES` / `UserId` の 3 つが export されている。
-**まだ無い場合は Phase 2 の完了を待つ。**ここで自前の型を定義して二重管理にしない（設計書 §4 のロール定義は `packages/core` が唯一の出所）。
+Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && grep -rn "export .*\bROLES\b\|export type { Role\|UserId" /Users/hattori/Downloads/alee/packages/core/src/index.ts`
+Expected: `ROLES` / `ROLE_USER` / `ROLE_OWNER` / `ROLE_ADMIN` / `type Role` / `type UserId` が export されている。
+ここで自前の型を定義して二重管理にしない（設計書 §4 のロール定義は `packages/core` が唯一の出所）。
+**`packages/core/src/index.test.ts` が export 名の一覧を完全一致で固定している**ため、core 側に
+新しい export を足すには core 本体とそのテストの両方を変更する必要がある。モバイル側の都合で
+気軽に足さないこと。
 
-- [ ] **Step 2: 失敗するテストを書く**
+- [x] **Step 2: 失敗するテストを書く**
 
 ```ts
 // apps/mobile/src/constants/auth.test.ts
-import { USER_ROLES } from '@meshimap/core';
+import { ROLES } from '@meshimap/core';
 
 import { APP_SCHEME, AUTH_BASE_PATH, AUTH_STORAGE_PREFIX, ROLE_HOME_ROUTES } from './auth';
 
+/** app.json は JSON のため import ではなく require で読み込む（fonts.test.ts と同じ方針） */
+const appConfig: { expo: { scheme: string } } = require('../../app.json');
+
 describe('認証まわりの定数', () => {
   it('3 つのロールすべてに着地ルートが定義されている', () => {
-    expect(Object.keys(ROLE_HOME_ROUTES).sort()).toEqual(Object.values(USER_ROLES).sort());
+    expect(Object.keys(ROLE_HOME_ROUTES).sort()).toEqual([...ROLES].sort());
   });
 
   it('着地ルートはロールごとに重複しない', () => {
     const routes = Object.values(ROLE_HOME_ROUTES);
+
     expect(new Set(routes).size).toBe(routes.length);
   });
 
@@ -242,7 +265,6 @@ describe('認証まわりの定数', () => {
 
   it('scheme は app.json の scheme と一致する', () => {
     // app.json とズレると Better Auth の expoClient が起点 URL を作れず OAuth が戻らない
-    const appConfig: { expo: { scheme: string } } = require('../../app.json');
     expect(APP_SCHEME).toBe(appConfig.expo.scheme);
   });
 
@@ -260,10 +282,16 @@ describe('認証まわりの定数', () => {
 });
 ```
 
+`require('../../app.json')` に `// eslint-disable-next-line @typescript-eslint/no-require-imports` は
+**付けない**。`eslint-config-expo/flat/utils/typescript.js:85-96` が `no-require-imports` の `allow` に
+`'\\.(aac|aiff|...|json|...)$'` という 1 本の正規表現を渡していて **json が含まれる**ため、
+`.json` の require はそもそも警告されない。そこに disable を置くと `Unused eslint-disable directive` の
+warning になる（`.js` / `.ts` を require する箇所では逆に必要）。
+
 Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- constants/auth`
 Expected: FAIL（`Cannot find module './auth'`）
 
-- [ ] **Step 3: `constants/http.ts` を作る**
+- [x] **Step 3: `constants/http.ts` と `constants/http.test.ts` を作る**
 
 ```ts
 // apps/mobile/src/constants/http.ts
@@ -277,7 +305,34 @@ export const HTTP_STATUS = {
 } as const;
 ```
 
-- [ ] **Step 4: `constants/api.ts` を作る**
+```ts
+// apps/mobile/src/constants/http.test.ts
+import { HTTP_STATUS } from './http';
+
+/** 4xx の下限と上限。ここに収まらない値が混ざったら「クライアントエラーの集合」ではなくなる */
+const CLIENT_ERROR_STATUS_MIN = 400;
+const CLIENT_ERROR_STATUS_MAX = 499;
+
+describe('HTTP_STATUS', () => {
+  it('認証・認可の分岐で使う 4 つのステータスを持つ', () => {
+    expect(HTTP_STATUS).toEqual({
+      unauthorized: 401,
+      forbidden: 403,
+      conflict: 409,
+      tooManyRequests: 429,
+    });
+  });
+
+  it('すべてクライアントエラー（4xx）の範囲に収まる', () => {
+    for (const status of Object.values(HTTP_STATUS)) {
+      expect(status).toBeGreaterThanOrEqual(CLIENT_ERROR_STATUS_MIN);
+      expect(status).toBeLessThanOrEqual(CLIENT_ERROR_STATUS_MAX);
+    }
+  });
+});
+```
+
+- [x] **Step 4: `constants/api.ts` と `constants/api.test.ts` を作る**
 
 ```ts
 // apps/mobile/src/constants/api.ts
@@ -299,11 +354,72 @@ export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? DEFAULT_API_BASE_
 export const API_TIMEOUT_MS = 15_000;
 ```
 
-- [ ] **Step 5: `constants/auth.ts` を作る**
+```ts
+// apps/mobile/src/constants/api.test.ts
+
+/** テスト内で EXPO_PUBLIC_API_URL に差し込む値。既定値と必ず異なるものにする */
+const OVERRIDE_API_URL = 'https://api.example.test';
+
+/** constants/api.ts の DEFAULT_API_BASE_URL と対になる期待値（wrangler dev の既定ポート） */
+const EXPECTED_DEFAULT_API_BASE_URL = 'http://localhost:8787';
+
+/**
+ * API_BASE_URL は import 時に確定するので、毎回モジュールを読み直して環境変数を反映させる。
+ * 動的 import() は Jest の CJS 環境（--experimental-vm-modules なし）で使えないため require で読む。
+ */
+function loadApiConstants(): typeof import('./api') {
+  jest.resetModules();
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  return require('./api');
+}
+
+describe('API 接続の定数', () => {
+  const originalApiUrl = process.env.EXPO_PUBLIC_API_URL;
+
+  afterEach(() => {
+    // 他のテストへ環境変数を漏らさないため、必ず元の状態へ戻す
+    if (originalApiUrl === undefined) {
+      delete process.env.EXPO_PUBLIC_API_URL;
+    } else {
+      process.env.EXPO_PUBLIC_API_URL = originalApiUrl;
+    }
+    jest.resetModules();
+  });
+
+  it('EXPO_PUBLIC_API_URL が設定されていればその値を使う', () => {
+    process.env.EXPO_PUBLIC_API_URL = OVERRIDE_API_URL;
+
+    const { API_BASE_URL } = loadApiConstants();
+
+    expect(API_BASE_URL).toBe(OVERRIDE_API_URL);
+  });
+
+  it('EXPO_PUBLIC_API_URL が未設定なら開発用の既定 URL にフォールバックする', () => {
+    delete process.env.EXPO_PUBLIC_API_URL;
+
+    const { API_BASE_URL } = loadApiConstants();
+
+    expect(API_BASE_URL).toBe(EXPECTED_DEFAULT_API_BASE_URL);
+  });
+
+  it('ネットワーク待ちの上限は正の値で、単位がミリ秒だと名前から分かる', () => {
+    const { API_TIMEOUT_MS } = loadApiConstants();
+
+    expect(API_TIMEOUT_MS).toBeGreaterThan(0);
+  });
+});
+```
+
+`typeof import('./api')` は型位置の import なので実行時の動的 import にはならず、Jest の CJS 環境でも
+問題なく動く。値としての `await import('...')` だけが
+`TypeError: A dynamic import callback was invoked without --experimental-vm-modules` で落ちる。
+**このプラン全体で「モジュールを読み直す」テストはすべてこの形で書くこと。**
+
+- [x] **Step 5: `constants/auth.ts` を作る**
 
 ```ts
 // apps/mobile/src/constants/auth.ts
-import type { UserRole } from '@meshimap/core';
+import type { Role } from '@meshimap/core';
 import type { Href } from 'expo-router';
 
 /**
@@ -347,18 +463,18 @@ export const OWNER_ONBOARDING_STATUS_ROUTE: Href = '/onboarding/status';
  * グループ名（(user) など）は URL に出ないためパスには含めない
  * （https://docs.expo.dev/router/advanced/shared-routes/）。
  */
-export const ROLE_HOME_ROUTES: Record<UserRole, Href> = {
+export const ROLE_HOME_ROUTES: Record<Role, Href> = {
   user: '/home',
   owner: '/dashboard',
   admin: '/overview',
 };
 ```
 
-- [ ] **Step 6: `features/auth/types.ts` を作る**
+- [x] **Step 6: `features/auth/types.ts` を作る**
 
 ```ts
 // apps/mobile/src/features/auth/types.ts
-import type { UserId, UserRole } from '@meshimap/core';
+import type { Role, UserId } from '@meshimap/core';
 
 /**
  * アプリ全体が参照する唯一の認証状態。
@@ -374,28 +490,34 @@ export type AuthState =
   /** セッションはあるがロールが取れない。ロールが決まらない以上どのグループにも入れない */
   | { status: 'profile-unavailable'; retry: () => void }
   /** セッションとロールが揃った */
-  | { status: 'authenticated'; userId: UserId; role: UserRole; displayName: string };
+  | { status: 'authenticated'; userId: UserId; role: Role; displayName: string };
 ```
 
-- [ ] **Step 7: テストが通ることを確認する**
+- [x] **Step 7: テストが通ることを確認する**
 
-Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- constants/auth`
-Expected: PASS（6 件）
+Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- src/constants`
+Expected: PASS（11 件 = auth 6 + http 2 + api 3）
 
-- [ ] **Step 8: わざと壊してテストが落ちることを確認する**
+- [x] **Step 8: わざと壊してテストが落ちることを確認する**
 
 `ROLE_HOME_ROUTES.owner` を `'/home'` に書き換え、「着地ルートはロールごとに重複しない」が**失敗すること**を確認してから元に戻す。
 続けて `ROLE_HOME_ROUTES.admin` を `'/(admin)/overview'` に書き換え、「着地ルートにグループ名を含めない」が**失敗すること**を確認してから元に戻す。
 
-- [ ] **Step 9: 型チェックが通ることを確認する**
+- [x] **Step 9: 型チェックと Lint が通ることを確認する**
 
-Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm run typecheck -w @meshimap/mobile`
-Expected: エラーなし（`ROLE_HOME_ROUTES` の各パスはこの時点ではまだファイルが無いが、`.expo/types` が未生成のうちは `Href` が `string | HrefObject` に解決されるため通る。Task 5-7 でファイルを作ったあと再度確認する）
+Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm run typecheck -w @meshimap/mobile && npm run lint -w @meshimap/mobile`
+Expected: エラーなし、warning もなし（`ROLE_HOME_ROUTES` の各パスはこの時点ではまだファイルが無いが、`.expo/types` が未生成のうちは `Href` が `string | HrefObject` に解決されるため通る。Task 5-7 でファイルを作ったあと再度確認する）
 
-- [ ] **Step 10: コミットする**
+- [x] **Step 10: カバレッジが 100% のままであることを確認する**
+
+Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm run test:coverage -w @meshimap/mobile`
+Expected: statements / branches / functions / lines すべて 100%。
+**このタスク以降、実装ファイルを追加したステップの直後には必ずこのコマンドを通すこと。**
+
+- [x] **Step 11: コミットする**
 
 ```bash
-git add apps/mobile/src/constants/auth.ts apps/mobile/src/constants/auth.test.ts apps/mobile/src/constants/api.ts apps/mobile/src/constants/http.ts apps/mobile/src/features/auth/types.ts
+git add apps/mobile/src/constants/auth.ts apps/mobile/src/constants/auth.test.ts apps/mobile/src/constants/api.ts apps/mobile/src/constants/api.test.ts apps/mobile/src/constants/http.ts apps/mobile/src/constants/http.test.ts apps/mobile/src/features/auth/types.ts
 git commit -m "feat(mobile): 認証まわりの定数と認証状態の型を追加する"
 ```
 
@@ -450,22 +572,33 @@ const mockExpoClient = jest.fn((options: unknown) => ({ id: 'expo', options }));
 jest.mock('better-auth/react', () => ({ createAuthClient: mockCreateAuthClient }));
 jest.mock('@better-auth/expo', () => ({ expoClient: mockExpoClient }));
 
+/**
+ * authClient はモジュールの読み込み時に 1 回だけ生成されるので、
+ * 呼び出し引数を検証するにはモジュールを読み直す必要がある。
+ * 動的 import() は Jest の CJS 環境（--experimental-vm-modules なし）では
+ * `A dynamic import callback was invoked without --experimental-vm-modules` で落ちるため require を使う。
+ */
+function loadAuthClient(): typeof import('./auth-client') {
+  jest.resetModules();
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  return require('./auth-client');
+}
+
 describe('authClient', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.resetModules();
   });
 
-  it('API のベース URL と Better Auth のマウントパスを渡して生成される', async () => {
-    await import('./auth-client');
+  it('API のベース URL と Better Auth のマウントパスを渡して生成される', () => {
+    loadAuthClient();
 
     expect(mockCreateAuthClient).toHaveBeenCalledWith(
       expect.objectContaining({ baseURL: API_BASE_URL, basePath: AUTH_BASE_PATH }),
     );
   });
 
-  it('expo プラグインに SecureStore の 4 メソッドを渡す', async () => {
-    await import('./auth-client');
+  it('expo プラグインに SecureStore の 4 メソッドを渡す', () => {
+    loadAuthClient();
 
     const [options] = mockExpoClient.mock.calls[0] ?? [];
     const storage = (options as { storage: Record<string, unknown> }).storage;
@@ -477,16 +610,16 @@ describe('authClient', () => {
     expect(typeof storage.getItemAsync).toBe('function');
   });
 
-  it('expo プラグインに app.json と同じ scheme と専用の保存接頭辞を渡す', async () => {
-    await import('./auth-client');
+  it('expo プラグインに app.json と同じ scheme と専用の保存接頭辞を渡す', () => {
+    loadAuthClient();
 
     expect(mockExpoClient).toHaveBeenCalledWith(
       expect.objectContaining({ scheme: APP_SCHEME, storagePrefix: AUTH_STORAGE_PREFIX }),
     );
   });
 
-  it('expo プラグインが plugins 配列に載っている', async () => {
-    await import('./auth-client');
+  it('expo プラグインが plugins 配列に載っている', () => {
+    loadAuthClient();
 
     const [options] = mockCreateAuthClient.mock.calls[0] ?? [];
     const plugins = (options as { plugins: { id: string }[] }).plugins;
@@ -495,6 +628,10 @@ describe('authClient', () => {
   });
 });
 ```
+
+`mockCreateAuthClient` / `mockExpoClient` が `mock` 始まりなのは必須。`babel-plugin-jest-hoist` は
+`jest.mock` の factory から参照できる外部変数を `/^mock/i` にマッチする名前だけに限定している
+（`node_modules/babel-plugin-jest-hoist/build/index.js:77`）。
 
 Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- auth-client`
 Expected: FAIL（`Cannot find module './auth-client'`）
@@ -546,9 +683,12 @@ Expected: PASS（4 件）
 続けて `storage: SecureStore` を `storage: { getItem: () => null, getItemAsync: async () => null, setItem: () => {}, setItemAsync: async () => {} }` のような揮発ストレージに差し替え、テストが**通ってしまう**ことを確認する（= このテストは「SecureStore であること」までは保証していない）。そこで以下の 1 件を追加してから元に戻す。
 
 ```ts
-it('保存先が expo-secure-store のモジュールそのものである', async () => {
-  const secureStore = await import('expo-secure-store');
-  await import('./auth-client');
+it('保存先が expo-secure-store のモジュールそのものである', () => {
+  loadAuthClient();
+  // loadAuthClient() の中で jest.resetModules() が走るため、先に読むと別インスタンスになる。
+  // auth-client が掴んだのと同じ実体を得るには、読み込んだ「あと」に require する
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const secureStore = require('expo-secure-store');
 
   const [options] = mockExpoClient.mock.calls[0] ?? [];
   expect((options as { storage: unknown }).storage).toBe(secureStore);
@@ -577,6 +717,10 @@ Phase 4（API 基盤）は並行作業中で `@meshimap/api` はまだ `AppType`
 - Create: `apps/mobile/src/lib/api-client.ts`
 - Create: `apps/mobile/src/lib/api-client.test.ts`
 
+> `api-types.ts` は型宣言だけで実行文を持たないため、カバレッジ集計上の statements が 0 になり
+> 100% 扱いになる（`apps/mobile/coverage/coverage-summary.json` の `features/auth/types.ts` が
+> `{"s":100,"b":100,"f":100,"l":100,"st":0}` になっているのと同じ理屈）。専用テストは不要。
+
 **Interfaces:**
 
 - Consumes:
@@ -584,9 +728,9 @@ Phase 4（API 基盤）は並行作業中で `@meshimap/api` はまだ `AppType`
   - `ClientRequestOptions` の `headers?: Record<string, string> | (() => Record<string, string> | Promise<Record<string, string>>)`（`node_modules/hono/dist/types/client/types.d.ts`）
   - `type Schema = { [Path: string]: { [Method: \`$${Lowercase<string>}\`]: Endpoint } }`/`type Endpoint = { input: any; output: any; outputFormat: ResponseFormat; status: StatusCode }`/`type BlankEnv = {}`（`node_modules/hono/dist/types/types.d.ts:477-488, :12`）
   - `authClient.getCookie(): Promise<string>`（Task 5-2）
-  - `type UserRole`, `type UserId` from `@meshimap/core`
+  - `type Role`, `type UserId` from `@meshimap/core`
 - Produces:
-  - `type MeResponseBody = { user: { id: string; email: string; name: string; isEmailVerified: boolean }; profile: { userId: string; role: UserRole; displayName: string; avatarKey: string | null; status: 'active' | 'suspended' } }`
+  - `type MeResponseBody = { user: { id: string; email: string; name: string; isEmailVerified: boolean }; profile: { userId: string; role: Role; displayName: string; avatarKey: string | null; status: 'active' | 'suspended' } }`
   - `type AppType = Hono<BlankEnv, MobileApiSchema, '/'>`（暫定。Phase 4 完了後は `@meshimap/api` から import）
   - `const apiClient` — `apiClient.api.me.$get()` が `Response` を返す
 
@@ -594,6 +738,8 @@ Phase 4（API 基盤）は並行作業中で `@meshimap/api` はまだ `AppType`
 
 ```ts
 // apps/mobile/src/lib/api-client.test.ts
+import { buildAuthHeaders } from './api-client';
+
 const mockGetCookie = jest.fn<Promise<string>, []>();
 
 jest.mock('./auth-client', () => ({ authClient: { getCookie: mockGetCookie } }));
@@ -605,7 +751,6 @@ describe('apiClient のヘッダ供給', () => {
 
   it('保存済み Cookie があれば cookie ヘッダとして載せる', async () => {
     mockGetCookie.mockResolvedValue('meshimap-auth.session_token=abc');
-    const { buildAuthHeaders } = await import('./api-client');
 
     await expect(buildAuthHeaders()).resolves.toEqual({
       cookie: 'meshimap-auth.session_token=abc',
@@ -616,7 +761,6 @@ describe('apiClient のヘッダ供給', () => {
     // 未ログイン時 getCookie は '' を返す（@better-auth/expo の getCookie 実装）。
     // 空の cookie ヘッダを送ると一部のプロキシが 400 を返すため落とす
     mockGetCookie.mockResolvedValue('');
-    const { buildAuthHeaders } = await import('./api-client');
 
     await expect(buildAuthHeaders()).resolves.toEqual({});
   });
@@ -624,12 +768,16 @@ describe('apiClient のヘッダ供給', () => {
   it('Cookie の取得に失敗してもヘッダ生成は落ちない', async () => {
     // ここで例外を投げると全リクエストが死ぬ。未認証扱いで続行する
     mockGetCookie.mockRejectedValue(new Error('secure store unavailable'));
-    const { buildAuthHeaders } = await import('./api-client');
 
     await expect(buildAuthHeaders()).resolves.toEqual({});
   });
 });
 ```
+
+`buildAuthHeaders` は呼び出しのたびに `authClient.getCookie()` を読むので、モジュールを読み直す
+必要はない。`jest.mock` は `babel-plugin-jest-hoist` によって import より前に巻き上げられるため、
+静的 import のままモックが効く。**ここで `await import('./api-client')` を使ってはいけない**
+（Jest の CJS 環境では `A dynamic import callback was invoked without --experimental-vm-modules` になる）。
 
 Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- api-client`
 Expected: FAIL（`Cannot find module './api-client'`）
@@ -638,7 +786,7 @@ Expected: FAIL（`Cannot find module './api-client'`）
 
 ```ts
 // apps/mobile/src/lib/api-types.ts
-import type { UserRole } from '@meshimap/core';
+import type { Role } from '@meshimap/core';
 import type { Hono } from 'hono';
 import type { BlankEnv } from 'hono/types';
 
@@ -664,7 +812,7 @@ export interface MeResponseBody {
   };
   profile: {
     userId: string;
-    role: UserRole;
+    role: Role;
     displayName: string;
     avatarKey: string | null;
     status: 'active' | 'suspended';
@@ -753,6 +901,8 @@ git commit -m "feat(mobile): Hono RPC の API クライアントを追加する"
 
 - Create: `apps/mobile/src/features/auth/auth-error.ts`
 - Create: `apps/mobile/src/features/auth/auth-error.test.ts`
+- Create: `apps/mobile/src/features/auth/schema.ts`
+- Create: `apps/mobile/src/features/auth/schema.test.ts`
 - Create: `apps/mobile/src/features/auth/api.ts`
 - Create: `apps/mobile/src/features/auth/api.test.ts`
 
@@ -765,8 +915,10 @@ git commit -m "feat(mobile): Hono RPC の API クライアントを追加する"
   - `authClient.signOut()`（同 :294）
   - レスポンスは `{ data: T; error: null } | { data: null; error: { message?: string } & { status: number; statusText: string } }`
   - `apiClient.api.me.$get()`（Task 5-3）
-  - `@meshimap/core` の `type SignInInput`, `type SignUpInput`, `type PasswordResetRequestInput`
 - Produces:
+  - `const signInSchema` / `const signUpSchema` / `const passwordResetRequestSchema`（**モバイル側で定義する**。`@meshimap/core` に認証系スキーマは存在しない）
+  - `type SignInInput = { email: string; password: string }`、`type SignUpInput = { displayName: string; email: string; password: string }`、`type PasswordResetRequestInput = { email: string }`
+  - `const PASSWORD_MIN_LENGTH: 8`、`const PASSWORD_MAX_LENGTH: 128`、`const DISPLAY_NAME_MAX_LENGTH: 50`
   - `class AuthError extends Error { readonly kind: AuthErrorKind }`
   - `type AuthErrorKind = 'invalid-credentials' | 'email-already-used' | 'rate-limited' | 'network' | 'unknown'`
   - `function toAuthError(error: { status: number; message?: string | undefined } | null): AuthError`
@@ -894,7 +1046,169 @@ Expected: PASS（7 件）
 
 `default:` の `new AuthError('unknown')` を `new AuthError(error.message === undefined ? 'unknown' : 'invalid-credentials')` に書き換え、「未知の status は unknown になり、サーバ文言をそのまま画面に出さない」が**失敗すること**を確認してから元に戻す。
 
-- [ ] **Step 5: 失敗するテストを書く（api）**
+- [ ] **Step 5: 入力スキーマ `features/auth/schema.ts` と `schema.test.ts` を作る**
+
+`@meshimap/core` に認証系のスキーマは**無い**。`packages/core/src/index.ts` が export するスキーマは
+`roleSchema` / `identifierSchema` / `shopCreateSchema` / `shopUpdateSchema` / `reviewCreateSchema` /
+`reservationCreateSchema` などで、`grep -rn "signIn\|signUp\|passwordReset" packages/core/src` は 0 件。
+しかも `packages/core/src/index.test.ts` が公開 export 名の一覧を完全一致で固定しているため、
+core に足すと core 本体とそのテストの両方を書き換えることになる。
+認証フォームの入力形はモバイル固有なので**モバイル側に置く**。
+
+```ts
+// apps/mobile/src/features/auth/schema.ts
+import { z } from 'zod';
+
+/**
+ * Better Auth のサーバ側既定値に合わせる
+ * （node_modules/better-auth/dist/context/create-context.mjs:186-187 の
+ * `minPasswordLength: options.emailAndPassword?.minPasswordLength || 8` /
+ * `maxPasswordLength: ... || 128`）。
+ * クライアントがサーバより緩いと、通ると思った入力が 400 で戻ってきて原因を追いにくい。
+ */
+export const PASSWORD_MIN_LENGTH = 8;
+export const PASSWORD_MAX_LENGTH = 128;
+
+/** Better Auth の user.name にそのまま入る。長すぎる表示名は一覧のレイアウトを壊す */
+export const DISPLAY_NAME_MAX_LENGTH = 50;
+
+const EMAIL_INVALID_MESSAGE = 'メールアドレスの形式が正しくありません。';
+const PASSWORD_REQUIRED_MESSAGE = 'パスワードを入力してください。';
+const PASSWORD_MIN_MESSAGE = `パスワードは ${PASSWORD_MIN_LENGTH} 文字以上で入力してください。`;
+const PASSWORD_MAX_MESSAGE = `パスワードは ${PASSWORD_MAX_LENGTH} 文字以内で入力してください。`;
+const DISPLAY_NAME_REQUIRED_MESSAGE = '表示名を入力してください。';
+const DISPLAY_NAME_MAX_MESSAGE = `表示名は ${DISPLAY_NAME_MAX_LENGTH} 文字以内で入力してください。`;
+
+/**
+ * サインインはサーバに保存済みのパスワードを送るだけなので、長さの下限は課さない。
+ * ここで 8 文字を要求すると、規則を変える前に登録した利用者がログインできなくなる。
+ */
+export const signInSchema = z.object({
+  email: z.email({ error: EMAIL_INVALID_MESSAGE }),
+  password: z.string().min(1, { error: PASSWORD_REQUIRED_MESSAGE }),
+});
+
+/** 新規登録はこれから保存する値なので、サーバと同じ長さ制約をここで課す */
+export const signUpSchema = z.object({
+  displayName: z
+    .string()
+    .trim()
+    .min(1, { error: DISPLAY_NAME_REQUIRED_MESSAGE })
+    .max(DISPLAY_NAME_MAX_LENGTH, { error: DISPLAY_NAME_MAX_MESSAGE }),
+  email: z.email({ error: EMAIL_INVALID_MESSAGE }),
+  password: z
+    .string()
+    .min(PASSWORD_MIN_LENGTH, { error: PASSWORD_MIN_MESSAGE })
+    .max(PASSWORD_MAX_LENGTH, { error: PASSWORD_MAX_MESSAGE }),
+});
+
+export const passwordResetRequestSchema = z.object({
+  email: z.email({ error: EMAIL_INVALID_MESSAGE }),
+});
+
+/**
+ * 3 つとも `transform` / `default` を持たないので `z.input` と `z.output` が一致する。
+ * `zodResolver` は `Resolver<z4.input<T>, Context, z4.output<T>>` を返すため
+ * （`node_modules/@hookform/resolvers/zod/dist/zod.d.ts`）、ここがズレると
+ * `useForm<SignInInput>` に代入できなくなる。スキーマを触るときはこの条件を壊さないこと。
+ * （`.trim()` は値を変えるが TypeScript の型は string のままなので条件を壊さない）
+ */
+export type SignInInput = z.infer<typeof signInSchema>;
+export type SignUpInput = z.infer<typeof signUpSchema>;
+export type PasswordResetRequestInput = z.infer<typeof passwordResetRequestSchema>;
+```
+
+```ts
+// apps/mobile/src/features/auth/schema.test.ts
+import {
+  DISPLAY_NAME_MAX_LENGTH,
+  PASSWORD_MAX_LENGTH,
+  PASSWORD_MIN_LENGTH,
+  passwordResetRequestSchema,
+  signInSchema,
+  signUpSchema,
+} from './schema';
+
+const VALID_EMAIL = 'taro@example.com';
+const VALID_PASSWORD = 'Passw0rd!';
+
+describe('signInSchema', () => {
+  it('メールアドレスとパスワードが揃っていれば通る', () => {
+    expect(signInSchema.safeParse({ email: VALID_EMAIL, password: VALID_PASSWORD }).success).toBe(
+      true,
+    );
+  });
+
+  it('空文字は弾く（送信ボタンから API を呼ばせないため）', () => {
+    expect(signInSchema.safeParse({ email: '', password: '' }).success).toBe(false);
+  });
+
+  it('メールアドレスの形式が不正なら弾く', () => {
+    expect(signInSchema.safeParse({ email: 'taro', password: VALID_PASSWORD }).success).toBe(false);
+  });
+
+  it('既存利用者を締め出さないよう、パスワードの長さは検証しない', () => {
+    expect(signInSchema.safeParse({ email: VALID_EMAIL, password: 'a' }).success).toBe(true);
+  });
+});
+
+describe('signUpSchema', () => {
+  const validInput = { displayName: '山田太郎', email: VALID_EMAIL, password: VALID_PASSWORD };
+
+  it('表示名・メール・パスワードが揃っていれば通る', () => {
+    expect(signUpSchema.safeParse(validInput).success).toBe(true);
+  });
+
+  it('表示名の前後の空白は落とす', () => {
+    const result = signUpSchema.safeParse({ ...validInput, displayName: '  山田太郎  ' });
+
+    expect(result.success && result.data.displayName).toBe('山田太郎');
+  });
+
+  it('空白だけの表示名は弾く', () => {
+    expect(signUpSchema.safeParse({ ...validInput, displayName: '   ' }).success).toBe(false);
+  });
+
+  it('表示名は上限ちょうどなら通り、1 文字超過は弾く（境界値）', () => {
+    const atMax = 'あ'.repeat(DISPLAY_NAME_MAX_LENGTH);
+
+    expect(signUpSchema.safeParse({ ...validInput, displayName: atMax }).success).toBe(true);
+    expect(signUpSchema.safeParse({ ...validInput, displayName: `${atMax}あ` }).success).toBe(
+      false,
+    );
+  });
+
+  it('パスワードは下限ちょうどなら通り、1 文字不足は弾く（境界値）', () => {
+    const atMin = 'a'.repeat(PASSWORD_MIN_LENGTH);
+
+    expect(signUpSchema.safeParse({ ...validInput, password: atMin }).success).toBe(true);
+    expect(signUpSchema.safeParse({ ...validInput, password: atMin.slice(1) }).success).toBe(false);
+  });
+
+  it('パスワードは上限ちょうどなら通り、1 文字超過は弾く（境界値）', () => {
+    // サーバ既定の maxPasswordLength: 128 と一致させる。緩めるとサーバで 400 になる
+    const atMax = 'a'.repeat(PASSWORD_MAX_LENGTH);
+
+    expect(signUpSchema.safeParse({ ...validInput, password: atMax }).success).toBe(true);
+    expect(signUpSchema.safeParse({ ...validInput, password: `${atMax}a` }).success).toBe(false);
+  });
+});
+
+describe('passwordResetRequestSchema', () => {
+  it('メールアドレスだけで通る', () => {
+    expect(passwordResetRequestSchema.safeParse({ email: VALID_EMAIL }).success).toBe(true);
+  });
+
+  it('形式が不正なら弾く', () => {
+    expect(passwordResetRequestSchema.safeParse({ email: 'taro' }).success).toBe(false);
+  });
+});
+```
+
+Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- features/auth/schema`
+Expected: PASS（12 件）
+
+- [ ] **Step 6: 失敗するテストを書く（api）**
 
 ```ts
 // apps/mobile/src/features/auth/api.test.ts
@@ -1063,13 +1377,12 @@ describe('fetchMyProfile', () => {
 Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- features/auth/api`
 Expected: FAIL（`Cannot find module './api'`）
 
-- [ ] **Step 6: `features/auth/api.ts` を作る**
+- [ ] **Step 7: `features/auth/api.ts` を作る**
 
 ```ts
 // apps/mobile/src/features/auth/api.ts
-import type { PasswordResetRequestInput, SignInInput, SignUpInput } from '@meshimap/core';
-
 import { toAuthError } from '@/features/auth/auth-error';
+import type { PasswordResetRequestInput, SignInInput, SignUpInput } from '@/features/auth/schema';
 import { apiClient } from '@/lib/api-client';
 import type { MeResponseBody } from '@/lib/api-types';
 import { authClient } from '@/lib/auth-client';
@@ -1142,20 +1455,20 @@ export async function fetchMyProfile(): Promise<MeResponseBody> {
 }
 ```
 
-- [ ] **Step 7: テストが通ることを確認する**
+- [ ] **Step 8: テストが通ることを確認する**
 
 Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- features/auth/api`
-Expected: PASS（8 件）
+Expected: PASS（9 件）
 
-- [ ] **Step 8: わざと壊してテストが落ちることを確認する**
+- [ ] **Step 9: わざと壊してテストが落ちることを確認する**
 
 `signOutFromApp` の `if (result.error !== null) { logger.warn(...) }` を `throwIfFailed(result, 'signOut')` に書き換え、「サーバがエラーを返しても例外にしない」が**失敗すること**を確認してから元に戻す。
 続けて `signUpWithEmail` の `name: input.displayName` を `name: input.email` に書き換え、「displayName を Better Auth の name として送る」が**失敗すること**を確認してから元に戻す。
 
-- [ ] **Step 9: コミットする**
+- [ ] **Step 10: コミットする**
 
 ```bash
-git add apps/mobile/src/features/auth/auth-error.ts apps/mobile/src/features/auth/auth-error.test.ts apps/mobile/src/features/auth/api.ts apps/mobile/src/features/auth/api.test.ts
+git add apps/mobile/src/features/auth/auth-error.ts apps/mobile/src/features/auth/auth-error.test.ts apps/mobile/src/features/auth/schema.ts apps/mobile/src/features/auth/schema.test.ts apps/mobile/src/features/auth/api.ts apps/mobile/src/features/auth/api.test.ts
 git commit -m "feat(mobile): 認証 API ラッパーとエラーの日本語化を追加する"
 ```
 
@@ -1174,8 +1487,13 @@ git commit -m "feat(mobile): 認証 API ラッパーとエラーの日本語化�
 **Files:**
 
 - Create: `apps/mobile/src/lib/query-client.ts`
+- Create: `apps/mobile/src/lib/query-client.test.ts`
 - Create: `apps/mobile/src/features/auth/auth-context.tsx`
 - Create: `apps/mobile/src/features/auth/auth-context.test.tsx`
+
+> `query-client.ts` は `auth-context.test.tsx` から `createQueryClient()` を呼ぶので
+> カバレッジ上は 100% になるが、他テスト頼みの 100% は auth-context のテストを書き換えた
+> 瞬間に崩れる。既定値そのものを固定する専用テストを同じステップで置く。
 
 **Interfaces:**
 
@@ -1341,6 +1659,36 @@ export function createQueryClient(): QueryClient {
 export const queryClient = createQueryClient();
 ```
 
+```ts
+// apps/mobile/src/lib/query-client.test.ts
+import { PROFILE_QUERY_RETRY_COUNT, PROFILE_QUERY_STALE_TIME_MS } from '@/constants/auth';
+
+import { createQueryClient, queryClient } from './query-client';
+
+describe('createQueryClient', () => {
+  it('クエリの既定値に constants/auth.ts の設定を反映する', () => {
+    const { queries } = createQueryClient().getDefaultOptions();
+
+    expect(queries?.retry).toBe(PROFILE_QUERY_RETRY_COUNT);
+    expect(queries?.staleTime).toBe(PROFILE_QUERY_STALE_TIME_MS);
+  });
+
+  it('呼ぶたびに別インスタンスを返す（テスト間でキャッシュを共有しないため）', () => {
+    expect(createQueryClient()).not.toBe(createQueryClient());
+  });
+
+  it('アプリ実行時の単一インスタンスも同じ既定値を持つ', () => {
+    expect(queryClient.getDefaultOptions().queries?.staleTime).toBe(PROFILE_QUERY_STALE_TIME_MS);
+  });
+});
+```
+
+`getDefaultOptions(): DefaultOptions` は `QueryClient` の公開メソッド
+（`node_modules/@tanstack/query-core/build/modern/hydration-Bjs0MSgg.d.ts:502`）。
+
+Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- query-client`
+Expected: PASS（3 件）
+
 - [ ] **Step 3: `features/auth/auth-context.tsx` を作る**
 
 ```tsx
@@ -1431,7 +1779,7 @@ Expected: PASS（6 件）
 - [ ] **Step 6: コミットする**
 
 ```bash
-git add apps/mobile/src/lib/query-client.ts apps/mobile/src/features/auth/auth-context.tsx apps/mobile/src/features/auth/auth-context.test.tsx
+git add apps/mobile/src/lib/query-client.ts apps/mobile/src/lib/query-client.test.ts apps/mobile/src/features/auth/auth-context.tsx apps/mobile/src/features/auth/auth-context.test.tsx
 git commit -m "feat(mobile): 復元中を表現できる認証状態コンテキストを追加する"
 ```
 
@@ -1623,7 +1971,7 @@ git commit -m "feat(mobile): 画面の枠と認証ローディング画面を追
 - Create: `apps/mobile/src/app/(admin)/(tabs)/_layout.tsx`
 - Create: `apps/mobile/src/app/(admin)/(tabs)/overview.tsx`
 - Create: `apps/mobile/src/app/(admin)/(tabs)/more.tsx`
-- Test: `apps/mobile/src/app/route-files.test.ts`
+- Create: `apps/mobile/src/app/route-files.test.ts`
 
 **Interfaces:**
 
@@ -2191,10 +2539,21 @@ git commit -m "feat(mobile): ロール別ルートグループの骨組みを追
 
 - Modify: `apps/mobile/src/app/_layout.tsx`
 - Modify: `apps/mobile/src/hooks/use-app-fonts.ts`
-- Create: `apps/mobile/src/hooks/use-app-fonts.test.tsx`
+- Modify: `apps/mobile/src/hooks/use-app-fonts.test.ts`（既存。拡張子は `.tsx` ではなく `.ts`）
 - Modify: `apps/mobile/jest.config.js`
 - Create: `apps/mobile/jest-css-stub.js`
-- Test: `apps/mobile/src/app/_layout.test.tsx`
+- Create: `apps/mobile/src/app/_layout.test.tsx`
+
+> このタスクが増やす実装ファイルのうち、`jest-css-stub.js` は `src/` の外の `.js` で
+> `collectCoverageFrom: ['src/**/*.{ts,tsx}', ...]` に当たらず、`src/app/_layout.tsx` は
+> **この時点ではまだ** `!src/app/**` で除外されているため、カバレッジ 100% 閾値には影響しない。
+> 一方 `src/hooks/use-app-fonts.ts` は集計対象なので、追加した分岐のテストを
+> 既存の `use-app-fonts.test.ts` に必ず追記する（Step 1）。
+>
+> `jest.config.js` はこのタスクでも触る（Step 4 の `moduleNameMapper`）が、
+> **`collectCoverageFrom` には手を付けない**。`!src/app/**` を外すのは全画面が揃う
+> Task 5-21 Step 4-a で、理由もそこに書いてある（未確認事項 #13 の決着）。
+> ここで外すと、まだ存在しない 24 ファイル分の 0% で Task 5-9 以降が赤いゲートを跨ぐ。
 
 **Interfaces:**
 
@@ -2204,7 +2563,7 @@ git commit -m "feat(mobile): ロール別ルートグループの骨組みを追
   - `useFonts(map): [boolean, Error | null]`（`node_modules/expo-font/build/FontHooks.js` で確認。**失敗時は第 1 要素が false のまま**）
   - `SplashScreen.preventAutoHideAsync(): Promise<boolean>` / `SplashScreen.hideAsync(): Promise<boolean>`
   - `Stack.Protected: FunctionComponent<{ guard: boolean; children?: ReactNode }>`
-  - `USER_ROLES` from `@meshimap/core`
+  - `ROLE_USER` / `ROLE_OWNER` / `ROLE_ADMIN` from `@meshimap/core`
 - Produces:
   - `export const unstable_settings = { anchor: 'index' }`
   - `export default function RootLayout(): ReactElement`
@@ -2212,54 +2571,53 @@ git commit -m "feat(mobile): ロール別ルートグループの骨組みを追
 
 - [ ] **Step 1: 失敗するテストを書く（フォント読込の決着）**
 
-```tsx
-// apps/mobile/src/hooks/use-app-fonts.test.tsx
-import { renderHook } from '@testing-library/react-native';
+`apps/mobile/src/hooks/use-app-fonts.test.ts` は **すでに存在し 5 件のテストが通っている**（JSX を含まないので拡張子は `.ts`。`.tsx` で新規作成すると同じフックのテストが 2 本並立してしまう）。新規作成ではなく既存ファイルへ追記する。
 
-const mockUseFonts = jest.fn();
+まずヘルパ `renderAppFonts` を「読み込みエラーも指定できる」形に広げる。第 2 引数を省略可能にして、既存 5 件の呼び出し（`renderAppFonts(true)` など）をそのまま動かす。
 
-jest.mock('expo-font', () => ({ useFonts: mockUseFonts }));
+```ts
+// apps/mobile/src/hooks/use-app-fonts.test.ts（既存ヘルパを置き換える）
+/**
+ * 指定した読み込み状態でフックを描画する。RNTL 14 の renderHook は async
+ * （`node_modules/@testing-library/react-native/dist/render-hook.d.ts` の戻り値が `Promise<...>`）。
+ * fontLoadingError は「読み込みに失敗したが決着はした」ケースを作るために使う
+ */
+async function renderAppFonts(isLoaded: boolean, fontLoadingError: Error | null = null) {
+  useFontsMock.mockReturnValue([isLoaded, fontLoadingError]);
+  const { result } = await renderHook(() => useAppFonts());
+  return result;
+}
+```
 
-import { useAppFonts } from './use-app-fonts';
+続けて `describe('useAppFonts', ...)` の末尾へ 3 件を追記する。既存 2 件が `areFontsLoaded` を見ているので、新規分は `hasFontLoadingSettled` に絞る。
 
-describe('useAppFonts', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
+```ts
+// apps/mobile/src/hooks/use-app-fonts.test.ts（describe の末尾に追記）
+it('読み込み中は hasFontLoadingSettled が false', async () => {
+  const result = await renderAppFonts(false);
 
-  it('読み込み中はどちらも false', () => {
-    mockUseFonts.mockReturnValue([false, null]);
+  expect(result.current.hasFontLoadingSettled).toBe(false);
+});
 
-    const { result } = renderHook(() => useAppFonts());
+it('読み込みが終わると hasFontLoadingSettled が true', async () => {
+  const result = await renderAppFonts(true);
 
-    expect(result.current.areFontsLoaded).toBe(false);
-    expect(result.current.hasFontLoadingSettled).toBe(false);
-  });
+  expect(result.current.hasFontLoadingSettled).toBe(true);
+});
 
-  it('読み込み完了でどちらも true', () => {
-    mockUseFonts.mockReturnValue([true, null]);
+it('読み込みに失敗しても hasFontLoadingSettled は true になる', async () => {
+  // expo-font の useFonts は失敗すると loaded を false に固定する
+  // （node_modules/expo-font/build/FontHooks.js の useRuntimeFonts は catch で setError するだけ）。
+  // これを決着扱いにしないとスプラッシュが永久に閉じず、アプリが起動不能になる
+  const result = await renderAppFonts(false, new Error('font download failed'));
 
-    const { result } = renderHook(() => useAppFonts());
-
-    expect(result.current.areFontsLoaded).toBe(true);
-    expect(result.current.hasFontLoadingSettled).toBe(true);
-  });
-
-  it('読み込み失敗時は areFontsLoaded は false のまま、決着はしたと見なす', () => {
-    // expo-font の useFonts は失敗すると loaded を false に固定する。
-    // これを決着扱いにしないとスプラッシュが永久に閉じない
-    mockUseFonts.mockReturnValue([false, new Error('font download failed')]);
-
-    const { result } = renderHook(() => useAppFonts());
-
-    expect(result.current.areFontsLoaded).toBe(false);
-    expect(result.current.hasFontLoadingSettled).toBe(true);
-  });
+  expect(result.current.areFontsLoaded).toBe(false);
+  expect(result.current.hasFontLoadingSettled).toBe(true);
 });
 ```
 
 Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- use-app-fonts`
-Expected: FAIL（`hasFontLoadingSettled` が `undefined`）
+Expected: FAIL（`hasFontLoadingSettled` が `undefined`。既存 5 件は PASS のまま）
 
 - [ ] **Step 2: `hooks/use-app-fonts.ts` を変更する**
 
@@ -2304,7 +2662,7 @@ export function useAppFonts(): AppFontsState {
 - [ ] **Step 3: テストが通ることを確認する**
 
 Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- use-app-fonts`
-Expected: PASS（3 件）
+Expected: PASS（既存 5 件 + 追加 3 件 = 8 件）
 
 - [ ] **Step 4: Jest で `global.css` を読めるようにする**
 
@@ -2332,7 +2690,7 @@ module.exports = {};
 
 ```tsx
 // apps/mobile/src/app/_layout.test.tsx
-import { USER_ROLES } from '@meshimap/core';
+import { ROLE_ADMIN, ROLE_OWNER, ROLE_USER } from '@meshimap/core';
 import { Slot } from 'expo-router';
 import { renderRouter, screen } from 'expo-router/testing-library';
 import type { ReactNode } from 'react';
@@ -2360,11 +2718,11 @@ import RootLayout, { unstable_settings } from './_layout';
 const AUTHENTICATED_USER: AuthState = {
   status: 'authenticated',
   userId: 'usr_1' as never,
-  role: USER_ROLES.user,
+  role: ROLE_USER,
   displayName: '山田太郎',
 };
-const AUTHENTICATED_OWNER: AuthState = { ...AUTHENTICATED_USER, role: USER_ROLES.owner };
-const AUTHENTICATED_ADMIN: AuthState = { ...AUTHENTICATED_USER, role: USER_ROLES.admin };
+const AUTHENTICATED_OWNER: AuthState = { ...AUTHENTICATED_USER, role: ROLE_OWNER };
+const AUTHENTICATED_ADMIN: AuthState = { ...AUTHENTICATED_USER, role: ROLE_ADMIN };
 
 /** グループごとに _layout を置かないとナビゲータが作られず、親スタックへ平坦化されてしまう */
 const ROUTE_STUBS = {
@@ -2525,7 +2883,7 @@ Expected: FAIL（`unstable_settings` が未 export）
 
 ```tsx
 // apps/mobile/src/app/_layout.tsx
-import { USER_ROLES } from '@meshimap/core';
+import { ROLE_ADMIN, ROLE_OWNER, ROLE_USER } from '@meshimap/core';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -2593,15 +2951,15 @@ function RootNavigator() {
           <Stack.Screen name="(auth)" />
         </Stack.Protected>
 
-        <Stack.Protected guard={isAuthenticated && authState.role === USER_ROLES.user}>
+        <Stack.Protected guard={isAuthenticated && authState.role === ROLE_USER}>
           <Stack.Screen name="(user)" />
         </Stack.Protected>
 
-        <Stack.Protected guard={isAuthenticated && authState.role === USER_ROLES.owner}>
+        <Stack.Protected guard={isAuthenticated && authState.role === ROLE_OWNER}>
           <Stack.Screen name="(owner)" />
         </Stack.Protected>
 
-        <Stack.Protected guard={isAuthenticated && authState.role === USER_ROLES.admin}>
+        <Stack.Protected guard={isAuthenticated && authState.role === ROLE_ADMIN}>
           <Stack.Screen name="(admin)" />
         </Stack.Protected>
       </Stack>
@@ -2617,7 +2975,7 @@ Expected: PASS（13 件）
 
 - [ ] **Step 8: わざと壊してテストが落ちることを確認する**
 
-`<Stack.Protected guard={isAuthenticated && authState.role === USER_ROLES.user}>` の guard を `isAuthenticated` に書き換え、「role=user は店舗管理者ルートへ入れない」が**失敗すること**を確認する。
+`<Stack.Protected guard={isAuthenticated && authState.role === ROLE_USER}>` の guard を `isAuthenticated` に書き換え、「role=user は店舗管理者ルートへ入れない」が**失敗すること**を確認する。
 続けて `useEffect` の条件を `if (hasFontLoadingSettled)` に書き換え、「復元中は閉じない（ログイン画面のちらつきを防ぐ）」が**失敗すること**を確認してから両方を元に戻す。
 
 - [ ] **Step 9: 既存テストの回帰を確認する**
@@ -2628,7 +2986,7 @@ Expected: 全件 PASS。特に `src/app/_dev/catalog.test.tsx` と `src/lib/jest
 - [ ] **Step 10: コミットする**
 
 ```bash
-git add apps/mobile/src/app/_layout.tsx apps/mobile/src/app/_layout.test.tsx apps/mobile/src/hooks/use-app-fonts.ts apps/mobile/src/hooks/use-app-fonts.test.tsx apps/mobile/jest.config.js apps/mobile/jest-css-stub.js
+git add apps/mobile/src/app/_layout.tsx apps/mobile/src/app/_layout.test.tsx apps/mobile/src/hooks/use-app-fonts.ts apps/mobile/src/hooks/use-app-fonts.test.ts apps/mobile/jest.config.js apps/mobile/jest-css-stub.js
 git commit -m "feat(mobile): ルートレイアウトにロール別アクセス制御とスプラッシュ制御を組み込む"
 ```
 
@@ -2640,7 +2998,7 @@ git commit -m "feat(mobile): ルートレイアウトにロール別アクセス
 
 - Modify: `apps/mobile/src/app/index.tsx`
 - Create: `apps/mobile/src/app/+not-found.tsx`
-- Test: `apps/mobile/src/app/index.test.tsx`
+- Create: `apps/mobile/src/app/index.test.tsx`
 
 **Interfaces:**
 
@@ -2655,7 +3013,7 @@ git commit -m "feat(mobile): ルートレイアウトにロール別アクセス
 
 ```tsx
 // apps/mobile/src/app/index.test.tsx
-import { USER_ROLES } from '@meshimap/core';
+import { ROLE_ADMIN, ROLE_OWNER, ROLE_USER } from '@meshimap/core';
 import { Slot } from 'expo-router';
 import { fireEvent, renderRouter, screen } from 'expo-router/testing-library';
 import { Text } from 'react-native';
@@ -2672,7 +3030,7 @@ import RootIndexScreen from './index';
 const AUTHENTICATED_USER: AuthState = {
   status: 'authenticated',
   userId: 'usr_1' as never,
-  role: USER_ROLES.user,
+  role: ROLE_USER,
   displayName: '山田太郎',
 };
 
@@ -2728,7 +3086,7 @@ describe('ロールディスパッチャ', () => {
   });
 
   it('role=owner は /dashboard へ飛ばす', async () => {
-    mockUseAuth.mockReturnValue({ ...AUTHENTICATED_USER, role: USER_ROLES.owner });
+    mockUseAuth.mockReturnValue({ ...AUTHENTICATED_USER, role: ROLE_OWNER });
 
     const app = await renderApp();
 
@@ -2736,7 +3094,7 @@ describe('ロールディスパッチャ', () => {
   });
 
   it('role=admin は /overview へ飛ばす', async () => {
-    mockUseAuth.mockReturnValue({ ...AUTHENTICATED_USER, role: USER_ROLES.admin });
+    mockUseAuth.mockReturnValue({ ...AUTHENTICATED_USER, role: ROLE_ADMIN });
 
     const app = await renderApp();
 
@@ -2879,7 +3237,7 @@ git commit -m "feat(mobile): index をロールディスパッチャにし 404 �
 **Files:**
 
 - Modify: `apps/mobile/src/components/ui/input.tsx`
-- Modify: `apps/mobile/src/components/ui/input.test.tsx`（既存 18 件はそのまま残し、回帰テストとして追記する）
+- Modify: `apps/mobile/src/components/ui/input.test.tsx`（既存 17 件はそのまま残し、回帰テストとして追記する）
 
 **Interfaces:**
 
@@ -2894,7 +3252,7 @@ git commit -m "feat(mobile): index をロールディスパッチャにし 404 �
 ```tsx
 // apps/mobile/src/components/ui/input.test.tsx の describe('Input') の中に追記する
 // ファイル先頭の import に INPUT_TEXT_BEHAVIORS を足す:
-//   import { Input, INPUT_TEXT_BEHAVIORS } from './input';
+//   import { INPUT_TEXT_BEHAVIORS, Input } from './input';
 
 it('textBehavior を渡すとキーボードと自動補完の設定が反映される', async () => {
   await render(
@@ -3143,7 +3501,7 @@ export function Input({
 - [ ] **Step 4: テストが通ることを確認する**
 
 Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- components/ui/input`
-Expected: PASS（既存 18 件 + 追加 6 件 = 24 件）。**既存 18 件が 1 件も落ちないことが回帰テストの合格条件。**
+Expected: PASS（既存 17 件 + 追加 6 件 = 23 件）。**既存 17 件が 1 件も落ちないことが回帰テストの合格条件。**
 
 - [ ] **Step 5: わざと壊してテストが落ちることを確認する**
 
@@ -3777,7 +4135,7 @@ git commit -m "feat(mobile): 認証フォームの共通部品を追加する"
 - Consumes:
   - `signInWithEmail(input: SignInInput): Promise<void>`（Task 5-4）
   - `toDisplayMessage(error: unknown): string | undefined`（Task 5-12）
-  - `@meshimap/core` の `signInSchema` と `type SignInInput = { email: string; password: string }`
+  - `signInSchema` と `type SignInInput = { email: string; password: string }`（Task 5-4 で作った `@/features/auth/schema`。`@meshimap/core` には無い）
     - **前提:** `signInSchema` は `transform` を含まない（`z.input` と `z.output` が一致する）こと。`zodResolver` は `Resolver<z4.input<T>, Context, z4.output<T>>` を返すため（`node_modules/@hookform/resolvers/zod/dist/zod.d.ts`）、両者がズレると `useForm<SignInInput>` に代入できない
   - `useForm` / `Controller`（`react-hook-form` 7.88.0。`ControllerRenderProps` は `{ onChange; onBlur; value; name; ref }`。`node_modules/react-hook-form/dist/types/controller.d.ts:11`）
   - `AuthFormScreen` / `FormErrorBanner`（Task 5-12）、`Input` / `INPUT_TEXT_BEHAVIORS`（Task 5-10）、`PasswordInput`（Task 5-11）、`Button`（既存）
@@ -4137,8 +4495,6 @@ Expected: FAIL（プレースホルダのままなので `sign-in-email-input` �
 ```tsx
 // apps/mobile/src/app/(auth)/sign-in.tsx
 import { zodResolver } from '@hookform/resolvers/zod';
-import type { SignInInput } from '@meshimap/core';
-import { signInSchema } from '@meshimap/core';
 import { router } from 'expo-router';
 import { Controller, useForm } from 'react-hook-form';
 import { View } from 'react-native';
@@ -4150,6 +4506,7 @@ import { INPUT_TEXT_BEHAVIORS, Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
 import { FORGOT_PASSWORD_ROUTE, SIGN_UP_ROUTE } from '@/constants/auth';
 import { signInWithEmail } from '@/features/auth/api';
+import { signInSchema, type SignInInput } from '@/features/auth/schema';
 import { useAuthMutation } from '@/features/auth/use-auth-mutation';
 
 /**
@@ -4267,7 +4624,7 @@ export default function SignInScreen() {
 
 Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- use-auth-mutation "app/(auth)/sign-in"`
 Expected: PASS（`use-auth-mutation` 7 件 + `sign-in` 画面 9 件）
-**「未入力のまま送信すると API を呼ばずに入力エラーを示す」が落ちる場合**は `@meshimap/core` の `signInSchema` が空文字を通している。Phase 2 側の課題なのでここでスキーマを書き足さず、`packages/core` の担当に連絡する。
+**「未入力のまま送信すると API を呼ばずに入力エラーを示す」が落ちる場合**は `@/features/auth/schema` の `signInSchema` が空文字を通している。`email` が `z.email()`、`password` が `z.string().min(1)` になっているか確認する（Task 5-4 Step 5）。
 
 - [ ] **Step 7: わざと壊してテストが落ちることを確認する**
 
@@ -4277,7 +4634,7 @@ Expected: PASS（`use-auth-mutation` 7 件 + `sign-in` 画面 9 件）
 - [ ] **Step 8: 型と lint を確認する**
 
 Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm run typecheck -w @meshimap/mobile && npm run lint -w @meshimap/mobile`
-Expected: エラーなし。`zodResolver(signInSchema)` が `useForm<SignInInput>` に代入できない場合、`signInSchema` に `transform` が含まれている（`z.input` ≠ `z.output`）。**ここで `as` で潰さず**、`packages/core` 側でスキーマを分けてもらう。
+Expected: エラーなし。`zodResolver(signInSchema)` が `useForm<SignInInput>` に代入できない場合、`signInSchema` に `z.input` と `z.output` をずらす要素（`transform` / `default` / `pipe`）が入っている。**ここで `as` で潰さず**、`@/features/auth/schema` 側から外す。
 
 - [ ] **Step 9: コミットする**
 
@@ -4306,7 +4663,7 @@ git commit -m "feat(mobile): サインイン画面と認証ミューテーショ
 - Consumes:
   - `signUpWithEmail(input: SignUpInput): Promise<void>`（Task 5-4）
   - `useAuthMutation`（Task 5-13）、`AuthFormScreen` / `FormErrorBanner`（Task 5-12）、`Input` / `INPUT_TEXT_BEHAVIORS`（Task 5-10）、`PasswordInput`（Task 5-11）、`Button`（既存）
-  - `@meshimap/core` の `signUpSchema` と `type SignUpInput = { displayName: string; email: string; password: string }`（`transform` を含まないこと）
+  - `signUpSchema` / `DISPLAY_NAME_MAX_LENGTH` と `type SignUpInput = { displayName: string; email: string; password: string }`（Task 5-4 の `@/features/auth/schema`。`z.input` と `z.output` が一致すること）
   - `HrefObject = { pathname: string; params?: UnknownInputParams }`（`node_modules/expo-router/build/typed-routes/types.d.ts:11`）
 - Produces:
   - `function buildVerifyEmailRoute(email: string): Href`
@@ -4522,8 +4879,6 @@ Expected: FAIL（プレースホルダのままなので入力欄が見つから
 ```tsx
 // apps/mobile/src/app/(auth)/sign-up.tsx
 import { zodResolver } from '@hookform/resolvers/zod';
-import type { SignUpInput } from '@meshimap/core';
-import { signUpSchema } from '@meshimap/core';
 import { router } from 'expo-router';
 import { Controller, useForm } from 'react-hook-form';
 
@@ -4534,12 +4889,11 @@ import { INPUT_TEXT_BEHAVIORS, Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
 import { SIGN_IN_ROUTE, buildVerifyEmailRoute } from '@/constants/auth';
 import { signUpWithEmail } from '@/features/auth/api';
+// 上限はスキーマと画面で二重管理しない。DISPLAY_NAME_MAX_LENGTH は schema.ts が唯一の出所
+import { DISPLAY_NAME_MAX_LENGTH, signUpSchema, type SignUpInput } from '@/features/auth/schema';
 import { useAuthMutation } from '@/features/auth/use-auth-mutation';
 
 const EMPTY_SIGN_UP_INPUT: SignUpInput = { displayName: '', email: '', password: '' };
-
-/** 表示名の上限。D1 の profiles.display_name と合わせる（設計書 §6） */
-const DISPLAY_NAME_MAX_LENGTH = 50;
 
 export default function SignUpScreen() {
   const { control, handleSubmit, resetField } = useForm<SignUpInput>({
@@ -4755,7 +5109,7 @@ export async function resendVerificationEmail(input: VerificationEmailInput): Pr
 - [ ] **Step 3: api のテストが通ることを確認する**
 
 Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- features/auth/api`
-Expected: PASS（既存 8 件 + 追加 2 件 = 10 件。**既存 8 件が落ちないこと**が回帰の合格条件）
+Expected: PASS（既存 9 件 + 追加 2 件 = 11 件。**既存 9 件が落ちないこと**が回帰の合格条件）
 
 - [ ] **Step 4: メール確認待機画面の失敗するテストを書く**
 
@@ -4986,7 +5340,7 @@ export default function VerifyEmailScreen() {
 - [ ] **Step 6: テストが通ることを確認する**
 
 Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- verify-email features/auth/api`
-Expected: PASS（`verify-email` 8 件 + `api` 10 件）
+Expected: PASS（`verify-email` 8 件 + `api` 11 件）
 
 - [ ] **Step 7: わざと壊してテストが落ちることを確認する**
 
@@ -5015,7 +5369,7 @@ git commit -m "feat(mobile): メール確認待機画面と確認メール再送
 
 - Consumes:
   - `requestPasswordReset(input: PasswordResetRequestInput): Promise<void>`（Task 5-4）
-  - `@meshimap/core` の `passwordResetRequestSchema` と `type PasswordResetRequestInput = { email: string }`（`transform` を含まないこと）
+  - `passwordResetRequestSchema` と `type PasswordResetRequestInput = { email: string }`（Task 5-4 の `@/features/auth/schema`）
   - `useAuthMutation`（Task 5-13）、`AuthFormScreen` / `FormErrorBanner`（Task 5-12）、`Input` / `INPUT_TEXT_BEHAVIORS`（Task 5-10）、`Button`（既存）
 - Produces: `export default function ForgotPasswordScreen(): ReactElement`
 
@@ -5152,8 +5506,6 @@ Expected: FAIL（プレースホルダのままなので入力欄が見つから
 ```tsx
 // apps/mobile/src/app/(auth)/forgot-password.tsx
 import { zodResolver } from '@hookform/resolvers/zod';
-import type { PasswordResetRequestInput } from '@meshimap/core';
-import { passwordResetRequestSchema } from '@meshimap/core';
 import { router } from 'expo-router';
 import { Controller, useForm } from 'react-hook-form';
 import { Text, View } from 'react-native';
@@ -5164,6 +5516,7 @@ import { Button } from '@/components/ui/button';
 import { INPUT_TEXT_BEHAVIORS, Input } from '@/components/ui/input';
 import { SIGN_IN_ROUTE } from '@/constants/auth';
 import { requestPasswordReset } from '@/features/auth/api';
+import { passwordResetRequestSchema, type PasswordResetRequestInput } from '@/features/auth/schema';
 import { useAuthMutation } from '@/features/auth/use-auth-mutation';
 
 const EMPTY_REQUEST_INPUT: PasswordResetRequestInput = { email: '' };
@@ -5633,11 +5986,11 @@ git commit -m "feat(mobile): オンボーディングの welcome 画面を実装
 - Consumes:
   - `signOutFromApp(): Promise<void>`（Task 5-4）
   - `useAuthMutation`（Task 5-13）、`useAuth(): AuthState`（Task 5-5）、`FormErrorBanner`（Task 5-12）、`Button`（既存）
-  - `useQueryClient(): QueryClient` と `QueryClient.clear(): void`（`node_modules/@tanstack/query-core/build/modern/queryClient.d.ts`）
+  - `useQueryClient(): QueryClient` と `QueryClient.clear(): void`（`queryClient.d.ts` は再エクスポートのバレルなので、実体は `node_modules/@tanstack/query-core/build/modern/hydration-Bjs0MSgg.d.ts:510` の `clear(): void`）
   - `Alert.alert(title: string, message?: string, buttons?: AlertButton[], options?: AlertOptions): void`、`AlertButton = { text?: string; onPress?: ((value?: string) => void) | ((value?: { login: string; password: string }) => void); isPreferred?: boolean; style?: 'default' | 'cancel' | 'destructive' }`（`node_modules/react-native/Libraries/Alert/Alert.d.ts:13-30`）
   - `@better-auth/expo` の `clearSessionCache` が `<prefix>_cookie` と `<prefix>_session_data` に `"{}"` を書き戻す挙動（`node_modules/@better-auth/expo/dist/client.js:598-606`）。呼び出しは `fetchPlugins[0].init` の中（同 :723）なので、**リクエスト送信前**に失効する
 - Produces:
-  - `const SETTINGS_ROUTE: Href`、`const ACCOUNT_SETTINGS_ROUTE: Href`、`const ROLE_LABELS: Record<UserRole, string>`
+  - `const SETTINGS_ROUTE: Href`、`const ACCOUNT_SETTINGS_ROUTE: Href`、`const ROLE_LABELS: Record<Role, string>`
   - `interface SignOutResult { requestSignOut: () => Promise<boolean>; isSigningOut: boolean; errorMessage: string | undefined }`
   - `function useSignOut(): SignOutResult`
   - `interface SignOutButtonProps { testID?: string | undefined }`
@@ -5653,9 +6006,9 @@ export const ACCOUNT_SETTINGS_ROUTE: Href = '/settings/account';
 
 /**
  * 画面に出すロールの呼び名。
- * `UserRole` をキーにした Record にしておくと、ロールが増えたとき型エラーで気づける。
+ * `Role` をキーにした Record にしておくと、ロールが増えたとき型エラーで気づける。
  */
-export const ROLE_LABELS: Record<UserRole, string> = {
+export const ROLE_LABELS: Record<Role, string> = {
   user: '一般会員',
   owner: '店舗管理者',
   admin: 'システム管理者',
@@ -6516,6 +6869,9 @@ git commit -m "feat(mobile): 3 ロール共通のサインアウトと設定画�
 
 - Modify: `apps/mobile/src/lib/api-types.ts`
 - Create: `apps/mobile/src/constants/shop-application.ts`
+- Create: `apps/mobile/src/constants/shop-application.test.ts`
+- Create: `apps/mobile/src/features/shop-application/schema.ts`
+- Create: `apps/mobile/src/features/shop-application/schema.test.ts`
 - Create: `apps/mobile/src/features/shop-application/api.ts`
 - Create: `apps/mobile/src/features/shop-application/api.test.ts`
 - Modify: `apps/mobile/src/app/(user)/settings/shop-application.tsx`
@@ -6526,10 +6882,12 @@ git commit -m "feat(mobile): 3 ロール共通のサインアウトと設定画�
 **Interfaces:**
 
 - Consumes:
-  - `@meshimap/core` の `shopApplicationSchema` と `type ShopApplicationInput = { shopName: string; contactName: string; phoneNumber: string }`（`transform` を含まないこと）
+  - `@meshimap/core` の `SHOP_NAME_MAX_LENGTH`（= 100）
   - `apiClient.api['shop-applications'].$post` / `apiClient.api['shop-applications'].me.$get`（Task 5-3 の暫定 `AppType` を拡張して生やす）
   - `useAuthMutation`（Task 5-13）、`useQuery`（TanStack Query v5）、`Input` / `INPUT_TEXT_BEHAVIORS`（Task 5-10）、`AuthFormScreen` / `FormErrorBanner`（Task 5-12）、`ErrorState`（既存）
 - Produces:
+  - `const shopApplicationSchema` と `type ShopApplicationInput = { shopName: string; contactName: string; phoneNumber: string }`（**モバイル側で定義する**。`@meshimap/core` に申請スキーマは存在しない）
+  - `const CONTACT_NAME_MAX_LENGTH: 50`
   - `type ShopApplicationStatus = 'pending' | 'approved' | 'rejected'`
   - `interface ShopApplicationSummary { id: string; shopName: string; status: ShopApplicationStatus; submittedAt: string; rejectionReason: string | null }`
   - `const SHOP_APPLICATION_QUERY_KEY: readonly ['shop-application', 'me']`
@@ -6554,7 +6912,7 @@ export interface ShopApplicationSummary {
   rejectionReason: string | null;
 }
 
-/** 申請の送信内容。@meshimap/core の ShopApplicationInput と同じ形 */
+/** 申請の送信内容。features/shop-application/schema.ts の ShopApplicationInput と同じ形 */
 interface ShopApplicationRequestBody {
   shopName: string;
   contactName: string;
@@ -6583,7 +6941,124 @@ interface ShopApplicationRequestBody {
   };
 ```
 
-- [ ] **Step 2: `constants/shop-application.ts` を作る**
+- [ ] **Step 2: 入力スキーマ `features/shop-application/schema.ts` と `schema.test.ts` を作る**
+
+Task 5-4 と同じ理由で `@meshimap/core` には申請スキーマが無いので、モバイル側に置く。
+店舗名の上限だけは core が `SHOP_NAME_MAX_LENGTH`（= 100）を export しているのでそれを使う
+（申請で通った店舗名が `shopCreateSchema` で弾かれないようにするため）。
+
+```ts
+// apps/mobile/src/features/shop-application/schema.ts
+import { SHOP_NAME_MAX_LENGTH } from '@meshimap/core';
+import { z } from 'zod';
+
+/** ご担当者名の上限。profiles.display_name と同じ 50 文字に揃える（設計書 §6） */
+export const CONTACT_NAME_MAX_LENGTH = 50;
+
+/**
+ * 国内の市外局番形式（ハイフン必須）。`packages/core/src/schema.ts` の PHONE_PATTERN と同じ式。
+ * core 側は module private で export されていないため、ここで持つしかない。
+ * ここを緩めると、申請時に通った番号が店舗登録（`shopCreateSchema.phone`）で弾かれて
+ * 「申請は通ったのに店舗が作れない」という直しにくい不整合になる。
+ * TODO(Phase 2): packages/core が PHONE_PATTERN を export したら、この定義を捨てて import に差し替える。
+ */
+const PHONE_PATTERN = /^0[0-9]{1,4}-[0-9]{1,4}-[0-9]{3,4}$/;
+
+const SHOP_NAME_REQUIRED_MESSAGE = '店舗名を入力してください。';
+const SHOP_NAME_MAX_MESSAGE = `店舗名は ${SHOP_NAME_MAX_LENGTH} 文字以内で入力してください。`;
+const CONTACT_NAME_REQUIRED_MESSAGE = 'ご担当者名を入力してください。';
+const CONTACT_NAME_MAX_MESSAGE = `ご担当者名は ${CONTACT_NAME_MAX_LENGTH} 文字以内で入力してください。`;
+const PHONE_NUMBER_MESSAGE = '電話番号はハイフン区切りで入力してください（例: 03-1234-5678）。';
+
+/** transform / default を入れない。z.input と z.output を一致させないと zodResolver に渡せない */
+export const shopApplicationSchema = z.object({
+  shopName: z
+    .string()
+    .trim()
+    .min(1, { error: SHOP_NAME_REQUIRED_MESSAGE })
+    .max(SHOP_NAME_MAX_LENGTH, { error: SHOP_NAME_MAX_MESSAGE }),
+  contactName: z
+    .string()
+    .trim()
+    .min(1, { error: CONTACT_NAME_REQUIRED_MESSAGE })
+    .max(CONTACT_NAME_MAX_LENGTH, { error: CONTACT_NAME_MAX_MESSAGE }),
+  phoneNumber: z.string().regex(PHONE_PATTERN, { error: PHONE_NUMBER_MESSAGE }),
+});
+
+export type ShopApplicationInput = z.infer<typeof shopApplicationSchema>;
+```
+
+```ts
+// apps/mobile/src/features/shop-application/schema.test.ts
+import { SHOP_NAME_MAX_LENGTH } from '@meshimap/core';
+
+import { CONTACT_NAME_MAX_LENGTH, shopApplicationSchema } from './schema';
+
+const VALID_APPLICATION = {
+  shopName: '定食や まる',
+  contactName: '山田太郎',
+  phoneNumber: '03-1234-5678',
+};
+
+describe('shopApplicationSchema', () => {
+  it('3 項目が揃っていれば通る', () => {
+    expect(shopApplicationSchema.safeParse(VALID_APPLICATION).success).toBe(true);
+  });
+
+  it('未入力は弾く（送信ボタンから API を呼ばせないため）', () => {
+    expect(
+      shopApplicationSchema.safeParse({ shopName: '', contactName: '', phoneNumber: '' }).success,
+    ).toBe(false);
+  });
+
+  it('店舗名は上限ちょうどなら通り、1 文字超過は弾く（境界値）', () => {
+    const atMax = 'あ'.repeat(SHOP_NAME_MAX_LENGTH);
+
+    expect(shopApplicationSchema.safeParse({ ...VALID_APPLICATION, shopName: atMax }).success).toBe(
+      true,
+    );
+    expect(
+      shopApplicationSchema.safeParse({ ...VALID_APPLICATION, shopName: `${atMax}あ` }).success,
+    ).toBe(false);
+  });
+
+  it('ご担当者名は上限ちょうどなら通り、1 文字超過は弾く（境界値）', () => {
+    const atMax = 'あ'.repeat(CONTACT_NAME_MAX_LENGTH);
+
+    expect(
+      shopApplicationSchema.safeParse({ ...VALID_APPLICATION, contactName: atMax }).success,
+    ).toBe(true);
+    expect(
+      shopApplicationSchema.safeParse({ ...VALID_APPLICATION, contactName: `${atMax}あ` }).success,
+    ).toBe(false);
+  });
+
+  it('電話番号はハイフン無しを弾く（core の PHONE_PATTERN と同じ規則）', () => {
+    expect(
+      shopApplicationSchema.safeParse({ ...VALID_APPLICATION, phoneNumber: '0312345678' }).success,
+    ).toBe(false);
+  });
+
+  it('0 始まりでない電話番号を弾く', () => {
+    expect(
+      shopApplicationSchema.safeParse({ ...VALID_APPLICATION, phoneNumber: '13-1234-5678' })
+        .success,
+    ).toBe(false);
+  });
+
+  it('フリーダイヤル形式も通る', () => {
+    expect(
+      shopApplicationSchema.safeParse({ ...VALID_APPLICATION, phoneNumber: '0120-123-456' })
+        .success,
+    ).toBe(true);
+  });
+});
+```
+
+Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- shop-application/schema`
+Expected: PASS（7 件）
+
+- [ ] **Step 3: `constants/shop-application.ts` を作る**
 
 ```ts
 // apps/mobile/src/constants/shop-application.ts
@@ -6608,7 +7083,53 @@ export const SHOP_APPLICATION_STATUS_DESCRIPTIONS: Record<ShopApplicationStatus,
 };
 ```
 
-- [ ] **Step 3: 申請 API の失敗するテストを書く**
+`constants/shop-application.ts` は `src/app/**` の外にある実装ファイルなので、テストが無いと
+カバレッジ 0% で集計されて 100% 閾値に引っかかる。同じステップでテストも作る。
+
+```ts
+// apps/mobile/src/constants/shop-application.test.ts
+import {
+  SHOP_APPLICATION_QUERY_KEY,
+  SHOP_APPLICATION_STALE_TIME_MS,
+  SHOP_APPLICATION_STATUS_DESCRIPTIONS,
+  SHOP_APPLICATION_STATUS_LABELS,
+} from './shop-application';
+
+/** api-types.ts の ShopApplicationStatus と対になる値。状態が増減したらここで落ちる */
+const ALL_STATUSES = ['pending', 'approved', 'rejected'] as const;
+
+describe('店舗申請の定数', () => {
+  it('クエリキーは他機能と衝突しない名前空間から始まる', () => {
+    expect(SHOP_APPLICATION_QUERY_KEY[0]).toBe('shop-application');
+  });
+
+  it('状況ラベルは 3 状態すべてを埋めている', () => {
+    expect(Object.keys(SHOP_APPLICATION_STATUS_LABELS).sort()).toEqual([...ALL_STATUSES].sort());
+  });
+
+  it('状況の説明文も 3 状態すべてを埋めている', () => {
+    expect(Object.keys(SHOP_APPLICATION_STATUS_DESCRIPTIONS).sort()).toEqual(
+      [...ALL_STATUSES].sort(),
+    );
+  });
+
+  it('ラベルと説明文はどちらも空文字にしない', () => {
+    for (const status of ALL_STATUSES) {
+      expect(SHOP_APPLICATION_STATUS_LABELS[status].length).toBeGreaterThan(0);
+      expect(SHOP_APPLICATION_STATUS_DESCRIPTIONS[status].length).toBeGreaterThan(0);
+    }
+  });
+
+  it('再取得間隔は正の値', () => {
+    expect(SHOP_APPLICATION_STALE_TIME_MS).toBeGreaterThan(0);
+  });
+});
+```
+
+Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- constants/shop-application`
+Expected: PASS（5 件）
+
+- [ ] **Step 4: 申請 API の失敗するテストを書く**
 
 ```ts
 // apps/mobile/src/features/shop-application/api.test.ts
@@ -6634,7 +7155,7 @@ import { fetchMyShopApplication, submitShopApplication } from './api';
 const VALID_APPLICATION = {
   shopName: '定食や まる',
   contactName: '山田太郎',
-  phoneNumber: '0312345678',
+  phoneNumber: '03-1234-5678',
 };
 
 const PENDING_APPLICATION = {
@@ -6717,13 +7238,12 @@ describe('fetchMyShopApplication', () => {
 Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- shop-application/api`
 Expected: FAIL（`Cannot find module './api'`）
 
-- [ ] **Step 4: `features/shop-application/api.ts` を作る**
+- [ ] **Step 5: `features/shop-application/api.ts` を作る**
 
 ```ts
 // apps/mobile/src/features/shop-application/api.ts
-import type { ShopApplicationInput } from '@meshimap/core';
-
 import { toAuthError } from '@/features/auth/auth-error';
+import type { ShopApplicationInput } from '@/features/shop-application/schema';
 import { apiClient } from '@/lib/api-client';
 import type { ShopApplicationSummary } from '@/lib/api-types';
 import { logger } from '@/lib/logger';
@@ -6756,7 +7276,7 @@ export async function fetchMyShopApplication(): Promise<ShopApplicationSummary |
 Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- shop-application/api`
 Expected: PASS（5 件）
 
-- [ ] **Step 5: 利用者側の申請画面の失敗するテストを書く**
+- [ ] **Step 6: 利用者側の申請画面の失敗するテストを書く**
 
 ```tsx
 // apps/mobile/src/app/(user)/settings/shop-application.test.tsx
@@ -6788,7 +7308,7 @@ const ERROR_TEST_ID = 'shop-application-error';
 const VALID_APPLICATION = {
   shopName: '定食や まる',
   contactName: '山田太郎',
-  phoneNumber: '0312345678',
+  phoneNumber: '03-1234-5678',
 };
 
 const PENDING_APPLICATION = {
@@ -6937,13 +7457,11 @@ describe('ShopApplicationScreen', () => {
 Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- "settings/shop-application"`
 Expected: FAIL（プレースホルダのまま）
 
-- [ ] **Step 6: `app/(user)/settings/shop-application.tsx` を実装に差し替える**
+- [ ] **Step 7: `app/(user)/settings/shop-application.tsx` を実装に差し替える**
 
 ```tsx
 // apps/mobile/src/app/(user)/settings/shop-application.tsx
 import { zodResolver } from '@hookform/resolvers/zod';
-import type { ShopApplicationInput } from '@meshimap/core';
-import { shopApplicationSchema } from '@meshimap/core';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Controller, useForm } from 'react-hook-form';
 import { Text, View } from 'react-native';
@@ -6961,6 +7479,10 @@ import {
 } from '@/constants/shop-application';
 import { useAuthMutation } from '@/features/auth/use-auth-mutation';
 import { fetchMyShopApplication, submitShopApplication } from '@/features/shop-application/api';
+import {
+  shopApplicationSchema,
+  type ShopApplicationInput,
+} from '@/features/shop-application/schema';
 
 const EMPTY_APPLICATION: ShopApplicationInput = {
   shopName: '',
@@ -7124,7 +7646,7 @@ export default function ShopApplicationScreen() {
             label="連絡先電話番号"
             onBlur={field.onBlur}
             onChangeText={field.onChange}
-            placeholder="0312345678"
+            placeholder="03-1234-5678"
             testID="shop-application-phone-number-input"
             textBehavior={INPUT_TEXT_BEHAVIORS.telephone}
             value={field.value}
@@ -7148,7 +7670,7 @@ export default function ShopApplicationScreen() {
 Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- "settings/shop-application"`
 Expected: PASS（8 件）
 
-- [ ] **Step 7: 店舗管理者側の審査状況画面の失敗するテストを書く**
+- [ ] **Step 8: 店舗管理者側の審査状況画面の失敗するテストを書く**
 
 ```tsx
 // apps/mobile/src/app/(owner)/onboarding/status.test.tsx
@@ -7244,11 +7766,12 @@ describe('OwnerOnboardingStatusScreen', () => {
 Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- "onboarding/status"`
 Expected: FAIL（プレースホルダのまま）
 
-- [ ] **Step 8: `app/(owner)/onboarding/status.tsx` を実装に差し替える**
+- [ ] **Step 9: `app/(owner)/onboarding/status.tsx` を実装に差し替える**
 
 ```tsx
 // apps/mobile/src/app/(owner)/onboarding/status.tsx
 import { useQuery } from '@tanstack/react-query';
+import { FileText } from 'lucide-react-native';
 import { ScrollView, Text, View } from 'react-native';
 
 import { EmptyState } from '@/components/ui/empty-state';
@@ -7313,6 +7836,9 @@ export default function OwnerOnboardingStatusScreen() {
       <View className="flex-1 justify-center bg-neutral-50">
         <EmptyState
           description={EMPTY_DESCRIPTION}
+          // EmptyState の icon は必須 prop（components/ui/empty-state.tsx の EmptyStateProps）。
+          // 「申請書の記録が無い」状態なので書類アイコンを選ぶ
+          icon={FileText}
           testID="owner-onboarding-empty"
           title={EMPTY_TITLE}
         />
@@ -7346,20 +7872,25 @@ export default function OwnerOnboardingStatusScreen() {
 }
 ```
 
-**注意:** `EmptyState` / `ErrorState` の props 名は Phase 0 の実装に合わせること。`apps/mobile/src/components/ui/empty-state.tsx` と `error-state.tsx` を開いて、`title` / `description` / `onRetry` / `testID` の綴りが一致しているかを実装前に確認する。
+**注意:** `EmptyState` / `ErrorState` の props は Phase 0 の実装（`apps/mobile/src/components/ui/empty-state.tsx` / `error-state.tsx`）を読んで確認済み。
+
+- `EmptyStateProps`: `icon: LucideIcon`（**必須**）/ `title: string`（必須）/ `description?` / `action?: { label; onPress; isDisabled?; isLoading? }` / `testID?`
+- `ErrorStateProps`: `title?`（既定値 `'エラーが発生しました'`）/ `description?` / `onRetry: () => void`（**必須**）/ `testID?`
+
+`actionLabel` / `onAction` という prop は**存在しない**。アクションを渡すのは `EmptyState` の `action` オブジェクトだけで、`ErrorState` の再試行は `onRetry` 固定（ボタン文言も `'再試行'` 固定）。
 
 Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- "onboarding/status"`
 Expected: PASS（4 件）
 
-- [ ] **Step 9: わざと壊してテストが落ちることを確認する**
+- [ ] **Step 10: わざと壊してテストが落ちることを確認する**
 
 `ShopApplicationScreen` の `if (isLoadingApplication) { ... }` ブロックを削除し、「申請状況の取得中は入力欄を出さない」が**失敗すること**を確認する。
 続けて `if (application !== null && application !== undefined)` を `if (application !== undefined)` に書き換え、「未申請なら入力欄を出す」が**失敗すること**を確認してから両方を元に戻す。
 
-- [ ] **Step 10: コミットする**
+- [ ] **Step 11: コミットする**
 
 ```bash
-git add apps/mobile/src/lib/api-types.ts apps/mobile/src/constants/shop-application.ts apps/mobile/src/features/shop-application "apps/mobile/src/app/(user)/settings/shop-application.tsx" "apps/mobile/src/app/(user)/settings/shop-application.test.tsx" "apps/mobile/src/app/(owner)/onboarding/status.tsx" "apps/mobile/src/app/(owner)/onboarding/status.test.tsx"
+git add apps/mobile/src/lib/api-types.ts apps/mobile/src/constants/shop-application.ts apps/mobile/src/constants/shop-application.test.ts apps/mobile/src/features/shop-application "apps/mobile/src/app/(user)/settings/shop-application.tsx" "apps/mobile/src/app/(user)/settings/shop-application.test.tsx" "apps/mobile/src/app/(owner)/onboarding/status.tsx" "apps/mobile/src/app/(owner)/onboarding/status.test.tsx"
 git commit -m "feat(mobile): 店舗申請（user から owner への昇格）の導線を実装する"
 ```
 
@@ -7389,15 +7920,14 @@ Task 5-8 / 5-9 の単体テストは `_layout.tsx` と `index.tsx` を個別に�
 - Consumes:
   - `renderRouter(context?: MockContextConfig, options?: RenderRouterOptions): Result`、`Result = ReturnType<render> & { getPathname(): string; getPathnameWithParams(): string; getSegments(): string[]; getSearchParams(): Record<string, string | string[]>; getRouterState(): ReactNavigationState | undefined }`（`node_modules/expo-router/build/testing-library/index.d.ts`）
   - `act: typeof import('react').act` / `screen`（同ファイルの再 export）
-  - `ROLE_HOME_ROUTES` / `WELCOME_ROUTE`（Task 5-1）、`type AuthState`（Task 5-1）、`USER_ROLES` / `type UserRole`（`@meshimap/core`）
+  - `ROLE_HOME_ROUTES` / `WELCOME_ROUTE`（Task 5-1）、`type AuthState`（Task 5-1）、`ROLE_USER` / `ROLE_OWNER` / `ROLE_ADMIN` / `type Role`（`@meshimap/core`）
 - Produces: なし（テストのみ）
 
 - [ ] **Step 1: 認証状態を外から差し替えられるテストダブルを書く**
 
 ```tsx
 // apps/mobile/src/app/routing.test.tsx
-import type { UserRole } from '@meshimap/core';
-import { USER_ROLES } from '@meshimap/core';
+import { ROLE_ADMIN, ROLE_OWNER, ROLE_USER, type Role } from '@meshimap/core';
 import { act, renderRouter, screen } from 'expo-router/testing-library';
 
 import { ROLE_HOME_ROUTES, WELCOME_ROUTE } from '@/constants/auth';
@@ -7410,7 +7940,7 @@ const RESTORING_STATE: AuthState = { status: 'restoring' };
 const UNAUTHENTICATED_STATE: AuthState = { status: 'unauthenticated' };
 
 /** ブランド型 UserId はテスト専用に `as never` で満たす（Task 5-8 の注記と同じ方針）*/
-function buildAuthenticatedState(role: UserRole): AuthState {
+function buildAuthenticatedState(role: Role): AuthState {
   return {
     status: 'authenticated',
     userId: 'usr_1' as never,
@@ -7592,9 +8122,9 @@ describe('未認証', () => {
 ```tsx
 describe('ロールごとの着地', () => {
   it.each([
-    [USER_ROLES.user, String(ROLE_HOME_ROUTES.user)],
-    [USER_ROLES.owner, String(ROLE_HOME_ROUTES.owner)],
-    [USER_ROLES.admin, String(ROLE_HOME_ROUTES.admin)],
+    [ROLE_USER, String(ROLE_HOME_ROUTES.user)],
+    [ROLE_OWNER, String(ROLE_HOME_ROUTES.owner)],
+    [ROLE_ADMIN, String(ROLE_HOME_ROUTES.admin)],
   ])('%s は %s に着地する', async (role, expectedPathname) => {
     mockAuthStore.state = buildAuthenticatedState(role);
 
@@ -7606,7 +8136,7 @@ describe('ロールごとの着地', () => {
   });
 
   it('利用者は店舗管理者のパスへ入れない', async () => {
-    mockAuthStore.state = buildAuthenticatedState(USER_ROLES.user);
+    mockAuthStore.state = buildAuthenticatedState(ROLE_USER);
 
     const app = renderRouter(APP_DIR, { initialUrl: String(ROLE_HOME_ROUTES.owner) });
     await app;
@@ -7616,7 +8146,7 @@ describe('ロールごとの着地', () => {
   });
 
   it('店舗管理者は管理者のパスへ入れない', async () => {
-    mockAuthStore.state = buildAuthenticatedState(USER_ROLES.owner);
+    mockAuthStore.state = buildAuthenticatedState(ROLE_OWNER);
 
     const app = renderRouter(APP_DIR, { initialUrl: String(ROLE_HOME_ROUTES.admin) });
     await app;
@@ -7627,7 +8157,7 @@ describe('ロールごとの着地', () => {
 
   it('認証済みでも welcome には入れない', async () => {
     // ログイン済みの人が古いリンクから welcome を開いても、自分のホームへ戻る
-    mockAuthStore.state = buildAuthenticatedState(USER_ROLES.user);
+    mockAuthStore.state = buildAuthenticatedState(ROLE_USER);
 
     const app = renderRouter(APP_DIR, { initialUrl: String(WELCOME_ROUTE) });
     await app;
@@ -7637,7 +8167,7 @@ describe('ロールごとの着地', () => {
   });
 
   it('ロールが変わると着地先も変わる（審査通過で owner に昇格した場合）', async () => {
-    mockAuthStore.state = buildAuthenticatedState(USER_ROLES.user);
+    mockAuthStore.state = buildAuthenticatedState(ROLE_USER);
 
     const app = renderRouter(APP_DIR, { initialUrl: '/' });
     await app;
@@ -7645,7 +8175,7 @@ describe('ロールごとの着地', () => {
     expect(app.getPathname()).toBe(String(ROLE_HOME_ROUTES.user));
 
     await act(async () => {
-      mockAuthStore.set(buildAuthenticatedState(USER_ROLES.owner));
+      mockAuthStore.set(buildAuthenticatedState(ROLE_OWNER));
     });
     await settleNavigation();
 
@@ -7659,7 +8189,7 @@ describe('ロールごとの着地', () => {
 ```tsx
 describe('サインアウトと異常系', () => {
   it('セッションが消えると未認証の入り口へ戻る', async () => {
-    mockAuthStore.state = buildAuthenticatedState(USER_ROLES.user);
+    mockAuthStore.state = buildAuthenticatedState(ROLE_USER);
 
     const app = renderRouter(APP_DIR, { initialUrl: '/' });
     await app;
@@ -7688,7 +8218,7 @@ describe('サインアウトと異常系', () => {
   });
 
   it('存在しないパスは 404 の画面になる', async () => {
-    mockAuthStore.state = buildAuthenticatedState(USER_ROLES.user);
+    mockAuthStore.state = buildAuthenticatedState(ROLE_USER);
 
     const app = renderRouter(APP_DIR, { initialUrl: '/this-route-does-not-exist' });
     await app;
@@ -7700,7 +8230,7 @@ describe('サインアウトと異常系', () => {
 ```
 
 Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- routing`
-Expected: すべて PASS（14 件）
+Expected: すべて PASS（15 件 = 復元中 2 + 未認証 3 + ロールごとの着地 7（`it.each` の 3 件を含む） + サインアウトと異常系 3）
 
 **通らなかった場合の切り分け順:**
 
@@ -7731,6 +8261,7 @@ git commit -m "test(mobile): ロールルーティングの統合テストを追
 
 **Files:**
 
+- Modify: `apps/mobile/jest.config.js`（`collectCoverageFrom` の `!src/app/**` を `!src/app/_dev/**` に差し替える。Step 4-a）
 - Modify: `docs/superpowers/specs/2026-09-15-meshimap-design.md`（§5.1 のみ）
 - Modify: `docs/superpowers/plans/2026-09-15-phase-5-auth-routing.md`（チェックボックスを埋める）
 
@@ -7742,7 +8273,10 @@ git commit -m "test(mobile): ロールルーティングの統合テストを追
 - [ ] **Step 1: 全テストを通す**
 
 Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile`
-Expected: 全スイート PASS。**Phase 0 で書いた 105 件がすべて残っていること**（Task 5-10 で `Input` に手を入れているので、ここが回帰の本命）。
+Expected: 全スイート PASS。**Task 5-1 完了時点の 128 件が 1 件も減っていないこと**（Task 5-10 で `Input` に手を入れているので、ここが回帰の本命）。
+
+128 件の内訳は「Phase 0 の 117 件 + Task 5-1 で足した 11 件（`constants/auth` 6 + `constants/http` 2 + `constants/api` 3）」。
+2026-09-15 時点で `npx jest` を実行して `Tests: 128 passed, 128 total` を確認済み。
 失敗した場合は件数が減っていないかを最初に見る。減っていれば削除・上書きの事故。
 
 - [ ] **Step 2: 型チェックを通す**
@@ -7773,12 +8307,69 @@ grep -rn "!\." src/ --include="*.ts" --include="*.tsx" | grep -v "!==" | grep -v
 Expected: 1 つ目・2 つ目・4 つ目は**出力ゼロ**。3 つ目は `src/features/auth/auth-context.tsx` の `as UserId` **1 行だけ**。
 それ以外が出たら、その場で直してから Step 1 に戻る。
 
-- [ ] **Step 4: カバレッジを確認する**
+- [ ] **Step 4: カバレッジを確認する（まず `src/app/` を除外したまま）**
 
 Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm run test:coverage -w @meshimap/mobile`
-Expected: `src/features/auth/`・`src/components/auth/`・`src/constants/auth.ts` の statements が **90% 以上**。
-`collectCoverageFrom` は `!src/app/**` を除外している（`apps/mobile/jest.config.js:54`）ので、画面ファイルはこの数値に出ない。画面側の担保は Task 5-20 の統合テストが持つ。
-90% を下回っている場合、足りないのはたいてい `auth-error.ts` の未到達分岐。`auth-error.test.ts` にケースを足す。
+Expected: **statements / branches / functions / lines すべて 100%**。
+
+このタスクでカバレッジを 2 回測るのは、**落ちたときの原因を切り分けるため**。ここ（Step 4）は Phase 5 が足した `src/` 配下の非画面コードだけを見る。画面を含めた測定は除外を差し替えたあとの Step 4-b が持つ。1 回で済ませると「`auth-error.ts` の分岐漏れ」と「画面に到達していない」が同じ赤で混ざる。
+
+`apps/mobile/jest.config.js:65-72` の `coverageThreshold.global` は 4 指標とも **100%** なので、1 行でも到達しない実装が残っていればこのコマンドは失敗する（「90% 以上あればよい」ではない）。
+`collectCoverageFrom` は `['src/**/*.{ts,tsx}', '!src/**/*.test.{ts,tsx}', '!src/app/**']`（同 :54）。**テストから一度も import されないファイルも 0% として分母に入る**ため、実装ファイルを足したタスクに対応するテストが無いとここで落ちる。
+型しか持たないファイル（`features/auth/types.ts` / `lib/api-types.ts`）は babel が型を消して中身が空になり、分子も分母も 0 になるので閾値には影響しない（同 :55-59 のコメントと `coverage-summary.json` の実測で確認済み）。
+落ちた場合、足りないのはたいてい `auth-error.ts` の未到達分岐。`auth-error.test.ts` にケースを足す。
+
+**方針対立の決着（2026-09-15 に実測して確定。未確認事項 #13）:** `jest.config.js:63-64` のコメント（「`src/app/` は画面ができる Phase 5 のタイミングで除外を外し、同じ 100% を課すこと」）に**従う**。ただし外すのは `!src/app/**` 全体ではなく、`!src/app/_dev/**` を代わりに置く。切り替えるのは **Task 5-8 ではなくこの Task 5-21**。
+
+決めた根拠（いずれも今日この作業ツリーで測った値）:
+
+| 事実                                                           | 実測値                                                                                            |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `!src/app/**` を外したときの `src/app/` 全体                   | statements / branches / functions / lines すべて **0%**（テスト 128 件は PASS。閾値だけが落ちる） |
+| 同じ条件での `src/app/_dev/`                                   | **100 / 100 / 80 / 100** — functions だけ 80%                                                     |
+| Phase 5 開始時点で `src/app/` にある実装ファイル               | `_dev/catalog.tsx` / `_layout.tsx` / `index.tsx` の 3 つだけ                                      |
+| Phase 5 が `src/app/` に置く実装ファイル（`.test.tsx` を除く） | **25 個**。うち `_layout.tsx` と `index.tsx` は既存の書き換え（Task 5-8 / 5-9）                   |
+
+読み方は 2 つ。
+
+1. **0% は「テストが無い」ではなく「除外されていたから一度も測っていない」だけ**。`_layout.tsx` と `index.tsx` は Phase 5 が書き換えるので、この 0% は Phase 5 の成果物で置き換わる。除外を外して困る既存ファイルは `_dev/catalog.tsx` **1 つだけ**で、その不足も functions の 80%（5 個中 1 個）に限られる。
+2. **`_dev/catalog.tsx` は Phase 5 の所有物ではない**。Phase 0 が作った開発者向けの UI カタログで、Phase 5 はこのファイルを 1 行も触らない。他フェーズの資産を埋めるために Phase 5 の完了を止めるのは筋が違う。だから「除外を外す」と「`_dev` は除外に残す」は両立させる。
+
+切り替えを Task 5-8 ではなく Task 5-21 に置くのは、**Phase 5 が置く 25 個の実装ファイルのうち専用テストを持つのは 13 個**で、残り 12 個（`(admin)/_layout.tsx` / `(admin)/(tabs)/_layout.tsx` / `(admin)/(tabs)/overview.tsx` / `(auth)/_layout.tsx` / `(owner)/_layout.tsx` / `(owner)/(tabs)/_layout.tsx` / `(owner)/(tabs)/dashboard.tsx` / `(user)/_layout.tsx` / `(user)/(tabs)/_layout.tsx` / `(user)/(tabs)/home.tsx` / `(user)/(tabs)/profile.tsx` / `+not-found.tsx`）は Task 5-20 の `routing.test.tsx` が `renderRouter` で実際に描画することでしか到達しないため。Task 5-8 の時点で外すと、まだ存在しない 24 ファイル分の 0% で `test:coverage` が落ち続け、Task 5-9 以降のすべてのタスクが赤いゲートを跨ぐことになる。**全画面が揃った最後に 1 度だけ外す。**
+
+- [ ] **Step 4-a: `collectCoverageFrom` の除外を差し替える**
+
+`apps/mobile/jest.config.js` の `collectCoverageFrom` を次に変える。
+
+```js
+  collectCoverageFrom: [
+    'src/**/*.{ts,tsx}',
+    '!src/**/*.test.{ts,tsx}',
+    // src/app/_dev/ は Phase 0 が作った開発者向けの UI カタログで、製品の画面ではない。
+    // Phase 5 で src/app/ の除外を外したが、ここだけは Phase 5 の所有物ではないので残す。
+    // （外すと functions が 80% になり、他フェーズの都合で Phase 5 が止まる）
+    '!src/app/_dev/**',
+  ],
+```
+
+同時に `:63-64` のコメント（「src/app/ は collectCoverageFrom で除外済み。……実装が入るタイミングで除外を外して同じ 100% を課すこと」）を、指示ではなく**実施済みの記録**に書き換える。
+
+```js
+// src/app/ の除外は Phase 5（画面の実装）で外した。残しているのは _dev のみで、
+// 理由は collectCoverageFrom のコメントにある。
+```
+
+- [ ] **Step 4-b: 除外を外した状態でカバレッジを測り直す**
+
+Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm run test:coverage -w @meshimap/mobile`
+Expected: **4 指標とも 100%**。
+
+落ちたときに見る場所は、たいてい上に挙げた「専用テストを持たない 12 ファイル」のどれか。埋め方は 2 通りあり、**先に前者を試す**。
+
+1. Task 5-20 の `routing.test.tsx` に、その画面へ実際に遷移するケースを足す（統合テストで担保する、という本計画の方針そのもの）
+2. それでも届かない分岐だけ、その画面に専用の `.test.tsx` を足す
+
+`src/app/_dev/catalog.tsx` がレポートに出てきたら Step 4-a の除外が効いていない。`collectCoverageFrom` の並び順ではなく、パターンが `!src/app/_dev/**` になっているかを見る。
 
 - [ ] **Step 5: 書式を揃える**
 
@@ -7876,17 +8467,21 @@ git commit -m "docs: Phase 5 の完了を反映し設計書 5.1 のホームを 
 
 計画の作成時に**確認できなかった**点。実装時に最初に潰すこと。
 
-| #   | 未確認の内容                                                                                                                                                                                                                                                                                                            | 影響するタスク              | 実装時の確認方法                                                                                                                                                                                     |
-| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | `renderRouter` を**このリポジトリで実行していない**。とくに「RNTL 14 の全 API が Promise を返す」×「`renderRouter` が内部で `jest.useFakeTimers()` を呼ぶ（`testing-library/index.js:36`）」の組み合わせは型定義とソースからの推論にとどまる                                                                            | 5-20                        | Task 5-20 Step 3 を最初に単独で走らせる。`getPathname()` が `undefined` / 遷移が進まない場合は `settleNavigation()` を `await act(async () => { await jest.advanceTimersByTimeAsync(0); })` に替える |
-| 2   | `toHavePathname` 系のカスタムマッチャに**型定義が無い**（`expo-router/build/testing-library/expect.d.ts` の中身は `export {};`）。また `testRouter.*` は `act()` を await せずに呼ぶ実装（`index.js:76-92`）                                                                                                            | 5-20                        | 本計画ではどちらも使わず `getPathname()` で判定している。もし将来 `toHavePathname` を使うなら型拡張を自前で書く必要がある                                                                            |
-| 3   | `@meshimap/core` の **export 名が未確定**。`packages/core/src` が空のまま（Phase 2 が並行実装中）。`UserRole` / `USER_ROLES` / `UserId` / `signInSchema` / `signUpSchema` / `passwordResetRequestSchema` / `shopApplicationSchema` とその入力型は、すべて Interfaces の **Consumes** として書いており本計画では作らない | 5-1, 5-13, 5-14, 5-16, 5-19 | Task 5-1 Step 1 の `grep` が入口。名前が違う場合は**このリポジトリで型を作らず**、計画側の import 名を実物に合わせて直す                                                                             |
-| 4   | zod スキーマに `transform` が含まれていないか未確認。`zodResolver`（@hookform/resolvers 5.9.1）は入力型と出力型が異なるスキーマだと react-hook-form の型と噛み合わない                                                                                                                                                  | 5-13, 5-14, 5-16, 5-19      | `packages/core` のスキーマ定義を読み、`transform` があれば `useForm<z.input<typeof schema>>` 側に寄せる                                                                                              |
-| 5   | `apps/api` が `AppType` を export していない。`lib/api-types.ts` の `MeResponseBody` / `MobileApiSchema`（`/api/me`・`/api/shop-applications`・`/api/shop-applications/me`）は**設計書 §7 から起こした暫定型**で、実際のレスポンスと突き合わせていない                                                                  | 5-3, 5-19                   | Phase 4 完了後に `hc<AppType>` へ差し替える。差し替えで型エラーが出た箇所が、想定とサーバ実装のずれ                                                                                                  |
-| 6   | `apps/api` 側の Better Auth の `emailAndPassword` 設定（`autoSignIn` / `requireEmailVerification`）が未確認。Task 5-14 は「サインアップ直後は認証済みにならず、メール確認待ち画面へ送る」前提で書いている                                                                                                               | 5-14, 5-15                  | Phase 4 の `auth.ts` を読む。`autoSignIn: true` なら Task 5-14 の遷移先を「確認待ち画面」から「ロールディスパッチャ」に変える                                                                        |
-| 7   | `authClient.getCookie()` の型が Better Auth の動的パスプロキシ経由で解決されることを**実行では確認していない**（`@better-auth/expo/dist/client.js` のソース読みのみ）                                                                                                                                                   | 5-3                         | Task 5-3 Step 2 で `npm run typecheck` を通す。型が出ない場合は `authClient.getCookie` の代わりに `expo-secure-store` から `${AUTH_STORAGE_PREFIX}_cookie` を直接読む実装に切り替える                |
-| 8   | `authClient.useSession()` が**初回レンダーで `isPending: true` を返すか**を実行確認していない。ここが `false` スタートだと復元中の判定が 1 フレーム抜ける                                                                                                                                                               | 5-5                         | Task 5-5 のテストで初回レンダーの `status` を assert している。実機（Step 6 の「初回起動」）でちらつきが出たら、`AuthProvider` 側に「初回マウント完了まで無条件で restoring」のガードを足す          |
-| 9   | `unstable_settings.anchor` が**入れ子グループのレイアウト**でどう効くかはソース（`getRoutesCore.js:655`）読みのみで、実行確認していない                                                                                                                                                                                 | 5-8                         | Task 5-8 のテストと Task 5-20 の「ガードで弾かれたら index に戻る」ケースで検証される。効かない場合は各グループの `_layout.tsx` にも `unstable_settings` を置く                                      |
-| 10  | `EmptyState` / `ErrorState` の prop 名（`title` / `description` / `actionLabel` / `onAction` / `testID`）は Phase 0 の実装を読んで書いたが、Task 5-19 で使う組み合わせは未検証                                                                                                                                          | 5-9, 5-19                   | 実装前に `src/components/ui/error-state.tsx` と `empty-state.tsx` を開いて prop 名を突き合わせる。違えば**呼ぶ側を直す**（Phase 0 の既存 API を変えない）                                            |
-| 11  | jest-expo の環境で `Response` がグローバルに存在するかを確認していない。`sign-out-storage.test.ts` は `global.fetch` を `new Response(...)` で差し替える                                                                                                                                                                | 5-18                        | 無ければ `{ ok: true, status: 200, json: async () => ({}), headers: new Headers() }` を返すオブジェクトに置き換える                                                                                  |
-| 12  | `better-auth` / `@better-auth/expo` が Jest で変換なしに読めるか未確認（`transformIgnorePatterns` に未追加）。Task 5-2 で `TRANSPILED_NODE_MODULES` に追加する前提で書いている                                                                                                                                          | 5-2, 5-18                   | Task 5-2 Step 1 でテストを走らせた時点で分かる。`SyntaxError: Cannot use import statement outside a module` が出たら `jest.config.js` に `'better-auth'`, `'@better-auth'` を足す                    |
+| #   | 未確認の内容                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | 影響するタスク                   | 実装時の確認方法                                                                                                                                                                                                                                                                                                                                                                |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `renderRouter` を**このリポジトリで実行していない**。とくに「RNTL 14 の全 API が Promise を返す」×「`renderRouter` が内部で `jest.useFakeTimers()` を呼ぶ（`node_modules/expo-router/build/testing-library/index.js:38`）」の組み合わせは型定義とソースからの推論にとどまる                                                                                                                                                                                                                                                                                                                                                                        | 5-20                             | Task 5-20 Step 3 を最初に単独で走らせる。`getPathname()` が `undefined` / 遷移が進まない場合は `settleNavigation()` を `await act(async () => { await jest.advanceTimersByTimeAsync(0); })` に替える                                                                                                                                                                            |
+| 2   | `toHavePathname` 系のカスタムマッチャに**型定義が無い**（`expo-router/build/testing-library/expect.d.ts` の中身は `export {};`）。また `testRouter.*` は `act()` を await せずに呼ぶ実装（`index.js:76-92`）                                                                                                                                                                                                                                                                                                                                                                                                                                       | 5-20                             | 本計画ではどちらも使わず `getPathname()` で判定している。もし将来 `toHavePathname` を使うなら型拡張を自前で書く必要がある                                                                                                                                                                                                                                                       |
+| 3   | **解消済み（2026-09-15 に実体を確認）。** `packages/core/src/index.ts` が export するロール系は `ROLES`（**`as const` のタプル**）/ `ROLE_USER` / `ROLE_OWNER` / `ROLE_ADMIN` / `type Role` / `isRole` / `toRole` / `canManageShop` / `canModerate`。`UserRole` / `USER_ROLES` は**存在しない**。認証・店舗申請の入力スキーマ（`signInSchema` / `signUpSchema` / `passwordResetRequestSchema` / `shopApplicationSchema`）も core に無く、`packages/core/src/index.test.ts` が公開 export 名を完全一致で固定しているため追加コストが高い。→ **モバイル側**（`features/auth/schema.ts` / `features/shop-application/schema.ts`）に置く方針に変更済み | 5-1, 5-4, 5-13, 5-14, 5-16, 5-19 | 対応不要。core の export を増やしたくなったら `packages/core/src/index.test.ts` の一覧も同時に直すこと                                                                                                                                                                                                                                                                          |
+| 4   | **解消済み。** 本計画で使うスキーマはすべてモバイル側で新規に定義し、`transform` / `default` を持たせていない。`signUpSchema.displayName` の `.trim()` は値を変えるが TypeScript の型は `string` のままなので `z.input` と `z.output` は一致する                                                                                                                                                                                                                                                                                                                                                                                                   | 5-13, 5-14, 5-16, 5-19           | `features/auth/schema.ts` / `features/shop-application/schema.ts` に `transform` を足すときだけ再確認する。`zodResolver` は `Resolver<z4.input<T>, Context, z4.output<T>>` を返す（`node_modules/@hookform/resolvers/zod/dist/zod.d.ts`）                                                                                                                                       |
+| 5   | `apps/api` が `AppType` を export していない。`lib/api-types.ts` の `MeResponseBody` / `MobileApiSchema`（`/api/me`・`/api/shop-applications`・`/api/shop-applications/me`）は**設計書 §7 から起こした暫定型**で、実際のレスポンスと突き合わせていない                                                                                                                                                                                                                                                                                                                                                                                             | 5-3, 5-19                        | Phase 4 完了後に `hc<AppType>` へ差し替える。差し替えで型エラーが出た箇所が、想定とサーバ実装のずれ                                                                                                                                                                                                                                                                             |
+| 6   | `apps/api` 側の Better Auth の `emailAndPassword` 設定（`autoSignIn` / `requireEmailVerification`）が未確認。Task 5-14 は「サインアップ直後は認証済みにならず、メール確認待ち画面へ送る」前提で書いている                                                                                                                                                                                                                                                                                                                                                                                                                                          | 5-14, 5-15                       | Phase 4 の `auth.ts` を読む。`autoSignIn: true` なら Task 5-14 の遷移先を「確認待ち画面」から「ロールディスパッチャ」に変える                                                                                                                                                                                                                                                   |
+| 7   | `authClient.getCookie()` の型が Better Auth の動的パスプロキシ経由で解決されることを**実行では確認していない**（`@better-auth/expo/dist/client.js` のソース読みのみ）                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | 5-3                              | Task 5-3 Step 2 で `npm run typecheck` を通す。型が出ない場合は `authClient.getCookie` の代わりに `expo-secure-store` から `${AUTH_STORAGE_PREFIX}_cookie` を直接読む実装に切り替える                                                                                                                                                                                           |
+| 8   | `authClient.useSession()` が**初回レンダーで `isPending: true` を返すか**を実行確認していない。ここが `false` スタートだと復元中の判定が 1 フレーム抜ける                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | 5-5                              | Task 5-5 のテストで初回レンダーの `status` を assert している。実機（Step 6 の「初回起動」）でちらつきが出たら、`AuthProvider` 側に「初回マウント完了まで無条件で restoring」のガードを足す                                                                                                                                                                                     |
+| 9   | `unstable_settings.anchor` が**入れ子グループのレイアウト**でどう効くかはソース（`getRoutesCore.js:655`）読みのみで、実行確認していない                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | 5-8                              | Task 5-8 のテストと Task 5-20 の「ガードで弾かれたら index に戻る」ケースで検証される。効かない場合は各グループの `_layout.tsx` にも `unstable_settings` を置く                                                                                                                                                                                                                 |
+| 10  | **解消済み（2026-09-15 に実装を確認）。** `EmptyStateProps` = `icon: LucideIcon`（**必須**）/ `title: string` / `description?` / `action?: { label; onPress; isDisabled?; isLoading? }` / `testID?`。`ErrorStateProps` = `title?`（既定 `エラーが発生しました`）/ `description?` / `onRetry: () => void`（必須）/ `testID?`。`actionLabel` / `onAction` は**存在しない**。Task 5-19 の `EmptyState` 呼び出しに `icon={FileText}` を補って修正済み                                                                                                                                                                                                  | 5-9, 5-19                        | 対応不要。Phase 0 側の API を変えず、呼ぶ側を合わせる方針は維持する                                                                                                                                                                                                                                                                                                             |
+| 11  | jest-expo の環境で `Response` がグローバルに存在するかを確認していない。`sign-out-storage.test.ts` は `global.fetch` を `new Response(...)` で差し替える                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | 5-18                             | 無ければ `{ ok: true, status: 200, json: async () => ({}), headers: new Headers() }` を返すオブジェクトに置き換える                                                                                                                                                                                                                                                             |
+| 12  | `better-auth` / `@better-auth/expo` が Jest で変換なしに読めるか未確認（`transformIgnorePatterns` に未追加）。Task 5-2 で `TRANSPILED_NODE_MODULES` に追加する前提で書いている                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | 5-2, 5-18                        | Task 5-2 Step 1 でテストを走らせた時点で分かる。`SyntaxError: Cannot use import statement outside a module` が出たら `jest.config.js` に `'better-auth'`, `'@better-auth'` を足す                                                                                                                                                                                               |
+| 13  | **解消済み（2026-09-15 に実測して決定）。** `jest.config.js:63-64` のコメントに**従う**。ただし `!src/app/**` を丸ごと外すのではなく `!src/app/_dev/**` に差し替え、外すのは **Task 5-21 Step 4-a**（全画面が揃った後）にする。実測: 除外を外すと `src/app/` は 0/0/0/0、`src/app/_dev/` は 100/100/**80**/100（テスト 128 件は PASS）。つまり既存で足りないのは Phase 5 が 1 行も触らない `_dev/catalog.tsx` の functions だけ                                                                                                                                                                                                                    | 5-8, 5-20, 5-21                  | 対応不要。Task 5-8 は `moduleNameMapper` だけを触り `collectCoverageFrom` には手を付けない。Task 5-21 Step 4-a / 4-b が差し替えと測り直しを持つ。落ちたら Task 5-20 の `routing.test.tsx` に遷移ケースを足すのが第一手                                                                                                                                                          |
+| 14  | 電話番号の正規表現が二重定義になる。`packages/core/src/schema.ts` の `PHONE_PATTERN`（`/^0[0-9]{1,4}-[0-9]{1,4}-[0-9]{3,4}$/`、**ハイフン必須**）は module private で export されていないため、モバイル側 `features/shop-application/schema.ts` に同じ値を書き写している                                                                                                                                                                                                                                                                                                                                                                           | 5-19                             | core が `PHONE_PATTERN` を export するようになったら、モバイル側の定義を消して import に置き換える。それまでは片方だけ直すと検証がズレる                                                                                                                                                                                                                                        |
+| 15  | `@tanstack/query-core` の型実体ファイル名 `build/modern/hydration-Bjs0MSgg.d.ts` は**ビルドごとのハッシュ付き**で、バージョンを上げると変わる（`queryClient.d.ts` 自体は 2 行の再エクスポートバレル）                                                                                                                                                                                                                                                                                                                                                                                                                                              | 5-5                              | 行番号が合わなくなったら `grep -rn "clear(): void" node_modules/@tanstack/query-core/build/modern/` で引き直す。API そのもの（`clear(): void` / `getDefaultOptions(): DefaultOptions`）は変わっていない                                                                                                                                                                         |
+| 16  | `renderHook` / `render` / `fireEvent` が Promise を返すこと（RNTL 14）は `node_modules/@testing-library/react-native/dist/render-hook.d.ts` で型を確認したが、**Jest 環境では動的 `import()` が使えない**（`TypeError: A dynamic import callback was invoked without --experimental-vm-modules`）。本計画のテストは `jest.resetModules()` + `require()`（型は `typeof import('./module')`）で統一している                                                                                                                                                                                                                                          | 5-1, 5-2, 5-8                    | `await import(...)` を書きたくなったら必ず `require()` に置き換える。`.json` を `require` する箇所に `// eslint-disable-next-line @typescript-eslint/no-require-imports` を付けると `Unused eslint-disable directive` の warning になる（`eslint-config-expo/flat/utils/typescript.js:85-96` の `allow` 正規表現に `json` が含まれるため）。`.js` / `.ts` の `require` には必要 |
