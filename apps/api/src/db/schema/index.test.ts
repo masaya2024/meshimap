@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getTableName, isTable } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
+import { SHOPS_FTS_TABLE_NAME } from '../fts';
 import { readMigrationSql } from '../testing/local-d1';
 import * as schema from './index';
 
@@ -126,5 +127,15 @@ describe('index.ts とマイグレーションの対応', () => {
   // 実装時に no such table で初めて気づくことになる。それを機械的に検知する。
   it('再エクスポートしたテーブルがすべてマイグレーションの DDL に出ている', () => {
     expect(collectMigrationTableNames()).toEqual(collectExportedTableNames());
+  });
+
+  // shops_fts は Drizzle では表現できないため手書きマイグレーション（0001）で作る仮想テーブル。
+  // 上の対応テストは CREATE_TABLE_PATTERN が `CREATE VIRTUAL TABLE` に一致しないことに
+  // 暗黙に依存している。パターンを緩めると上のテストが「設計書にもスキーマにも無い名前が
+  // DDL にある」という分かりにくい形で落ちるので、依存関係をここで明示しておく。
+  it('手書きの FTS5 仮想テーブルは Drizzle 管理の一覧に混ざらない', () => {
+    expect(readMigrationSql()).toContain(`CREATE VIRTUAL TABLE \`${SHOPS_FTS_TABLE_NAME}\``);
+    expect(collectMigrationTableNames()).not.toContain(SHOPS_FTS_TABLE_NAME);
+    expect(collectExportedTableNames()).not.toContain(SHOPS_FTS_TABLE_NAME);
   });
 });

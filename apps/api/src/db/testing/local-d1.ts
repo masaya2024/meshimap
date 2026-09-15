@@ -76,22 +76,49 @@ export function readMigrationSql(): string {
 }
 
 /**
+ * 行全体が `--` の行コメントである行。字下げは許すが、行頭から始まるものだけを対象にする。
+ *
+ * `SELECT '--'` のように文字列リテラルへ `--` が現れることがあるため、
+ * 行の途中に現れる `--` は落とさない。手書きマイグレーションでは
+ * 行末コメント（`SELECT 1; -- 説明`）を使わないこと。
+ */
+const FULL_LINE_COMMENT_PATTERN = /^[^\S\n]*--.*$/gm;
+
+/**
+ * マイグレーション SQL を D1 の `exec()` に渡せる文の配列へ分解する。
+ *
+ * `exec()` の制約が 2 つあるため、素の SQL をそのまま渡すことはできない。
+ *
+ * 1. 複数行を受け付けない（改行があると構文解析に失敗する）。
+ *    SQL の意味は改行の有無で変わらないので空白へ潰す。
+ * 2. 文が 1 つも無いと「SQL code did not contain a statement」で失敗する。
+ *    `drizzle-kit generate --custom` が置くヘッダ行だけの塊がこれに当たるので捨てる。
+ *
+ * 行コメントを先に落とすのは、1 の改行潰しがコメントを「以降すべてがコメント」に
+ * 変えてしまい、手書きマイグレーションの本体が丸ごと消えるため。
+ *
+ * トリガー本体の `;` では分割しない。分割の基準は `--> statement-breakpoint` だけであり、
+ * `CREATE TRIGGER … BEGIN … END;` は 1 文のまま渡る。
+ */
+export function toExecutableStatements(migrationSql: string): readonly string[] {
+  return migrationSql
+    .split(STATEMENT_SEPARATOR)
+    .map((rawStatement) =>
+      rawStatement.replaceAll(FULL_LINE_COMMENT_PATTERN, '').replaceAll('\n', ' ').trim(),
+    )
+    .filter((statement) => statement.length > 0);
+}
+
+/**
  * migrations/ 配下の .sql をファイル名順に全部流し込み、実行した文の数を返す。
  * wrangler の d1_migrations テーブルは作らない（テストでは常にまっさらから作るため不要）。
  */
 export async function applyMigrations(d1: D1Database): Promise<number> {
-  let executedStatementCount = 0;
+  const statements = toExecutableStatements(readMigrationSql());
 
-  for (const rawStatement of readMigrationSql().split(STATEMENT_SEPARATOR)) {
-    const statement = rawStatement.trim();
-    if (statement.length === 0) {
-      continue;
-    }
-    // D1 の exec() は複数行の SQL を受け付けない（改行があると構文解析に失敗する）。
-    // SQL の意味は改行の有無で変わらないため、空白へ潰して 1 行にしてから渡す。
-    await d1.exec(statement.replaceAll('\n', ' '));
-    executedStatementCount += 1;
+  for (const statement of statements) {
+    await d1.exec(statement);
   }
 
-  return executedStatementCount;
+  return statements.length;
 }

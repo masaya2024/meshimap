@@ -1,0 +1,2989 @@
+{
+  "id": "e7e026ac-8283-4fd4-8bb1-dbf2d2cef1b4",
+  "prevId": "249d47a9-e4dc-4ba7-8f41-c56e482ba769",
+  "version": "6",
+  "dialect": "sqlite",
+  "tables": {
+    "account": {
+      "name": "account",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "provider_id": {
+          "name": "provider_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "access_token": {
+          "name": "access_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "refresh_token": {
+          "name": "refresh_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "id_token": {
+          "name": "id_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "access_token_expires_at": {
+          "name": "access_token_expires_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "refresh_token_expires_at": {
+          "name": "refresh_token_expires_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "scope": {
+          "name": "scope",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "password": {
+          "name": "password",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
+        }
+      },
+      "indexes": {
+        "idx_account_user_id": {
+          "name": "idx_account_user_id",
+          "columns": [
+            "user_id"
+          ],
+          "isUnique": false
+        },
+        "idx_account_provider": {
+          "name": "idx_account_provider",
+          "columns": [
+            "provider_id",
+            "account_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "account_user_id_user_id_fk": {
+          "name": "account_user_id_user_id_fk",
+          "tableFrom": "account",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "tableTo": "user",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "session": {
+      "name": "session",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "token": {
+          "name": "token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
+        },
+        "ip_address": {
+          "name": "ip_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "user_agent": {
+          "name": "user_agent",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "session_token_unique": {
+          "name": "session_token_unique",
+          "columns": [
+            "token"
+          ],
+          "isUnique": true
+        },
+        "idx_session_user_id": {
+          "name": "idx_session_user_id",
+          "columns": [
+            "user_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "session_user_id_user_id_fk": {
+          "name": "session_user_id_user_id_fk",
+          "tableFrom": "session",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "tableTo": "user",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "user": {
+      "name": "user",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "email_verified": {
+          "name": "email_verified",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "image": {
+          "name": "image",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
+        }
+      },
+      "indexes": {
+        "user_email_unique": {
+          "name": "user_email_unique",
+          "columns": [
+            "email"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "verification": {
+      "name": "verification",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "identifier": {
+          "name": "identifier",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "value": {
+          "name": "value",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
+        }
+      },
+      "indexes": {
+        "idx_verification_identifier": {
+          "name": "idx_verification_identifier",
+          "columns": [
+            "identifier"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "areas": {
+      "name": "areas",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "parent_id": {
+          "name": "parent_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "prefecture": {
+          "name": "prefecture",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "idx_areas_parent_id": {
+          "name": "idx_areas_parent_id",
+          "columns": [
+            "parent_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "areas_parent_id_areas_id_fk": {
+          "name": "areas_parent_id_areas_id_fk",
+          "tableFrom": "areas",
+          "columnsFrom": [
+            "parent_id"
+          ],
+          "tableTo": "areas",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "set null"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "ck_areas_id_length": {
+          "name": "ck_areas_id_length",
+          "value": "length(\"areas\".\"id\") <= 64"
+        },
+        "ck_areas_name_length": {
+          "name": "ck_areas_name_length",
+          "value": "length(\"areas\".\"name\") <= 50"
+        },
+        "ck_areas_prefecture_length": {
+          "name": "ck_areas_prefecture_length",
+          "value": "length(\"areas\".\"prefecture\") <= 20"
+        }
+      }
+    },
+    "genres": {
+      "name": "genres",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "slug": {
+          "name": "slug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "icon_key": {
+          "name": "icon_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        }
+      },
+      "indexes": {
+        "genres_slug_unique": {
+          "name": "genres_slug_unique",
+          "columns": [
+            "slug"
+          ],
+          "isUnique": true
+        },
+        "idx_genres_sort_order": {
+          "name": "idx_genres_sort_order",
+          "columns": [
+            "sort_order"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "ck_genres_id_length": {
+          "name": "ck_genres_id_length",
+          "value": "length(\"genres\".\"id\") <= 64"
+        },
+        "ck_genres_name_length": {
+          "name": "ck_genres_name_length",
+          "value": "length(\"genres\".\"name\") <= 50"
+        },
+        "ck_genres_slug_format": {
+          "name": "ck_genres_slug_format",
+          "value": "\"genres\".\"slug\" <> '' AND \"genres\".\"slug\" NOT GLOB '*[^a-z0-9-]*'"
+        },
+        "ck_genres_sort_order": {
+          "name": "ck_genres_sort_order",
+          "value": "\"genres\".\"sort_order\" >= 0"
+        }
+      }
+    },
+    "profiles": {
+      "name": "profiles",
+      "columns": {
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "role": {
+          "name": "role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'user'"
+        },
+        "display_name": {
+          "name": "display_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "avatar_key": {
+          "name": "avatar_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "bio": {
+          "name": "bio",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'active'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
+        }
+      },
+      "indexes": {
+        "idx_profiles_role": {
+          "name": "idx_profiles_role",
+          "columns": [
+            "role"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "profiles_user_id_user_id_fk": {
+          "name": "profiles_user_id_user_id_fk",
+          "tableFrom": "profiles",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "tableTo": "user",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "ck_profiles_role": {
+          "name": "ck_profiles_role",
+          "value": "\"profiles\".\"role\" IN ('user', 'owner', 'admin')"
+        },
+        "ck_profiles_status": {
+          "name": "ck_profiles_status",
+          "value": "\"profiles\".\"status\" IN ('active', 'suspended', 'deleted')"
+        },
+        "ck_profiles_display_name_length": {
+          "name": "ck_profiles_display_name_length",
+          "value": "length(\"profiles\".\"display_name\") <= 50"
+        },
+        "ck_profiles_bio_length": {
+          "name": "ck_profiles_bio_length",
+          "value": "length(\"profiles\".\"bio\") <= 500"
+        }
+      }
+    },
+    "shops": {
+      "name": "shops",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name_kana": {
+          "name": "name_kana",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "genre_id": {
+          "name": "genre_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "area_id": {
+          "name": "area_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "postal_code": {
+          "name": "postal_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "address": {
+          "name": "address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "lat": {
+          "name": "lat",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "lng": {
+          "name": "lng",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "geohash": {
+          "name": "geohash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "phone": {
+          "name": "phone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "website": {
+          "name": "website",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "budget_lunch_min": {
+          "name": "budget_lunch_min",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "budget_lunch_max": {
+          "name": "budget_lunch_max",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "budget_dinner_min": {
+          "name": "budget_dinner_min",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "budget_dinner_max": {
+          "name": "budget_dinner_max",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'draft'"
+        },
+        "rating_avg": {
+          "name": "rating_avg",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "rating_count": {
+          "name": "rating_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "view_count": {
+          "name": "view_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
+        }
+      },
+      "indexes": {
+        "idx_shops_geohash": {
+          "name": "idx_shops_geohash",
+          "columns": [
+            "geohash"
+          ],
+          "isUnique": false
+        },
+        "idx_shops_status_geohash": {
+          "name": "idx_shops_status_geohash",
+          "columns": [
+            "status",
+            "geohash"
+          ],
+          "isUnique": false
+        },
+        "idx_shops_lat_lng": {
+          "name": "idx_shops_lat_lng",
+          "columns": [
+            "lat",
+            "lng"
+          ],
+          "isUnique": false
+        },
+        "idx_shops_genre_status": {
+          "name": "idx_shops_genre_status",
+          "columns": [
+            "genre_id",
+            "status"
+          ],
+          "isUnique": false
+        },
+        "idx_shops_area_status": {
+          "name": "idx_shops_area_status",
+          "columns": [
+            "area_id",
+            "status"
+          ],
+          "isUnique": false
+        },
+        "idx_shops_owner_id": {
+          "name": "idx_shops_owner_id",
+          "columns": [
+            "owner_id"
+          ],
+          "isUnique": false
+        },
+        "idx_shops_status_rating": {
+          "name": "idx_shops_status_rating",
+          "columns": [
+            "status",
+            "\"rating_avg\" desc"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "shops_owner_id_user_id_fk": {
+          "name": "shops_owner_id_user_id_fk",
+          "tableFrom": "shops",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "tableTo": "user",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "set null"
+        },
+        "shops_genre_id_genres_id_fk": {
+          "name": "shops_genre_id_genres_id_fk",
+          "tableFrom": "shops",
+          "columnsFrom": [
+            "genre_id"
+          ],
+          "tableTo": "genres",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "restrict"
+        },
+        "shops_area_id_areas_id_fk": {
+          "name": "shops_area_id_areas_id_fk",
+          "tableFrom": "shops",
+          "columnsFrom": [
+            "area_id"
+          ],
+          "tableTo": "areas",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "restrict"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "ck_shops_id_length": {
+          "name": "ck_shops_id_length",
+          "value": "length(\"shops\".\"id\") <= 64"
+        },
+        "ck_shops_status": {
+          "name": "ck_shops_status",
+          "value": "\"shops\".\"status\" IN ('draft', 'pending', 'published', 'suspended', 'closed')"
+        },
+        "ck_shops_name_length": {
+          "name": "ck_shops_name_length",
+          "value": "length(\"shops\".\"name\") <= 100"
+        },
+        "ck_shops_name_kana_length": {
+          "name": "ck_shops_name_kana_length",
+          "value": "length(\"shops\".\"name_kana\") <= 200"
+        },
+        "ck_shops_description_length": {
+          "name": "ck_shops_description_length",
+          "value": "length(\"shops\".\"description\") <= 2000"
+        },
+        "ck_shops_address_length": {
+          "name": "ck_shops_address_length",
+          "value": "length(\"shops\".\"address\") <= 200"
+        },
+        "ck_shops_phone_length": {
+          "name": "ck_shops_phone_length",
+          "value": "length(\"shops\".\"phone\") <= 20"
+        },
+        "ck_shops_website_length": {
+          "name": "ck_shops_website_length",
+          "value": "length(\"shops\".\"website\") <= 500"
+        },
+        "ck_shops_postal_code_format": {
+          "name": "ck_shops_postal_code_format",
+          "value": "\"shops\".\"postal_code\" GLOB '[0-9][0-9][0-9]-[0-9][0-9][0-9][0-9]'"
+        },
+        "ck_shops_lat": {
+          "name": "ck_shops_lat",
+          "value": "\"shops\".\"lat\" BETWEEN -90 AND 90"
+        },
+        "ck_shops_lng": {
+          "name": "ck_shops_lng",
+          "value": "\"shops\".\"lng\" BETWEEN -180 AND 180"
+        },
+        "ck_shops_geohash_length": {
+          "name": "ck_shops_geohash_length",
+          "value": "length(\"shops\".\"geohash\") = 7"
+        },
+        "ck_shops_geohash_alphabet": {
+          "name": "ck_shops_geohash_alphabet",
+          "value": "\"shops\".\"geohash\" <> '' AND \"shops\".\"geohash\" NOT GLOB '*[^0-9bcdefghjkmnpqrstuvwxyz]*'"
+        },
+        "ck_shops_budget_lunch_range": {
+          "name": "ck_shops_budget_lunch_range",
+          "value": "\"shops\".\"budget_lunch_min\" BETWEEN 0 AND 1000000 AND \"shops\".\"budget_lunch_max\" BETWEEN 0 AND 1000000"
+        },
+        "ck_shops_budget_dinner_range": {
+          "name": "ck_shops_budget_dinner_range",
+          "value": "\"shops\".\"budget_dinner_min\" BETWEEN 0 AND 1000000 AND \"shops\".\"budget_dinner_max\" BETWEEN 0 AND 1000000"
+        },
+        "ck_shops_budget_lunch_order": {
+          "name": "ck_shops_budget_lunch_order",
+          "value": "\"shops\".\"budget_lunch_min\" <= \"shops\".\"budget_lunch_max\""
+        },
+        "ck_shops_budget_dinner_order": {
+          "name": "ck_shops_budget_dinner_order",
+          "value": "\"shops\".\"budget_dinner_min\" <= \"shops\".\"budget_dinner_max\""
+        },
+        "ck_shops_rating_avg": {
+          "name": "ck_shops_rating_avg",
+          "value": "\"shops\".\"rating_avg\" BETWEEN 0 AND 5"
+        },
+        "ck_shops_rating_count": {
+          "name": "ck_shops_rating_count",
+          "value": "\"shops\".\"rating_count\" >= 0"
+        },
+        "ck_shops_view_count": {
+          "name": "ck_shops_view_count",
+          "value": "\"shops\".\"view_count\" >= 0"
+        }
+      }
+    },
+    "shop_closures": {
+      "name": "shop_closures",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "shop_id": {
+          "name": "shop_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "date": {
+          "name": "date",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "uq_shop_closures_shop_date": {
+          "name": "uq_shop_closures_shop_date",
+          "columns": [
+            "shop_id",
+            "date"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "shop_closures_shop_id_shops_id_fk": {
+          "name": "shop_closures_shop_id_shops_id_fk",
+          "tableFrom": "shop_closures",
+          "columnsFrom": [
+            "shop_id"
+          ],
+          "tableTo": "shops",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "ck_shop_closures_id_length": {
+          "name": "ck_shop_closures_id_length",
+          "value": "length(\"shop_closures\".\"id\") <= 64"
+        },
+        "ck_shop_closures_date_format": {
+          "name": "ck_shop_closures_date_format",
+          "value": "\"shop_closures\".\"date\" GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'"
+        },
+        "ck_shop_closures_reason_length": {
+          "name": "ck_shop_closures_reason_length",
+          "value": "length(\"shop_closures\".\"reason\") <= 100"
+        }
+      }
+    },
+    "shop_hours": {
+      "name": "shop_hours",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "shop_id": {
+          "name": "shop_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "day_of_week": {
+          "name": "day_of_week",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "open_minute": {
+          "name": "open_minute",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "close_minute": {
+          "name": "close_minute",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "is_closed": {
+          "name": "is_closed",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        }
+      },
+      "indexes": {
+        "idx_shop_hours_shop_day": {
+          "name": "idx_shop_hours_shop_day",
+          "columns": [
+            "shop_id",
+            "day_of_week"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "shop_hours_shop_id_shops_id_fk": {
+          "name": "shop_hours_shop_id_shops_id_fk",
+          "tableFrom": "shop_hours",
+          "columnsFrom": [
+            "shop_id"
+          ],
+          "tableTo": "shops",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "ck_shop_hours_id_length": {
+          "name": "ck_shop_hours_id_length",
+          "value": "length(\"shop_hours\".\"id\") <= 64"
+        },
+        "ck_shop_hours_day_of_week": {
+          "name": "ck_shop_hours_day_of_week",
+          "value": "\"shop_hours\".\"day_of_week\" BETWEEN 0 AND 6"
+        },
+        "ck_shop_hours_open_minute": {
+          "name": "ck_shop_hours_open_minute",
+          "value": "\"shop_hours\".\"open_minute\" BETWEEN 0 AND 2879"
+        },
+        "ck_shop_hours_close_minute": {
+          "name": "ck_shop_hours_close_minute",
+          "value": "\"shop_hours\".\"close_minute\" BETWEEN 0 AND 2879"
+        },
+        "ck_shop_hours_is_closed": {
+          "name": "ck_shop_hours_is_closed",
+          "value": "\"shop_hours\".\"is_closed\" IN (0, 1)"
+        },
+        "ck_shop_hours_open_before_close": {
+          "name": "ck_shop_hours_open_before_close",
+          "value": "\"shop_hours\".\"open_minute\" < \"shop_hours\".\"close_minute\""
+        },
+        "ck_shop_hours_closed_coherence": {
+          "name": "ck_shop_hours_closed_coherence",
+          "value": "(\"shop_hours\".\"is_closed\" AND \"shop_hours\".\"open_minute\" IS NULL AND \"shop_hours\".\"close_minute\" IS NULL) OR (NOT \"shop_hours\".\"is_closed\" AND \"shop_hours\".\"open_minute\" IS NOT NULL AND \"shop_hours\".\"close_minute\" IS NOT NULL)"
+        }
+      }
+    },
+    "shop_photos": {
+      "name": "shop_photos",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "shop_id": {
+          "name": "shop_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "r2_key": {
+          "name": "r2_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "caption": {
+          "name": "caption",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "is_cover": {
+          "name": "is_cover",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        }
+      },
+      "indexes": {
+        "idx_shop_photos_shop_sort": {
+          "name": "idx_shop_photos_shop_sort",
+          "columns": [
+            "shop_id",
+            "sort_order"
+          ],
+          "isUnique": false
+        },
+        "uq_shop_photos_r2_key": {
+          "name": "uq_shop_photos_r2_key",
+          "columns": [
+            "r2_key"
+          ],
+          "isUnique": true
+        },
+        "uq_shop_photos_cover": {
+          "name": "uq_shop_photos_cover",
+          "columns": [
+            "shop_id"
+          ],
+          "where": "\"shop_photos\".\"is_cover\"",
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "shop_photos_shop_id_shops_id_fk": {
+          "name": "shop_photos_shop_id_shops_id_fk",
+          "tableFrom": "shop_photos",
+          "columnsFrom": [
+            "shop_id"
+          ],
+          "tableTo": "shops",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "ck_shop_photos_id_length": {
+          "name": "ck_shop_photos_id_length",
+          "value": "length(\"shop_photos\".\"id\") <= 64"
+        },
+        "ck_shop_photos_r2_key_length": {
+          "name": "ck_shop_photos_r2_key_length",
+          "value": "length(\"shop_photos\".\"r2_key\") <= 200"
+        },
+        "ck_shop_photos_r2_key": {
+          "name": "ck_shop_photos_r2_key",
+          "value": "\"shop_photos\".\"r2_key\" <> '' AND \"shop_photos\".\"r2_key\" NOT GLOB '*[^a-z0-9/._-]*'"
+        },
+        "ck_shop_photos_caption_length": {
+          "name": "ck_shop_photos_caption_length",
+          "value": "length(\"shop_photos\".\"caption\") <= 200"
+        },
+        "ck_shop_photos_sort_order": {
+          "name": "ck_shop_photos_sort_order",
+          "value": "\"shop_photos\".\"sort_order\" >= 0"
+        },
+        "ck_shop_photos_is_cover": {
+          "name": "ck_shop_photos_is_cover",
+          "value": "\"shop_photos\".\"is_cover\" IN (0, 1)"
+        }
+      }
+    },
+    "menu_categories": {
+      "name": "menu_categories",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "shop_id": {
+          "name": "shop_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        }
+      },
+      "indexes": {
+        "idx_menu_categories_shop_sort": {
+          "name": "idx_menu_categories_shop_sort",
+          "columns": [
+            "shop_id",
+            "sort_order"
+          ],
+          "isUnique": false
+        },
+        "uq_menu_categories_shop_id": {
+          "name": "uq_menu_categories_shop_id",
+          "columns": [
+            "shop_id",
+            "id"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "menu_categories_shop_id_shops_id_fk": {
+          "name": "menu_categories_shop_id_shops_id_fk",
+          "tableFrom": "menu_categories",
+          "columnsFrom": [
+            "shop_id"
+          ],
+          "tableTo": "shops",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "ck_menu_categories_id_length": {
+          "name": "ck_menu_categories_id_length",
+          "value": "length(\"menu_categories\".\"id\") <= 64"
+        },
+        "ck_menu_categories_name_length": {
+          "name": "ck_menu_categories_name_length",
+          "value": "length(\"menu_categories\".\"name\") <= 50"
+        },
+        "ck_menu_categories_sort_order": {
+          "name": "ck_menu_categories_sort_order",
+          "value": "\"menu_categories\".\"sort_order\" >= 0"
+        }
+      }
+    },
+    "menu_items": {
+      "name": "menu_items",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "shop_id": {
+          "name": "shop_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "category_id": {
+          "name": "category_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "price": {
+          "name": "price",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "r2_key": {
+          "name": "r2_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "is_recommended": {
+          "name": "is_recommended",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        }
+      },
+      "indexes": {
+        "idx_menu_items_shop_category": {
+          "name": "idx_menu_items_shop_category",
+          "columns": [
+            "shop_id",
+            "category_id"
+          ],
+          "isUnique": false
+        },
+        "idx_menu_items_shop_recommended": {
+          "name": "idx_menu_items_shop_recommended",
+          "columns": [
+            "shop_id",
+            "is_recommended"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "menu_items_shop_id_shops_id_fk": {
+          "name": "menu_items_shop_id_shops_id_fk",
+          "tableFrom": "menu_items",
+          "columnsFrom": [
+            "shop_id"
+          ],
+          "tableTo": "shops",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "menu_items_shop_id_category_id_menu_categories_shop_id_id_fk": {
+          "name": "menu_items_shop_id_category_id_menu_categories_shop_id_id_fk",
+          "tableFrom": "menu_items",
+          "columnsFrom": [
+            "shop_id",
+            "category_id"
+          ],
+          "tableTo": "menu_categories",
+          "columnsTo": [
+            "shop_id",
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "ck_menu_items_id_length": {
+          "name": "ck_menu_items_id_length",
+          "value": "length(\"menu_items\".\"id\") <= 64"
+        },
+        "ck_menu_items_name_length": {
+          "name": "ck_menu_items_name_length",
+          "value": "length(\"menu_items\".\"name\") <= 100"
+        },
+        "ck_menu_items_description_length": {
+          "name": "ck_menu_items_description_length",
+          "value": "length(\"menu_items\".\"description\") <= 500"
+        },
+        "ck_menu_items_price": {
+          "name": "ck_menu_items_price",
+          "value": "\"menu_items\".\"price\" BETWEEN 0 AND 1000000"
+        },
+        "ck_menu_items_r2_key_length": {
+          "name": "ck_menu_items_r2_key_length",
+          "value": "length(\"menu_items\".\"r2_key\") <= 200"
+        },
+        "ck_menu_items_r2_key": {
+          "name": "ck_menu_items_r2_key",
+          "value": "\"menu_items\".\"r2_key\" <> '' AND \"menu_items\".\"r2_key\" NOT GLOB '*[^a-z0-9/._-]*'"
+        },
+        "ck_menu_items_is_recommended": {
+          "name": "ck_menu_items_is_recommended",
+          "value": "\"menu_items\".\"is_recommended\" IN (0, 1)"
+        }
+      }
+    },
+    "seat_settings": {
+      "name": "seat_settings",
+      "columns": {
+        "shop_id": {
+          "name": "shop_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "capacity": {
+          "name": "capacity",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "slot_minutes": {
+          "name": "slot_minutes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 90
+        },
+        "max_parallel": {
+          "name": "max_parallel",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
+        },
+        "accepts_reservation": {
+          "name": "accepts_reservation",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "seat_settings_shop_id_shops_id_fk": {
+          "name": "seat_settings_shop_id_shops_id_fk",
+          "tableFrom": "seat_settings",
+          "columnsFrom": [
+            "shop_id"
+          ],
+          "tableTo": "shops",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "ck_seat_settings_capacity": {
+          "name": "ck_seat_settings_capacity",
+          "value": "\"seat_settings\".\"capacity\" BETWEEN 1 AND 500"
+        },
+        "ck_seat_settings_slot_minutes": {
+          "name": "ck_seat_settings_slot_minutes",
+          "value": "\"seat_settings\".\"slot_minutes\" BETWEEN 15 AND 240"
+        },
+        "ck_seat_settings_max_parallel": {
+          "name": "ck_seat_settings_max_parallel",
+          "value": "\"seat_settings\".\"max_parallel\" BETWEEN 1 AND 100"
+        },
+        "ck_seat_settings_accepts_reservation": {
+          "name": "ck_seat_settings_accepts_reservation",
+          "value": "\"seat_settings\".\"accepts_reservation\" IN (0, 1)"
+        }
+      }
+    },
+    "review_photos": {
+      "name": "review_photos",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "review_id": {
+          "name": "review_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "r2_key": {
+          "name": "r2_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        }
+      },
+      "indexes": {
+        "idx_review_photos_review_sort": {
+          "name": "idx_review_photos_review_sort",
+          "columns": [
+            "review_id",
+            "sort_order"
+          ],
+          "isUnique": false
+        },
+        "uq_review_photos_r2_key": {
+          "name": "uq_review_photos_r2_key",
+          "columns": [
+            "r2_key"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "review_photos_review_id_reviews_id_fk": {
+          "name": "review_photos_review_id_reviews_id_fk",
+          "tableFrom": "review_photos",
+          "columnsFrom": [
+            "review_id"
+          ],
+          "tableTo": "reviews",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "ck_review_photos_id_length": {
+          "name": "ck_review_photos_id_length",
+          "value": "length(\"review_photos\".\"id\") <= 64"
+        },
+        "ck_review_photos_r2_key_length": {
+          "name": "ck_review_photos_r2_key_length",
+          "value": "length(\"review_photos\".\"r2_key\") <= 200"
+        },
+        "ck_review_photos_r2_key": {
+          "name": "ck_review_photos_r2_key",
+          "value": "\"review_photos\".\"r2_key\" <> '' AND \"review_photos\".\"r2_key\" NOT GLOB '*[^a-z0-9/._-]*'"
+        },
+        "ck_review_photos_sort_order": {
+          "name": "ck_review_photos_sort_order",
+          "value": "\"review_photos\".\"sort_order\" >= 0"
+        }
+      }
+    },
+    "review_replies": {
+      "name": "review_replies",
+      "columns": {
+        "review_id": {
+          "name": "review_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "shop_id": {
+          "name": "shop_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "body": {
+          "name": "body",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
+        }
+      },
+      "indexes": {
+        "idx_review_replies_shop": {
+          "name": "idx_review_replies_shop",
+          "columns": [
+            "shop_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "review_replies_shop_id_shops_id_fk": {
+          "name": "review_replies_shop_id_shops_id_fk",
+          "tableFrom": "review_replies",
+          "columnsFrom": [
+            "shop_id"
+          ],
+          "tableTo": "shops",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "review_replies_review_id_shop_id_reviews_id_shop_id_fk": {
+          "name": "review_replies_review_id_shop_id_reviews_id_shop_id_fk",
+          "tableFrom": "review_replies",
+          "columnsFrom": [
+            "review_id",
+            "shop_id"
+          ],
+          "tableTo": "reviews",
+          "columnsTo": [
+            "id",
+            "shop_id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "ck_review_replies_body_length": {
+          "name": "ck_review_replies_body_length",
+          "value": "length(\"review_replies\".\"body\") <= 1000"
+        }
+      }
+    },
+    "reviews": {
+      "name": "reviews",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "shop_id": {
+          "name": "shop_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "rating": {
+          "name": "rating",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "body": {
+          "name": "body",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "visited_on": {
+          "name": "visited_on",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "budget": {
+          "name": "budget",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'published'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
+        }
+      },
+      "indexes": {
+        "idx_reviews_shop_created": {
+          "name": "idx_reviews_shop_created",
+          "columns": [
+            "shop_id",
+            "\"created_at\" desc"
+          ],
+          "isUnique": false
+        },
+        "idx_reviews_shop_status_created": {
+          "name": "idx_reviews_shop_status_created",
+          "columns": [
+            "shop_id",
+            "status",
+            "\"created_at\" desc"
+          ],
+          "isUnique": false
+        },
+        "idx_reviews_user_created": {
+          "name": "idx_reviews_user_created",
+          "columns": [
+            "user_id",
+            "\"created_at\" desc"
+          ],
+          "isUnique": false
+        },
+        "uq_reviews_shop_user": {
+          "name": "uq_reviews_shop_user",
+          "columns": [
+            "shop_id",
+            "user_id"
+          ],
+          "isUnique": true
+        },
+        "uq_reviews_id_shop": {
+          "name": "uq_reviews_id_shop",
+          "columns": [
+            "id",
+            "shop_id"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "reviews_shop_id_shops_id_fk": {
+          "name": "reviews_shop_id_shops_id_fk",
+          "tableFrom": "reviews",
+          "columnsFrom": [
+            "shop_id"
+          ],
+          "tableTo": "shops",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "reviews_user_id_user_id_fk": {
+          "name": "reviews_user_id_user_id_fk",
+          "tableFrom": "reviews",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "tableTo": "user",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "ck_reviews_id_length": {
+          "name": "ck_reviews_id_length",
+          "value": "length(\"reviews\".\"id\") <= 64"
+        },
+        "ck_reviews_rating": {
+          "name": "ck_reviews_rating",
+          "value": "\"reviews\".\"rating\" BETWEEN 1 AND 5"
+        },
+        "ck_reviews_body_length": {
+          "name": "ck_reviews_body_length",
+          "value": "length(\"reviews\".\"body\") <= 2000"
+        },
+        "ck_reviews_status": {
+          "name": "ck_reviews_status",
+          "value": "\"reviews\".\"status\" IN ('published', 'hidden', 'deleted')"
+        },
+        "ck_reviews_visited_on_format": {
+          "name": "ck_reviews_visited_on_format",
+          "value": "\"reviews\".\"visited_on\" GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'"
+        },
+        "ck_reviews_budget": {
+          "name": "ck_reviews_budget",
+          "value": "\"reviews\".\"budget\" BETWEEN 0 AND 1000000"
+        }
+      }
+    },
+    "reservations": {
+      "name": "reservations",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "shop_id": {
+          "name": "shop_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "reserved_at": {
+          "name": "reserved_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "party_size": {
+          "name": "party_size",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "note": {
+          "name": "note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'pending'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
+        }
+      },
+      "indexes": {
+        "idx_reservations_shop_reserved": {
+          "name": "idx_reservations_shop_reserved",
+          "columns": [
+            "shop_id",
+            "reserved_at"
+          ],
+          "isUnique": false
+        },
+        "idx_reservations_shop_status_reserved": {
+          "name": "idx_reservations_shop_status_reserved",
+          "columns": [
+            "shop_id",
+            "status",
+            "reserved_at"
+          ],
+          "isUnique": false
+        },
+        "idx_reservations_user_reserved": {
+          "name": "idx_reservations_user_reserved",
+          "columns": [
+            "user_id",
+            "\"reserved_at\" desc"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "reservations_shop_id_shops_id_fk": {
+          "name": "reservations_shop_id_shops_id_fk",
+          "tableFrom": "reservations",
+          "columnsFrom": [
+            "shop_id"
+          ],
+          "tableTo": "shops",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "reservations_user_id_user_id_fk": {
+          "name": "reservations_user_id_user_id_fk",
+          "tableFrom": "reservations",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "tableTo": "user",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "ck_reservations_id_length": {
+          "name": "ck_reservations_id_length",
+          "value": "length(\"reservations\".\"id\") <= 64"
+        },
+        "ck_reservations_party_size": {
+          "name": "ck_reservations_party_size",
+          "value": "\"reservations\".\"party_size\" BETWEEN 1 AND 20"
+        },
+        "ck_reservations_status": {
+          "name": "ck_reservations_status",
+          "value": "\"reservations\".\"status\" IN ('pending', 'confirmed', 'rejected', 'cancelled', 'completed', 'no_show')"
+        },
+        "ck_reservations_note_length": {
+          "name": "ck_reservations_note_length",
+          "value": "length(\"reservations\".\"note\") <= 500"
+        }
+      }
+    },
+    "favorites": {
+      "name": "favorites",
+      "columns": {
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "shop_id": {
+          "name": "shop_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
+        }
+      },
+      "indexes": {
+        "idx_favorites_user_created": {
+          "name": "idx_favorites_user_created",
+          "columns": [
+            "user_id",
+            "\"created_at\" desc"
+          ],
+          "isUnique": false
+        },
+        "idx_favorites_shop": {
+          "name": "idx_favorites_shop",
+          "columns": [
+            "shop_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "favorites_user_id_user_id_fk": {
+          "name": "favorites_user_id_user_id_fk",
+          "tableFrom": "favorites",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "tableTo": "user",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "favorites_shop_id_shops_id_fk": {
+          "name": "favorites_shop_id_shops_id_fk",
+          "tableFrom": "favorites",
+          "columnsFrom": [
+            "shop_id"
+          ],
+          "tableTo": "shops",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {
+        "favorites_user_id_shop_id_pk": {
+          "columns": [
+            "user_id",
+            "shop_id"
+          ],
+          "name": "favorites_user_id_shop_id_pk"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "list_items": {
+      "name": "list_items",
+      "columns": {
+        "list_id": {
+          "name": "list_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "shop_id": {
+          "name": "shop_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "note": {
+          "name": "note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        }
+      },
+      "indexes": {
+        "idx_list_items_list_sort": {
+          "name": "idx_list_items_list_sort",
+          "columns": [
+            "list_id",
+            "sort_order"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "list_items_list_id_lists_id_fk": {
+          "name": "list_items_list_id_lists_id_fk",
+          "tableFrom": "list_items",
+          "columnsFrom": [
+            "list_id"
+          ],
+          "tableTo": "lists",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "list_items_shop_id_shops_id_fk": {
+          "name": "list_items_shop_id_shops_id_fk",
+          "tableFrom": "list_items",
+          "columnsFrom": [
+            "shop_id"
+          ],
+          "tableTo": "shops",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {
+        "list_items_list_id_shop_id_pk": {
+          "columns": [
+            "list_id",
+            "shop_id"
+          ],
+          "name": "list_items_list_id_shop_id_pk"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "ck_list_items_note_length": {
+          "name": "ck_list_items_note_length",
+          "value": "length(\"list_items\".\"note\") <= 500"
+        },
+        "ck_list_items_sort_order": {
+          "name": "ck_list_items_sort_order",
+          "value": "\"list_items\".\"sort_order\" >= 0"
+        }
+      }
+    },
+    "lists": {
+      "name": "lists",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "is_public": {
+          "name": "is_public",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "share_token": {
+          "name": "share_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "idx_lists_user": {
+          "name": "idx_lists_user",
+          "columns": [
+            "user_id"
+          ],
+          "isUnique": false
+        },
+        "uq_lists_share_token": {
+          "name": "uq_lists_share_token",
+          "columns": [
+            "share_token"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "lists_user_id_user_id_fk": {
+          "name": "lists_user_id_user_id_fk",
+          "tableFrom": "lists",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "tableTo": "user",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "ck_lists_id_length": {
+          "name": "ck_lists_id_length",
+          "value": "length(\"lists\".\"id\") <= 64"
+        },
+        "ck_lists_name_length": {
+          "name": "ck_lists_name_length",
+          "value": "length(\"lists\".\"name\") <= 100"
+        },
+        "ck_lists_description_length": {
+          "name": "ck_lists_description_length",
+          "value": "length(\"lists\".\"description\") <= 1000"
+        },
+        "ck_lists_is_public": {
+          "name": "ck_lists_is_public",
+          "value": "\"lists\".\"is_public\" IN (0, 1)"
+        },
+        "ck_lists_share_token_length": {
+          "name": "ck_lists_share_token_length",
+          "value": "length(\"lists\".\"share_token\") = 32"
+        },
+        "ck_lists_share_token_alphabet": {
+          "name": "ck_lists_share_token_alphabet",
+          "value": "\"lists\".\"share_token\" <> '' AND \"lists\".\"share_token\" NOT GLOB '*[^a-z0-9]*'"
+        }
+      }
+    },
+    "audit_logs": {
+      "name": "audit_logs",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "actor_id": {
+          "name": "actor_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "action": {
+          "name": "action",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "target_type": {
+          "name": "target_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "target_id": {
+          "name": "target_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "diff": {
+          "name": "diff",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
+        }
+      },
+      "indexes": {
+        "idx_audit_logs_created": {
+          "name": "idx_audit_logs_created",
+          "columns": [
+            "\"created_at\" desc"
+          ],
+          "isUnique": false
+        },
+        "idx_audit_logs_actor_created": {
+          "name": "idx_audit_logs_actor_created",
+          "columns": [
+            "actor_id",
+            "\"created_at\" desc"
+          ],
+          "isUnique": false
+        },
+        "idx_audit_logs_target": {
+          "name": "idx_audit_logs_target",
+          "columns": [
+            "target_type",
+            "target_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "audit_logs_actor_id_user_id_fk": {
+          "name": "audit_logs_actor_id_user_id_fk",
+          "tableFrom": "audit_logs",
+          "columnsFrom": [
+            "actor_id"
+          ],
+          "tableTo": "user",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "set null"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "ck_audit_logs_id_length": {
+          "name": "ck_audit_logs_id_length",
+          "value": "length(\"audit_logs\".\"id\") <= 64"
+        },
+        "ck_audit_logs_action": {
+          "name": "ck_audit_logs_action",
+          "value": "\"audit_logs\".\"action\" <> '' AND \"audit_logs\".\"action\" NOT GLOB '*[^a-z0-9_.]*'"
+        },
+        "ck_audit_logs_target_type_length": {
+          "name": "ck_audit_logs_target_type_length",
+          "value": "length(\"audit_logs\".\"target_type\") <= 32"
+        },
+        "ck_audit_logs_diff_json": {
+          "name": "ck_audit_logs_diff_json",
+          "value": "\"audit_logs\".\"diff\" IS NULL OR json_valid(\"audit_logs\".\"diff\")"
+        }
+      }
+    },
+    "notifications": {
+      "name": "notifications",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "body": {
+          "name": "body",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "data": {
+          "name": "data",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "read_at": {
+          "name": "read_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
+        }
+      },
+      "indexes": {
+        "idx_notifications_user_created": {
+          "name": "idx_notifications_user_created",
+          "columns": [
+            "user_id",
+            "\"created_at\" desc"
+          ],
+          "isUnique": false
+        },
+        "idx_notifications_user_unread": {
+          "name": "idx_notifications_user_unread",
+          "columns": [
+            "user_id",
+            "\"created_at\" desc"
+          ],
+          "where": "\"notifications\".\"read_at\" IS NULL",
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "notifications_user_id_user_id_fk": {
+          "name": "notifications_user_id_user_id_fk",
+          "tableFrom": "notifications",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "tableTo": "user",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "ck_notifications_id_length": {
+          "name": "ck_notifications_id_length",
+          "value": "length(\"notifications\".\"id\") <= 64"
+        },
+        "ck_notifications_type": {
+          "name": "ck_notifications_type",
+          "value": "\"notifications\".\"type\" IN ('reservation_requested', 'reservation_confirmed', 'reservation_rejected', 'reservation_cancelled', 'review_posted', 'review_replied', 'application_approved', 'application_rejected', 'application_returned', 'announcement')"
+        },
+        "ck_notifications_title_length": {
+          "name": "ck_notifications_title_length",
+          "value": "length(\"notifications\".\"title\") <= 100"
+        },
+        "ck_notifications_body_length": {
+          "name": "ck_notifications_body_length",
+          "value": "length(\"notifications\".\"body\") <= 500"
+        },
+        "ck_notifications_data_json": {
+          "name": "ck_notifications_data_json",
+          "value": "\"notifications\".\"data\" IS NULL OR json_valid(\"notifications\".\"data\")"
+        }
+      }
+    },
+    "reports": {
+      "name": "reports",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "reporter_id": {
+          "name": "reporter_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "target_type": {
+          "name": "target_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "target_id": {
+          "name": "target_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "detail": {
+          "name": "detail",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'open'"
+        },
+        "handled_by": {
+          "name": "handled_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "handled_at": {
+          "name": "handled_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
+        }
+      },
+      "indexes": {
+        "idx_reports_status_created": {
+          "name": "idx_reports_status_created",
+          "columns": [
+            "status",
+            "\"created_at\" desc"
+          ],
+          "isUnique": false
+        },
+        "idx_reports_target": {
+          "name": "idx_reports_target",
+          "columns": [
+            "target_type",
+            "target_id"
+          ],
+          "isUnique": false
+        },
+        "idx_reports_reporter": {
+          "name": "idx_reports_reporter",
+          "columns": [
+            "reporter_id"
+          ],
+          "isUnique": false
+        },
+        "uq_reports_reporter_target": {
+          "name": "uq_reports_reporter_target",
+          "columns": [
+            "reporter_id",
+            "target_type",
+            "target_id"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "reports_reporter_id_user_id_fk": {
+          "name": "reports_reporter_id_user_id_fk",
+          "tableFrom": "reports",
+          "columnsFrom": [
+            "reporter_id"
+          ],
+          "tableTo": "user",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "set null"
+        },
+        "reports_handled_by_user_id_fk": {
+          "name": "reports_handled_by_user_id_fk",
+          "tableFrom": "reports",
+          "columnsFrom": [
+            "handled_by"
+          ],
+          "tableTo": "user",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "set null"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "ck_reports_id_length": {
+          "name": "ck_reports_id_length",
+          "value": "length(\"reports\".\"id\") <= 64"
+        },
+        "ck_reports_target_type": {
+          "name": "ck_reports_target_type",
+          "value": "\"reports\".\"target_type\" IN ('shop', 'review', 'user')"
+        },
+        "ck_reports_status": {
+          "name": "ck_reports_status",
+          "value": "\"reports\".\"status\" IN ('open', 'in_review', 'resolved', 'rejected')"
+        },
+        "ck_reports_reason_length": {
+          "name": "ck_reports_reason_length",
+          "value": "length(\"reports\".\"reason\") <= 100"
+        },
+        "ck_reports_detail_length": {
+          "name": "ck_reports_detail_length",
+          "value": "length(\"reports\".\"detail\") <= 1000"
+        },
+        "ck_reports_handler_requires_time": {
+          "name": "ck_reports_handler_requires_time",
+          "value": "\"reports\".\"handled_by\" IS NULL OR \"reports\".\"handled_at\" IS NOT NULL"
+        },
+        "ck_reports_closed_requires_time": {
+          "name": "ck_reports_closed_requires_time",
+          "value": "\"reports\".\"status\" IN ('open', 'in_review') OR \"reports\".\"handled_at\" IS NOT NULL"
+        }
+      }
+    },
+    "shop_applications": {
+      "name": "shop_applications",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "applicant_id": {
+          "name": "applicant_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "shop_id": {
+          "name": "shop_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "documents": {
+          "name": "documents",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'[]'"
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'pending'"
+        },
+        "reviewed_by": {
+          "name": "reviewed_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "review_note": {
+          "name": "review_note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
+        }
+      },
+      "indexes": {
+        "idx_shop_applications_status_created": {
+          "name": "idx_shop_applications_status_created",
+          "columns": [
+            "status",
+            "\"created_at\" desc"
+          ],
+          "isUnique": false
+        },
+        "idx_shop_applications_applicant": {
+          "name": "idx_shop_applications_applicant",
+          "columns": [
+            "applicant_id"
+          ],
+          "isUnique": false
+        },
+        "uq_shop_applications_shop_pending": {
+          "name": "uq_shop_applications_shop_pending",
+          "columns": [
+            "shop_id"
+          ],
+          "where": "\"shop_applications\".\"status\" = 'pending'",
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "shop_applications_applicant_id_user_id_fk": {
+          "name": "shop_applications_applicant_id_user_id_fk",
+          "tableFrom": "shop_applications",
+          "columnsFrom": [
+            "applicant_id"
+          ],
+          "tableTo": "user",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "shop_applications_shop_id_shops_id_fk": {
+          "name": "shop_applications_shop_id_shops_id_fk",
+          "tableFrom": "shop_applications",
+          "columnsFrom": [
+            "shop_id"
+          ],
+          "tableTo": "shops",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "shop_applications_reviewed_by_user_id_fk": {
+          "name": "shop_applications_reviewed_by_user_id_fk",
+          "tableFrom": "shop_applications",
+          "columnsFrom": [
+            "reviewed_by"
+          ],
+          "tableTo": "user",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "set null"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "ck_shop_applications_id_length": {
+          "name": "ck_shop_applications_id_length",
+          "value": "length(\"shop_applications\".\"id\") <= 64"
+        },
+        "ck_shop_applications_status": {
+          "name": "ck_shop_applications_status",
+          "value": "\"shop_applications\".\"status\" IN ('pending', 'approved', 'rejected', 'returned')"
+        },
+        "ck_shop_applications_documents_json": {
+          "name": "ck_shop_applications_documents_json",
+          "value": "json_valid(\"shop_applications\".\"documents\") AND json_type(\"shop_applications\".\"documents\") = 'array'"
+        },
+        "ck_shop_applications_review_note_length": {
+          "name": "ck_shop_applications_review_note_length",
+          "value": "length(\"shop_applications\".\"review_note\") <= 1000"
+        }
+      }
+    }
+  },
+  "views": {},
+  "enums": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  },
+  "internal": {
+    "indexes": {
+      "idx_shops_status_rating": {
+        "columns": {
+          "\"rating_avg\" desc": {
+            "isExpression": true
+          }
+        }
+      },
+      "idx_reviews_shop_created": {
+        "columns": {
+          "\"created_at\" desc": {
+            "isExpression": true
+          }
+        }
+      },
+      "idx_reviews_shop_status_created": {
+        "columns": {
+          "\"created_at\" desc": {
+            "isExpression": true
+          }
+        }
+      },
+      "idx_reviews_user_created": {
+        "columns": {
+          "\"created_at\" desc": {
+            "isExpression": true
+          }
+        }
+      },
+      "idx_reservations_user_reserved": {
+        "columns": {
+          "\"reserved_at\" desc": {
+            "isExpression": true
+          }
+        }
+      },
+      "idx_favorites_user_created": {
+        "columns": {
+          "\"created_at\" desc": {
+            "isExpression": true
+          }
+        }
+      },
+      "idx_audit_logs_created": {
+        "columns": {
+          "\"created_at\" desc": {
+            "isExpression": true
+          }
+        }
+      },
+      "idx_audit_logs_actor_created": {
+        "columns": {
+          "\"created_at\" desc": {
+            "isExpression": true
+          }
+        }
+      },
+      "idx_notifications_user_created": {
+        "columns": {
+          "\"created_at\" desc": {
+            "isExpression": true
+          }
+        }
+      },
+      "idx_notifications_user_unread": {
+        "columns": {
+          "\"created_at\" desc": {
+            "isExpression": true
+          }
+        }
+      },
+      "idx_reports_status_created": {
+        "columns": {
+          "\"created_at\" desc": {
+            "isExpression": true
+          }
+        }
+      },
+      "idx_shop_applications_status_created": {
+        "columns": {
+          "\"created_at\" desc": {
+            "isExpression": true
+          }
+        }
+      }
+    }
+  }
+}
