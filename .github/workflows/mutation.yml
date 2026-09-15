@@ -1,0 +1,53 @@
+name: Mutation Tests
+
+# ミューテーションテストは通常のテストと桁が違うほど重い。
+# packages/core はローカル実測で 610 変異 / 1 分 34 秒
+# （docs/superpowers/plans/2026-09-15-phase-2-core-package.md）、
+# CI ランナーではさらに遅い。push のたびに回すとフィードバックが鈍り、
+# 待ち時間の長さから CI 自体が無視されるようになる。
+# そのため ci.yml から切り離し、手動実行と週次バッチだけにする。
+on:
+  workflow_dispatch:
+  schedule:
+    # cron は UTC 固定。日曜 18:00 UTC = 月曜 03:00 JST に週 1 回走らせ、
+    # 週明けにスコアの劣化を確認できる状態にする。
+    - cron: '0 18 * * 0'
+
+# 長時間ジョブなので、手動実行を連打したときに何本も並走しないよう 1 本に絞る。
+# ただし走り切ったスコアには意味があるため、途中キャンセルはしない。
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  mutation:
+    name: Stryker（${{ matrix.workspace }}）
+    runs-on: ubuntu-latest
+    # ローカル 1 分半に対して十分な余裕を取りつつ、暴走したら確実に止める。
+    timeout-minutes: 30
+    strategy:
+      # 片方がしきい値割れしても、もう片方のスコアは知りたいので止めない。
+      fail-fast: false
+      matrix:
+        # apps/api にも test:mutation スクリプトはあるが stryker.config.json が無く、
+        # 実行しても設定不足で落ちるだけなので対象に入れない。
+        # ルートの `npm run test:mutation` が --workspaces で api も巻き込むのを避けるため、
+        # ここではワークスペースを明示して呼ぶ。
+        workspace: ['@meshimap/geo', '@meshimap/core']
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          # ci.yml と同じく .nvmrc を唯一の正とする。
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+      - name: 依存をインストール
+        run: npm ci
+      - name: stryker run
+        # しきい値（thresholds.break: 85）は各 stryker.config.json 側に書いてある。
+        # CI から --break などを重ねて渡すと設定が二重管理になり、
+        # ローカル実行と CI で判定が食い違う余地を作るので何も足さない。
+        run: npm run test:mutation -w ${{ matrix.workspace }}

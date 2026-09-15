@@ -1,0 +1,12 @@
+# drizzle-kit の生成物。マイグレーションを作り直すたびに書き換わるため、
+# 整形の対象にすると意味のない差分が毎回出る。
+apps/api/migrations/
+
+# テスト実行時の成果物
+coverage/
+reports/
+
+# 依存とビルド生成物
+node_modules/
+.expo/
+dist/

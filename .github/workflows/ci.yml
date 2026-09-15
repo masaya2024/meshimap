@@ -1,0 +1,109 @@
+name: CI
+
+on:
+  # push は main だけに絞る。全ブランチを対象にすると、PR を開いているブランチへ
+  # push したとき push と pull_request で同じコミットが二重に走り、待ち時間だけが増える。
+  # 「main への直接 push」と「PR」の両方を押さえればこのリポジトリの経路は塞げる。
+  push:
+    branches: [main]
+  pull_request:
+
+# 同じブランチへ連続で push したとき、古い実行は結果を見ないまま捨てられる。
+# 走らせ続けても無駄なので打ち切って、最新コミットの結果を早く返す。
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# チェックアウトしか行わないため、既定の広い権限を read に絞っておく。
+permissions:
+  contents: read
+
+jobs:
+  # 型・整形・テストは互いに依存しないので、直列にせず並列で回して総時間を短くする。
+  typecheck:
+    name: 型検査（mobile / core / geo）
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          # Node のバージョンは .nvmrc を唯一の正とする。YAML に直書きすると
+          # ローカル（nvm）と CI がずれたことに誰も気づけない。
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+      - name: 依存をインストール
+        # lockfile どおりに入れて、CI だけ別のバージョンが入る事故を防ぐ。
+        run: npm ci
+      - name: tsc --noEmit
+        # ルートの `npm run typecheck` は --workspaces なので apps/api も巻き込む。
+        # apps/api は下の専用ジョブへ隔離しているため、ここでは対象を明示する。
+        run: npm run typecheck -w @meshimap/geo -w @meshimap/core -w @meshimap/mobile
+
+  format:
+    name: 整形検査（Prettier）
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+      - name: 依存をインストール
+        # Prettier はルートの devDependency なので、ここでもインストールが要る。
+        run: npm ci
+      - name: prettier --check
+        run: npm run format:check
+
+  test-packages:
+    name: テスト（core / geo・カバレッジ 100% 必須）
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+      - name: 依存をインストール
+        run: npm ci
+      - name: Vitest（カバレッジ付き）
+        # `test` ではなく `test:coverage` を使う。両パッケージの vitest.config.ts が
+        # lines/functions/branches/statements 100% をしきい値にしており、
+        # カバレッジ経由で回さないとその防御が CI で効かない。
+        run: npm run test:coverage -w @meshimap/geo -w @meshimap/core
+
+  test-mobile:
+    name: テスト（mobile・Jest）
+    runs-on: ubuntu-latest
+    # Jest + jest-expo は node_modules の変換が重く、packages 側より時間がかかる。
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+      - name: 依存をインストール
+        run: npm ci
+      - name: Jest
+        run: npm run test -w @meshimap/mobile
+
+  test-api:
+    name: テスト（api・miniflare でローカル D1）
+    runs-on: ubuntu-latest
+    # miniflare の起動を各テストファイルで行うぶん、packages 側より時間がかかる。
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+      - name: 依存をインストール
+        run: npm ci
+      - name: tsc --noEmit
+        run: npm run typecheck -w @meshimap/api
+      - name: Vitest（miniflare でローカル D1 を起動）
+        run: npm run test -w @meshimap/api
