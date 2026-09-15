@@ -25,18 +25,18 @@ app/(user)/shop/[id]/index.tsx         ❌
 
 ### 1.2 コード内の識別子
 
-| 対象 | 規則 | 例 |
-|---|---|---|
-| React コンポーネント | PascalCase | `ShopCard`, `OpenStatusBadge` |
-| 関数・変数 | camelCase | `calculateDistance`, `nearbyShops` |
-| 定数 | UPPER_SNAKE_CASE | `DEFAULT_SEARCH_RADIUS_M` |
-| 型・インターフェース | PascalCase（`I` 接頭辞なし） | `Shop`, `ReservationStatus` |
-| 型パラメータ | 意味のある名前 | `<TPayload>`（`<T>` は自明な場合のみ） |
-| Zod スキーマ | `<名前>Schema` | `shopCreateSchema` |
-| カスタムフック | `use` + camelCase | `useNearbyShops` |
-| Zustand ストア | `use<名前>Store` | `useMapViewportStore` |
-| DB テーブル・カラム | snake_case | `shop_hours`, `owner_id` |
-| R2 オブジェクトキー | `<種別>/<id>/<uuid>.<ext>` | `shop-photos/shp_01.../a1b2.webp` |
+| 対象                 | 規則                         | 例                                     |
+| -------------------- | ---------------------------- | -------------------------------------- |
+| React コンポーネント | PascalCase                   | `ShopCard`, `OpenStatusBadge`          |
+| 関数・変数           | camelCase                    | `calculateDistance`, `nearbyShops`     |
+| 定数                 | UPPER_SNAKE_CASE             | `DEFAULT_SEARCH_RADIUS_M`              |
+| 型・インターフェース | PascalCase（`I` 接頭辞なし） | `Shop`, `ReservationStatus`            |
+| 型パラメータ         | 意味のある名前               | `<TPayload>`（`<T>` は自明な場合のみ） |
+| Zod スキーマ         | `<名前>Schema`               | `shopCreateSchema`                     |
+| カスタムフック       | `use` + camelCase            | `useNearbyShops`                       |
+| Zustand ストア       | `use<名前>Store`             | `useMapViewportStore`                  |
+| DB テーブル・カラム  | snake_case                   | `shop_hours`, `owner_id`               |
+| R2 オブジェクトキー  | `<種別>/<id>/<uuid>.<ext>`   | `shop-photos/shp_01.../a1b2.webp`      |
 
 ### 1.3 真偽値
 
@@ -76,16 +76,16 @@ const cnt = ...              ❌
 
 CI（`typecheck` / lint）で機械的に検出する。
 
-| 禁止 | 代わりに |
-|---|---|
-| `any` | `unknown` + 型ガードで絞り込む。外部データは Zod で parse する |
-| `as` による型アサーション | 型ガード関数（`isShop(x): x is Shop`）を書く。ブランド型生成時のみ例外的に許可 |
-| `console.log` | `lib/logger.ts` 経由。本番ビルドで除去される |
-| マジックナンバー / マジックストリング | `constants/` に定数として定義する |
-| 未使用の import / 変数 | 削除する（`noUnusedLocals` / `noUnusedParameters`） |
-| 根拠のない `// TODO` | Issue 番号か理由を併記する（`// TODO(#42): ...`） |
-| `!` による non-null アサーション | 早期 return か、`noUncheckedIndexedAccess` に沿った分岐で処理する |
-| デフォルトエクスポート | 名前付きエクスポート。ただし expo-router の画面ファイルは仕様上 default が必須 |
+| 禁止                                  | 代わりに                                                                       |
+| ------------------------------------- | ------------------------------------------------------------------------------ |
+| `any`                                 | `unknown` + 型ガードで絞り込む。外部データは Zod で parse する                 |
+| `as` による型アサーション             | 型ガード関数（`isShop(x): x is Shop`）を書く。ブランド型生成時のみ例外的に許可 |
+| `console.log`                         | `lib/logger.ts` 経由。本番ビルドで除去される                                   |
+| マジックナンバー / マジックストリング | `constants/` に定数として定義する                                              |
+| 未使用の import / 変数                | 削除する（`noUnusedLocals` / `noUnusedParameters`）                            |
+| 根拠のない `// TODO`                  | Issue 番号か理由を併記する（`// TODO(#42): ...`）                              |
+| `!` による non-null アサーション      | 早期 return か、`noUncheckedIndexedAccess` に沿った分岐で処理する              |
+| デフォルトエクスポート                | 名前付きエクスポート。ただし expo-router の画面ファイルは仕様上 default が必須 |
 
 ## 3. コンポーネント設計
 
@@ -141,7 +141,8 @@ function ShopCard({ shop, distanceM }: ShopCardProps) { ... }
 ```tsx
 if (isPending) return <ShopListSkeleton />;
 if (error) return <ErrorState onRetry={refetch} />;
-if (shops.length === 0) return <EmptyState icon={MapPin} title="この条件のお店は見つかりませんでした" />;
+if (shops.length === 0)
+  return <EmptyState icon={MapPin} title="この条件のお店は見つかりませんでした" />;
 ```
 
 ## 4. 型の扱い
@@ -155,7 +156,7 @@ type ShopId = string & { readonly __brand: 'ShopId' };
 type UserId = string & { readonly __brand: 'UserId' };
 
 // これがコンパイルエラーになる
-getShop(userId);  // Error: UserId is not assignable to ShopId
+getShop(userId); // Error: UserId is not assignable to ShopId
 ```
 
 ### 4.2 権限主体もブランド型にする

@@ -25,6 +25,7 @@
 ### Task 0-1: NativeWind をセットアップする
 
 **Files:**
+
 - Create: `apps/mobile/babel.config.js`
 - Create: `apps/mobile/metro.config.js`
 - Create: `apps/mobile/tailwind.config.js`
@@ -33,6 +34,7 @@
 - Modify: `apps/mobile/src/app/index.tsx`（動作確認のため一時的に className を付ける）
 
 **Interfaces:**
+
 - Consumes: なし（最初のタスク）
 - Produces: `className` プロパティが React Native コンポーネントで使えるようになる
 
@@ -129,10 +131,12 @@ git commit -m "feat(mobile): NativeWind をセットアップする"
 ### Task 0-2: テーマ定数を定義する
 
 **Files:**
+
 - Create: `apps/mobile/src/constants/theme.ts`
 - Create: `apps/mobile/src/constants/theme.test.ts`
 
 **Interfaces:**
+
 - Consumes: なし
 - Produces: `COLORS`, `SPACING`, `RADIUS`, `FONT_SIZES`, `Z_INDEX`, `SEMANTIC_COLORS`
 
@@ -282,9 +286,11 @@ git commit -m "feat(mobile): テーマ定数を定義する"
 ### Task 0-3: Tailwind にテーマ値を流し込む
 
 **Files:**
+
 - Modify: `apps/mobile/tailwind.config.js`
 
 **Interfaces:**
+
 - Consumes: `constants/theme.ts` の `COLORS`
 - Produces: `bg-primary-500`, `text-neutral-700`, `rounded-card`, `font-display`, `font-body` などのクラス
 
@@ -304,12 +310,28 @@ module.exports = {
     extend: {
       colors: {
         primary: {
-          50: '#FEF3F0', 100: '#FDE3DC', 200: '#FAC4B7', 300: '#F39B85', 400: '#EB7458',
-          500: '#E2553D', 600: '#C43F29', 700: '#A02F1D', 800: '#7C2515', 900: '#5A1B0F',
+          50: '#FEF3F0',
+          100: '#FDE3DC',
+          200: '#FAC4B7',
+          300: '#F39B85',
+          400: '#EB7458',
+          500: '#E2553D',
+          600: '#C43F29',
+          700: '#A02F1D',
+          800: '#7C2515',
+          900: '#5A1B0F',
         },
         neutral: {
-          50: '#FAF9F7', 100: '#F2F0ED', 200: '#E4E1DC', 300: '#CFCAC2', 400: '#A8A29A',
-          500: '#7C766E', 600: '#5C574F', 700: '#443F39', 800: '#2C2823', 900: '#1A1714',
+          50: '#FAF9F7',
+          100: '#F2F0ED',
+          200: '#E4E1DC',
+          300: '#CFCAC2',
+          400: '#A8A29A',
+          500: '#7C766E',
+          600: '#5C574F',
+          700: '#443F39',
+          800: '#2C2823',
+          900: '#1A1714',
         },
         // 以下は Tailwind 既定のスケールと同名だが値が異なる（green は既定の green ではなく
         // emerald 相当）。明示しないと className 側だけ既定色になり theme.ts と食い違う
@@ -332,17 +354,30 @@ module.exports = {
       // Tailwind 既定の text-xs/sm/base/lg/xl を同名で上書きする。
       // 上書きしないと text-base が既定の 16px になり、FONT_SIZES.base の 15px と食い違う
       fontSize: {
-        xs: '11px', sm: '13px', base: '15px', lg: '17px',
-        xl: '20px', xxl: '24px', display: '32px',
+        xs: '11px',
+        sm: '13px',
+        base: '15px',
+        lg: '17px',
+        xl: '20px',
+        xxl: '24px',
+        display: '32px',
       },
       // 数値の Tailwind 既定スケール（p-4 など）に加えて意味で引ける別名を足す
       spacing: {
-        xs: '4px', sm: '8px', md: '16px', lg: '24px', xl: '32px', xxl: '48px',
+        xs: '4px',
+        sm: '8px',
+        md: '16px',
+        lg: '24px',
+        xl: '32px',
+        xxl: '48px',
       },
       // 重なり順は用途名で指定する。キー名は theme.ts と同じ camelCase（z-bottomSheet）
       zIndex: {
-        mapMarker: '10', mapOverlayButton: '20', bottomSheet: '30',
-        modal: '40', toast: '50',
+        mapMarker: '10',
+        mapOverlayButton: '20',
+        bottomSheet: '30',
+        modal: '40',
+        toast: '50',
       },
     },
   },
@@ -362,11 +397,11 @@ module.exports = {
 > Tailwind 側に書かないと `className="bg-green-50"` だけ既定色になり、
 > JS から `SEMANTIC_COLORS.open` を渡した箇所と別の色になる。実測での差分は次の 3 件:
 >
-> | クラス | 未定義時（Tailwind 既定） | `theme.ts` |
-> | --- | --- | --- |
-> | `bg-amber-50` | `#FFFBEB` | `#FFFAEB` |
-> | `bg-green-50` | `#F0FDF4` | `#ECFDF5` |
-> | `text-green-700` | `#15803D` | `#047857` |
+> | クラス           | 未定義時（Tailwind 既定） | `theme.ts` |
+> | ---------------- | ------------------------- | ---------- |
+> | `bg-amber-50`    | `#FFFBEB`                 | `#FFFAEB`  |
+> | `bg-green-50`    | `#F0FDF4`                 | `#ECFDF5`  |
+> | `text-green-700` | `#15803D`                 | `#047857`  |
 >
 > `white` は `COLORS.neutral[50]`（`#FAF9F7`）が暖色寄りで、`text-white` と並べると
 > そこだけ黄ばんで見えるため、純白を独立したトークンとして持つ。
@@ -442,11 +477,13 @@ git commit -m "feat(mobile): Tailwind にテーマ値を反映し同期テスト
 ### Task 0-4: Google Fonts を読み込む
 
 **Files:**
+
 - Create: `apps/mobile/src/constants/fonts.ts`
 - Create: `apps/mobile/src/hooks/use-app-fonts.ts`
 - Modify: `apps/mobile/src/app/_layout.tsx`
 
 **Interfaces:**
+
 - Consumes: `expo-font`, `@expo-google-fonts/outfit`, `@expo-google-fonts/noto-sans-jp`
 - Produces: `useAppFonts(): { areFontsLoaded: boolean }`、フォント名定数 `FONT_FAMILIES`
 
@@ -472,7 +509,11 @@ export const FONT_FAMILIES = {
 
 ```ts
 // apps/mobile/src/hooks/use-app-fonts.ts
-import { NotoSansJP_400Regular, NotoSansJP_500Medium, NotoSansJP_700Bold } from '@expo-google-fonts/noto-sans-jp';
+import {
+  NotoSansJP_400Regular,
+  NotoSansJP_500Medium,
+  NotoSansJP_700Bold,
+} from '@expo-google-fonts/noto-sans-jp';
 import { Outfit_600SemiBold, Outfit_700Bold } from '@expo-google-fonts/outfit';
 import { useFonts } from 'expo-font';
 
@@ -490,7 +531,7 @@ export function useAppFonts(): { areFontsLoaded: boolean } {
 }
 ```
 
-- [ ] **Step 3: _layout.tsx でフォント読み込みを待つ**
+- [ ] **Step 3: \_layout.tsx でフォント読み込みを待つ**
 
 ```tsx
 // apps/mobile/src/app/_layout.tsx
@@ -547,10 +588,12 @@ git commit -m "feat(mobile): Outfit と Noto Sans JP を読み込む"
 ### Task 0-5: ロガーを作る
 
 **Files:**
+
 - Create: `apps/mobile/src/lib/logger.ts`
 - Create: `apps/mobile/src/lib/logger.test.ts`
 
 **Interfaces:**
+
 - Produces: `logger.debug/info/warn/error(message: string, context?: Record<string, unknown>): void`
 
 - [ ] **Step 1: 失敗するテストを書く**
@@ -664,11 +707,13 @@ git commit -m "feat(mobile): ロガーを追加する"
 ### Task 0-6: Jest 環境を構築する
 
 **Files:**
+
 - Create: `apps/mobile/jest.config.js`
 - Create: `apps/mobile/jest-setup.ts`
 - Modify: `apps/mobile/package.json`（`jest` フィールドを削除し、設定ファイルへ移す）
 
 **Interfaces:**
+
 - Produces: `npm test -w @meshimap/mobile` が動く環境。RNTL の matcher が使える
 
 - [ ] **Step 1: jest.config.js を作る**
@@ -812,26 +857,29 @@ git commit -m "test(mobile): Jest と React Native Testing Library を構築す�
 ### Task 0-7: `Button` プリミティブを作る
 
 **Files:**
+
 - Create: `apps/mobile/src/components/ui/button.tsx`
 - Create: `apps/mobile/src/components/ui/button.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `constants/theme.ts`
 - Produces:
+
   ```ts
   type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
   type ButtonSize = 'sm' | 'md' | 'lg';
   interface ButtonProps {
     label: string;
     onPress: () => void;
-    variant?: ButtonVariant;   // 既定 'primary'
-    size?: ButtonSize;         // 既定 'md'
+    variant?: ButtonVariant; // 既定 'primary'
+    size?: ButtonSize; // 既定 'md'
     isDisabled?: boolean;
     isLoading?: boolean;
     leadingIcon?: ReactNode;
     testID?: string;
   }
-  export function Button(props: ButtonProps): JSX.Element
+  export function Button(props: ButtonProps): JSX.Element;
   ```
 
 - [ ] **Step 1: 失敗するテストを書く**
@@ -1024,13 +1072,14 @@ git commit -m "feat(mobile): Button プリミティブを追加する"
 ```ts
 interface CardProps {
   children: ReactNode;
-  onPress?: () => void;      // 渡されたときだけ押せる
-  padding?: 'none' | 'sm' | 'md';  // 既定 'md'
+  onPress?: () => void; // 渡されたときだけ押せる
+  padding?: 'none' | 'sm' | 'md'; // 既定 'md'
   testID?: string;
 }
 ```
 
 必須テスト:
+
 - 子要素を表示する
 - `onPress` があるとき押下で呼ばれる
 - `onPress` がないとき `accessibilityRole` が `button` にならない
@@ -1044,13 +1093,14 @@ interface CardProps {
 type BadgeTone = 'neutral' | 'success' | 'warning' | 'danger' | 'brand';
 interface BadgeProps {
   label: string;
-  tone?: BadgeTone;   // 既定 'neutral'
+  tone?: BadgeTone; // 既定 'neutral'
   leadingIcon?: ReactNode;
   testID?: string;
 }
 ```
 
 必須テスト:
+
 - ラベルを表示する
 - tone ごとに異なる背景クラスが付く（5 種すべて）
 - `leadingIcon` を渡すと表示される
@@ -1074,6 +1124,7 @@ interface InputProps {
 ```
 
 必須テスト:
+
 - ラベルを表示する
 - 入力すると `onChangeText` が入力値付きで呼ばれる
 - `errorMessage` があるときメッセージを表示する
@@ -1102,12 +1153,13 @@ interface InputProps {
 interface SkeletonProps {
   width?: number | `${number}%`;
   height: number;
-  shape?: 'rect' | 'circle' | 'text';  // 既定 'rect'
+  shape?: 'rect' | 'circle' | 'text'; // 既定 'rect'
   testID?: string;
 }
 ```
 
 必須テスト:
+
 - 指定した高さが反映される
 - `shape="circle"` のとき角丸が pill になる
 - `shape="text"` のとき既定の高さより低い行状になる
@@ -1126,7 +1178,7 @@ interface EmptyStateProps {
 }
 
 interface ErrorStateProps {
-  title?: string;           // 既定 'エラーが発生しました'
+  title?: string; // 既定 'エラーが発生しました'
   description?: string;
   onRetry: () => void;
   testID?: string;
@@ -1134,11 +1186,13 @@ interface ErrorStateProps {
 ```
 
 必須テスト（EmptyState）:
+
 - タイトルを表示する
 - `description` があれば表示、なければ表示しない
 - `action` があればボタンを表示し、押下でコールバックが呼ばれる
 
 必須テスト（ErrorState）:
+
 - 既定のタイトルを表示する
 - 「再試行」ボタン押下で `onRetry` が呼ばれる
 
@@ -1149,16 +1203,17 @@ interface ErrorStateProps {
 lucide のアイコンはサイズと色を毎回指定する必要がある。テーマに沿った既定値を持つラッパを作る。
 
 ```ts
-type IconSize = 'sm' | 'md' | 'lg';   // 16 / 20 / 24 px
+type IconSize = 'sm' | 'md' | 'lg'; // 16 / 20 / 24 px
 interface IconProps {
   icon: LucideIcon;
-  size?: IconSize;      // 既定 'md'
-  color?: string;       // 既定 neutral-700
+  size?: IconSize; // 既定 'md'
+  color?: string; // 既定 neutral-700
   testID?: string;
 }
 ```
 
 必須テスト:
+
 - 渡したアイコンをレンダリングする
 - `size="sm"` のとき 16px が渡る
 - `size="lg"` のとき 24px が渡る
@@ -1169,10 +1224,12 @@ interface IconProps {
 ### Task 0-14: プリミティブのカタログ画面を作る
 
 **Files:**
+
 - Create: `apps/mobile/src/app/_dev/catalog.tsx`
 - Test: `apps/mobile/src/app/_dev/catalog.test.tsx`
 
 **Interfaces:**
+
 - Consumes: Task 0-7〜0-13 の全プリミティブ
 
 > **`_dev/` はルートとして拾われる（`_layout` のような除外はされない）**
@@ -1283,8 +1340,19 @@ export default function CatalogScreen() {
       </Section>
 
       <Section title="Input">
-        <Input label="店名" value="" onChangeText={() => {}} placeholder="例: 炭火焼鳥 とり源" isRequired />
-        <Input label="電話番号" value="03-" onChangeText={() => {}} errorMessage="電話番号の形式が正しくありません" />
+        <Input
+          label="店名"
+          value=""
+          onChangeText={() => {}}
+          placeholder="例: 炭火焼鳥 とり源"
+          isRequired
+        />
+        <Input
+          label="電話番号"
+          value="03-"
+          onChangeText={() => {}}
+          errorMessage="電話番号の形式が正しくありません"
+        />
       </Section>
 
       <Section title="Skeleton">
@@ -1302,7 +1370,12 @@ export default function CatalogScreen() {
       </Section>
 
       <Section title="EmptyState">
-        <EmptyState icon={MapPin} title="この条件のお店は見つかりませんでした" description="範囲を広げるか、条件を減らしてみてください。" action={{ label: '条件をリセット', onPress: () => {} }} />
+        <EmptyState
+          icon={MapPin}
+          title="この条件のお店は見つかりませんでした"
+          description="範囲を広げるか、条件を減らしてみてください。"
+          action={{ label: '条件をリセット', onPress: () => {} }}
+        />
       </Section>
 
       <Section title="ErrorState">

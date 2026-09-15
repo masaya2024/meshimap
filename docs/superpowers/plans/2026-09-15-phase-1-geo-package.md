@@ -26,30 +26,30 @@
 
 計画中の期待値はすべて Node で実測して確定済み。推測値は 1 つも含まない。
 
-| 定数 | 値 | 根拠 |
-|---|---|---|
-| `EARTH_RADIUS_M` | `6371008.8` | IUGG 平均半径（arithmetic mean radius $R_1$）。GeoJSON / PostGIS の球面近似と同じ値。 |
-| geohash 基数表 | `0123456789bcdefghjkmnpqrstuvwxyz` | 標準 base32（`a`, `i`, `l`, `o` を除外）。 |
+| 定数             | 値                                 | 根拠                                                                                  |
+| ---------------- | ---------------------------------- | ------------------------------------------------------------------------------------- |
+| `EARTH_RADIUS_M` | `6371008.8`                        | IUGG 平均半径（arithmetic mean radius $R_1$）。GeoJSON / PostGIS の球面近似と同じ値。 |
+| geohash 基数表   | `0123456789bcdefghjkmnpqrstuvwxyz` | 標準 base32（`a`, `i`, `l`, `o` を除外）。                                            |
 
 検証済みの既知ベクタ:
 
-| 入力 | 期待値 | 確認方法 |
-|---|---|---|
-| `encodeGeohash({57.64911, 10.40744}, 11)` | `"u4pruydqqvj"` | Wikipedia の geohash 記事の標準ベクタと一致を実測確認 |
-| 東京駅→大阪駅 | `403058.1` m | 実測（有効桁 1 位まで） |
-| 東京駅→渋谷駅 | `6454.0` m | 実測 |
-| 渋谷駅→新宿駅 | `3510.8` m | 実測 |
-| 対蹠点 (0,0)→(0,180) | `20015114.4` m = $\pi R$ | 実測。`Math.min(1, …)` ガードが無いと `NaN` になることも実測確認済み |
+| 入力                                      | 期待値                   | 確認方法                                                             |
+| ----------------------------------------- | ------------------------ | -------------------------------------------------------------------- |
+| `encodeGeohash({57.64911, 10.40744}, 11)` | `"u4pruydqqvj"`          | Wikipedia の geohash 記事の標準ベクタと一致を実測確認                |
+| 東京駅→大阪駅                             | `403058.1` m             | 実測（有効桁 1 位まで）                                              |
+| 東京駅→渋谷駅                             | `6454.0` m               | 実測                                                                 |
+| 渋谷駅→新宿駅                             | `3510.8` m               | 実測                                                                 |
+| 対蹠点 (0,0)→(0,180)                      | `20015114.4` m = $\pi R$ | 実測。`Math.min(1, …)` ガードが無いと `NaN` になることも実測確認済み |
 
 `precisionForRadius` の閾値は、日本国内（緯度 24〜46 度）で geohash セルの**最小辺**を 0.5 度刻みで実測して決めた:
 
 | precision | 日本域でのセル最小辺（実測） | 採用する半径上限 |
-|---|---|---|
-| 7 | 106 m | 100 m |
-| 6 | 611 m | 600 m |
-| 5 | 3395 m | 3000 m |
-| 4 | 19546 m | 19000 m |
-| 3 | 109202 m | それ以上すべて |
+| --------- | ---------------------------- | ---------------- |
+| 7         | 106 m                        | 100 m            |
+| 6         | 611 m                        | 600 m            |
+| 5         | 3395 m                       | 3000 m           |
+| 4         | 19546 m                      | 19000 m          |
+| 3         | 109202 m                     | それ以上すべて   |
 
 > 3×3 セルブロック（自セル + 8 近傍）で半径 `r` の円を必ず覆うには、クエリ点がセル端にある最悪ケースを想定して `セル最小辺 >= r` が必要。上の表はこの条件を満たす最大の precision を選ぶためのもの。
 
@@ -57,17 +57,17 @@
 
 ## ファイル構成
 
-| ファイル | 責務 |
-|---|---|
-| `packages/geo/src/constants.ts` | `EARTH_RADIUS_M`、`DEGREES_TO_RADIANS`、`GEOHASH_BASE32`、緯度経度の範囲定数 |
-| `packages/geo/src/coordinate.ts` | ブランド型 `Latitude` / `Longitude` / `Coordinate` とファクトリ |
-| `packages/geo/src/distance.ts` | `distanceMeters`（Haversine） |
-| `packages/geo/src/format-distance.ts` | `formatDistance`（表示用整形） |
-| `packages/geo/src/geohash.ts` | `Geohash` 型、`encodeGeohash` / `decodeGeohash` / `neighborCells` |
-| `packages/geo/src/search-cells.ts` | `GeohashPrecision`、`toGeohashPrecision`、`precisionForRadius` / `cellsForRadius` |
-| `packages/geo/src/bounding-box.ts` | `BoundingBox` 型、`boundingBox` / `isWithinBounds` |
-| `packages/geo/src/cluster.ts` | `GridPoint` / `Cluster` 型、`precisionForZoom` / `clusterByGrid` |
-| `packages/geo/src/index.ts` | 再エクスポートのみ（ミューテーション対象外） |
+| ファイル                              | 責務                                                                              |
+| ------------------------------------- | --------------------------------------------------------------------------------- |
+| `packages/geo/src/constants.ts`       | `EARTH_RADIUS_M`、`DEGREES_TO_RADIANS`、`GEOHASH_BASE32`、緯度経度の範囲定数      |
+| `packages/geo/src/coordinate.ts`      | ブランド型 `Latitude` / `Longitude` / `Coordinate` とファクトリ                   |
+| `packages/geo/src/distance.ts`        | `distanceMeters`（Haversine）                                                     |
+| `packages/geo/src/format-distance.ts` | `formatDistance`（表示用整形）                                                    |
+| `packages/geo/src/geohash.ts`         | `Geohash` 型、`encodeGeohash` / `decodeGeohash` / `neighborCells`                 |
+| `packages/geo/src/search-cells.ts`    | `GeohashPrecision`、`toGeohashPrecision`、`precisionForRadius` / `cellsForRadius` |
+| `packages/geo/src/bounding-box.ts`    | `BoundingBox` 型、`boundingBox` / `isWithinBounds`                                |
+| `packages/geo/src/cluster.ts`         | `GridPoint` / `Cluster` 型、`precisionForZoom` / `clusterByGrid`                  |
+| `packages/geo/src/index.ts`           | 再エクスポートのみ（ミューテーション対象外）                                      |
 
 テストは各実装ファイルと同じディレクトリに `*.test.ts` として置く（`vitest.config.ts` の `include: ['src/**/*.test.ts']` に一致させる）。
 
@@ -87,10 +87,12 @@ constants ← coordinate ← distance
 前提タスク。ここが通らないと以降すべてが動かないため最初に片付ける。
 
 **Files:**
+
 - Create: `packages/geo/src/constants.ts`
 - Create: `packages/geo/src/constants.test.ts`
 
 **Interfaces:**
+
 - Consumes: なし
 - Produces: `EARTH_RADIUS_M: number`、`DEGREES_TO_RADIANS: number`、`GEOHASH_BASE32: string`、`LATITUDE_MIN/MAX`、`LONGITUDE_MIN/MAX`
 
@@ -206,10 +208,12 @@ git commit -m "feat(geo): 地理計算の基礎定数を追加"
 ## Task 1-1: 座標のブランド型
 
 **Files:**
+
 - Create: `packages/geo/src/coordinate.ts`
 - Create: `packages/geo/src/coordinate.test.ts`
 
 **Interfaces:**
+
 - Consumes: `constants.ts` の `LATITUDE_MIN/MAX`、`LONGITUDE_MIN/MAX`
 - Produces:
   - `type Latitude`（ブランド付き `number`）
@@ -456,10 +460,12 @@ git commit -m "feat(geo): 座標のブランド型とファクトリを追加"
 ## Task 1-2: Haversine 距離
 
 **Files:**
+
 - Create: `packages/geo/src/distance.ts`
 - Create: `packages/geo/src/distance.test.ts`
 
 **Interfaces:**
+
 - Consumes: `constants.ts` の `EARTH_RADIUS_M` / `DEGREES_TO_RADIANS`、`coordinate.ts` の `Coordinate` / `coordinate`
 - Produces: `distanceMeters(from: Coordinate, to: Coordinate): number`
 
@@ -603,21 +609,23 @@ git commit -m "feat(geo): Haversine による距離計算を追加"
 ## Task 1-3: 距離の表示整形
 
 **Files:**
+
 - Create: `packages/geo/src/format-distance.ts`
 - Create: `packages/geo/src/format-distance.test.ts`
 
 **Interfaces:**
+
 - Consumes: なし
 - Produces: `formatDistance(meters: number): string`
 
 **仕様（実測で確定した丸め規則）:**
 
-| 条件 | 表示 | 例 |
-|---|---|---|
-| 四捨五入した結果が 1000 未満 | 整数 + `m` | `999.4` → `"999m"` |
-| 1000 以上 10000 未満 | 小数第 1 位 + `km` | `999.5` → `"1.0km"`、`1050` → `"1.1km"` |
-| 10000 以上 | 整数 + `km` | `10499` → `"10km"`、`403058.1` → `"403km"` |
-| 負の値 | 例外 | — |
+| 条件                         | 表示               | 例                                         |
+| ---------------------------- | ------------------ | ------------------------------------------ |
+| 四捨五入した結果が 1000 未満 | 整数 + `m`         | `999.4` → `"999m"`                         |
+| 1000 以上 10000 未満         | 小数第 1 位 + `km` | `999.5` → `"1.0km"`、`1050` → `"1.1km"`    |
+| 10000 以上                   | 整数 + `km`        | `10499` → `"10km"`、`403058.1` → `"403km"` |
+| 負の値                       | 例外               | —                                          |
 
 > `999.5` が `"1000m"` ではなく `"1.0km"` になるのは、先に四捨五入してから単位を決めているため。`"1000m"` という表示は UI として不自然なので、この順序を意図的に選んでいる。
 
@@ -756,10 +764,12 @@ git commit -m "feat(geo): 距離の表示整形を追加"
 ## Task 1-4: geohash エンコード
 
 **Files:**
+
 - Create: `packages/geo/src/geohash.ts`
 - Create: `packages/geo/src/geohash.test.ts`
 
 **Interfaces:**
+
 - Consumes: `constants.ts` の `GEOHASH_BASE32` ほか範囲定数、`coordinate.ts` の `Coordinate`
 - Produces:
   - `type Geohash`（ブランド付き `string`）
@@ -969,10 +979,12 @@ git commit -m "feat(geo): geohash エンコードを追加"
 ## Task 1-5: geohash デコード
 
 **Files:**
+
 - Modify: `packages/geo/src/geohash.ts`（`decodeGeohash` と `toGeohash` を追加）
 - Modify: `packages/geo/src/geohash.test.ts`（`describe('decodeGeohash')` を追記）
 
 **Interfaces:**
+
 - Consumes: Task 1-4 の `Geohash` / `GeohashPrecision` / `encodeGeohash`
 - Produces:
   - `type GeohashBounds = { readonly latitudeMin: number; readonly latitudeMax: number; readonly longitudeMin: number; readonly longitudeMax: number; readonly center: Coordinate }`
@@ -1225,10 +1237,12 @@ git commit -m "feat(geo): geohash デコードと文字列検証を追加"
 ## Task 1-6: geohash 近傍セル
 
 **Files:**
+
 - Modify: `packages/geo/src/geohash.ts`（`neighborCells` を追加）
 - Modify: `packages/geo/src/geohash.test.ts`（`describe('neighborCells')` を追記）
 
 **Interfaces:**
+
 - Consumes: Task 1-4 / 1-5 の `Geohash` / `encodeGeohash` / `decodeGeohash`
 - Produces: `neighborCells(hash: Geohash): readonly Geohash[]`
 
@@ -1242,6 +1256,7 @@ git commit -m "feat(geo): geohash デコードと文字列検証を追加"
 **戻り値の順序:** 北 → 北東 → 東 → 南東 → 南 → 南西 → 西 → 北西（時計回り）。React の key と D1 のクエリ順序を安定させるため固定する。
 
 **端のふるまい（実測で確認済み）:**
+
 - 経度 180 度線は `-180` 側へ折り返す。`"xbp"` の近傍に `"802"` `"800"` `"2pb"` が含まれる。
 - 緯度が ±90 度を超えるセルは存在しないため除外する。`encodeGeohash({90, 0}, 3)` = `"upb"` の近傍は 5 件しか返らない。
 - 折り返しの結果、自セルや既出セルと重複する場合は除去する。
@@ -1509,10 +1524,12 @@ git commit -m "feat(geo): geohash の 8 近傍セル算出を追加"
 ## Task 1-7: 半径から precision を決める
 
 **Files:**
+
 - Create: `packages/geo/src/search-cells.ts`
 - Create: `packages/geo/src/search-cells.test.ts`
 
 **Interfaces:**
+
 - Consumes: `geohash.ts` の `GeohashPrecision`
 - Produces: `precisionForRadius(radiusM: number): GeohashPrecision`
 
@@ -1665,10 +1682,12 @@ git commit -m "feat(geo): 検索半径から geohash 精度を決める関数を
 ## Task 1-8: 半径から検索セル群を求める
 
 **Files:**
+
 - Modify: `packages/geo/src/search-cells.ts`（`cellsForRadius` を追加）
 - Modify: `packages/geo/src/search-cells.test.ts`（`describe('cellsForRadius')` を追記）
 
 **Interfaces:**
+
 - Consumes: Task 1-7 の `precisionForRadius`、`geohash.ts` の `encodeGeohash` / `neighborCells` / `Geohash`、`coordinate.ts` の `Coordinate`
 - Produces: `cellsForRadius(center: Coordinate, radiusM: number): readonly Geohash[]`
 
@@ -1820,10 +1839,12 @@ git commit -m "feat(geo): 検索半径から geohash セル群を求める関数
 ## Task 1-9: 境界ボックス生成
 
 **Files:**
+
 - Create: `packages/geo/src/bounding-box.ts`
 - Create: `packages/geo/src/bounding-box.test.ts`
 
 **Interfaces:**
+
 - Consumes: `constants.ts`、`coordinate.ts` の `Coordinate` / `Latitude` / `Longitude` / `toLatitude` / `toLongitude`
 - Produces:
   - `type BoundingBox = { readonly latitudeMin: Latitude; readonly latitudeMax: Latitude; readonly longitudeMin: Longitude; readonly longitudeMax: Longitude }`
@@ -2067,10 +2088,12 @@ git commit -m "feat(geo): 検索用の境界ボックス生成を追加"
 ## Task 1-10: 境界ボックス内判定
 
 **Files:**
+
 - Modify: `packages/geo/src/bounding-box.ts`（`isWithinBounds` を追加）
 - Modify: `packages/geo/src/bounding-box.test.ts`（`describe('isWithinBounds')` を追記）
 
 **Interfaces:**
+
 - Consumes: Task 1-9 の `BoundingBox`、`coordinate.ts` の `Coordinate`
 - Produces: `isWithinBounds(target: Coordinate, bounds: BoundingBox): boolean`
 
@@ -2089,15 +2112,11 @@ describe('isWithinBounds', () => {
   });
 
   it('南西の角（境界線上）は内側である', () => {
-    expect(
-      isWithinBounds(coordinate(bounds.latitudeMin, bounds.longitudeMin), bounds),
-    ).toBe(true);
+    expect(isWithinBounds(coordinate(bounds.latitudeMin, bounds.longitudeMin), bounds)).toBe(true);
   });
 
   it('北東の角（境界線上）は内側である', () => {
-    expect(
-      isWithinBounds(coordinate(bounds.latitudeMax, bounds.longitudeMax), bounds),
-    ).toBe(true);
+    expect(isWithinBounds(coordinate(bounds.latitudeMax, bounds.longitudeMax), bounds)).toBe(true);
   });
 
   it('緯度が上限をわずかに超えると外側である', () => {
@@ -2212,7 +2231,7 @@ npm run test -w @meshimap/geo -- bounding-box
 日付変更線の分岐を消して常に AND 判定にする:
 
 ```ts
-  return target.longitude >= bounds.longitudeMin && target.longitude <= bounds.longitudeMax;
+return target.longitude >= bounds.longitudeMin && target.longitude <= bounds.longitudeMax;
 ```
 
 ```bash
@@ -2237,10 +2256,12 @@ git commit -m "feat(geo): 境界ボックス内判定を追加"
 ## Task 1-11: グリッドクラスタリング
 
 **Files:**
+
 - Create: `packages/geo/src/cluster.ts`
 - Create: `packages/geo/src/cluster.test.ts`
 
 **Interfaces:**
+
 - Consumes: `geohash.ts` の `encodeGeohash` / `Geohash` / `GeohashPrecision`、`coordinate.ts` の `Coordinate` / `coordinate`
 - Produces:
   - `type GridPoint<TValue> = { readonly coordinate: Coordinate; readonly value: TValue }`
@@ -2249,20 +2270,21 @@ git commit -m "feat(geo): 境界ボックス内判定を追加"
   - `clusterByGrid<TValue>(points: readonly GridPoint<TValue>[], zoom: number): readonly Cluster<TValue>[]`
 
 **設計判断:**
+
 - クラスタの `center` はセル中心ではなく**所属点の重心**にする。セル中心だとピンが格子状に並んで不自然に見えるため。
 - 戻り値は `cell` の辞書順で安定ソートする。React の `key` と再レンダリングを安定させるため。
 - `values` は入力順を保つ。
 
 **ズームと精度の対応表:**
 
-| zoom | precision |
-|---|---|
-| 0〜4 | 2 |
-| 5〜7 | 3 |
-| 8〜10 | 4 |
-| 11〜13 | 5 |
-| 14〜16 | 6 |
-| 17〜22 | 7 |
+| zoom   | precision |
+| ------ | --------- |
+| 0〜4   | 2         |
+| 5〜7   | 3         |
+| 8〜10  | 4         |
+| 11〜13 | 5         |
+| 14〜16 | 6         |
+| 17〜22 | 7         |
 
 - [ ] **Step 1: 失敗するテストを書く**
 
@@ -2561,11 +2583,13 @@ git commit -m "feat(geo): グリッドクラスタリングを追加"
 Phase 1 の締め。ここを通せば `@meshimap/geo` は Phase 3 以降から安心して使える。
 
 **Files:**
+
 - Create: `packages/geo/src/index.ts`
 - Create: `packages/geo/src/index.test.ts`
 - Modify: `packages/geo/README.md`（新規作成）
 
 **Interfaces:**
+
 - Consumes: Task 1-1 〜 1-11 のすべての公開シンボル
 - Produces: `@meshimap/geo` の公開 API（他パッケージはこのバレル以外から import しない）
 
@@ -2737,13 +2761,13 @@ open packages/geo/reports/mutation/mutation.html
 
 よくある生き残りと対処:
 
-| 生き残る変異 | 対処 |
-|---|---|
-| `<=` → `<` の境界比較 | ちょうど境界値のテストを追加する（例: `precisionForRadius(600)`） |
-| エラーメッセージの文字列置換 | `toThrow(new RangeError('…'))` で完全一致を検証する |
-| `Math.min(1, x)` → `x` | 対蹠点など、クランプが効く入力のテストを追加する |
-| 定数の数値置換 | その定数が結果へ効くことを示す既知値テストを追加する |
-| 配列リテラルの空化 | テーブル各行の境界値テストを追加する |
+| 生き残る変異                 | 対処                                                              |
+| ---------------------------- | ----------------------------------------------------------------- |
+| `<=` → `<` の境界比較        | ちょうど境界値のテストを追加する（例: `precisionForRadius(600)`） |
+| エラーメッセージの文字列置換 | `toThrow(new RangeError('…'))` で完全一致を検証する               |
+| `Math.min(1, x)` → `x`       | 対蹠点など、クランプが効く入力のテストを追加する                  |
+| 定数の数値置換               | その定数が結果へ効くことを示す既知値テストを追加する              |
+| 配列リテラルの空化           | テーブル各行の境界値テストを追加する                              |
 
 **`stryker.config.json` の閾値を下げて通すことは禁止。**
 
@@ -2766,11 +2790,11 @@ D1（SQLite）が PostGIS や R*Tree を持たないという制約を、純粋�
 
 D1 には `ST_DWithin` が無く、SQLite の三角関数も環境差があるため、SQL 側で距離計算をしない設計にした。
 
-| 段 | 使う関数 | SQL / TS | 役割 |
-|---|---|---|---|
-| 1 | `cellsForRadius` | `WHERE geohash IN (?, …)` | B-tree インデックスで数万件 → 数百件へ |
-| 2 | `boundingBox` | `WHERE latitude BETWEEN ? AND ? AND longitude BETWEEN ? AND ?` | 矩形で数百件 → 数十件へ |
-| 3 | `distanceMeters` | Worker の TypeScript | 正確な円内判定と距離順ソート |
+| 段  | 使う関数         | SQL / TS                                                       | 役割                                   |
+| --- | ---------------- | -------------------------------------------------------------- | -------------------------------------- |
+| 1   | `cellsForRadius` | `WHERE geohash IN (?, …)`                                      | B-tree インデックスで数万件 → 数百件へ |
+| 2   | `boundingBox`    | `WHERE latitude BETWEEN ? AND ? AND longitude BETWEEN ? AND ?` | 矩形で数百件 → 数十件へ                |
+| 3   | `distanceMeters` | Worker の TypeScript                                           | 正確な円内判定と距離順ソート           |
 
 `cellsForRadius` が返す 3×3 セルで半径の円を確実に覆えるよう、精度の閾値は日本国内（緯度 24〜46 度）のセル最小辺を実測して決めている。
 
@@ -2789,9 +2813,9 @@ const label = formatDistance(distance); // "850m" / "1.2km"
 ## テスト
 
 \`\`\`bash
-npm run test -w @meshimap/geo            # 単体テスト
-npm run test:coverage -w @meshimap/geo   # カバレッジ（閾値 100%）
-npm run test:mutation -w @meshimap/geo   # ミューテーションテスト（閾値 85%）
+npm run test -w @meshimap/geo # 単体テスト
+npm run test:coverage -w @meshimap/geo # カバレッジ（閾値 100%）
+npm run test:mutation -w @meshimap/geo # ミューテーションテスト（閾値 85%）
 \`\`\`
 ```
 
@@ -2832,12 +2856,12 @@ git commit -m "feat(geo): 公開 API のバレルと README を追加"
 
 Phase 2（`packages/core`）と Phase 3（`apps/api`）は次のシンボルに依存する。名前と型を変える場合は両フェーズの計画も更新すること。
 
-| シンボル | 使う場所 |
-|---|---|
-| `coordinate` / `Coordinate` | `packages/core` の店舗スキーマ、`apps/api` の検索エンドポイント |
-| `encodeGeohash` | `apps/api` の店舗登録時（`shops.geohash` カラムへ保存） |
-| `cellsForRadius` | `apps/api` の近傍検索 第 1 段 |
-| `boundingBox` / `isWithinBounds` | `apps/api` の近傍検索 第 2 段 |
-| `distanceMeters` | `apps/api` の近傍検索 第 3 段、距離順ソート |
-| `formatDistance` | `apps/mobile` の店舗カード表示 |
-| `clusterByGrid` / `precisionForZoom` | `apps/mobile` の地図ピン集約 |
+| シンボル                             | 使う場所                                                        |
+| ------------------------------------ | --------------------------------------------------------------- |
+| `coordinate` / `Coordinate`          | `packages/core` の店舗スキーマ、`apps/api` の検索エンドポイント |
+| `encodeGeohash`                      | `apps/api` の店舗登録時（`shops.geohash` カラムへ保存）         |
+| `cellsForRadius`                     | `apps/api` の近傍検索 第 1 段                                   |
+| `boundingBox` / `isWithinBounds`     | `apps/api` の近傍検索 第 2 段                                   |
+| `distanceMeters`                     | `apps/api` の近傍検索 第 3 段、距離順ソート                     |
+| `formatDistance`                     | `apps/mobile` の店舗カード表示                                  |
+| `clusterByGrid` / `precisionForZoom` | `apps/mobile` の地図ピン集約                                    |

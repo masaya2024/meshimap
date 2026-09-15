@@ -22,34 +22,34 @@
 
 ### モバイル
 
-| 領域 | 採用 | バージョン |
-|---|---|---|
-| フレームワーク | Expo（Dev Client + Prebuild による実機ネイティブビルド） | SDK 57 |
-| ランタイム | React Native / React | 0.86.3 / 19.2.3 |
-| 言語 | TypeScript（strict + `noUncheckedIndexedAccess`） | 6.0 |
-| ルーティング | expo-router（typed routes 有効） | 57 |
-| スタイル | NativeWind + Tailwind CSS | 4.2.7 / 3.4.19 |
-| フォント | `@expo-google-fonts/outfit` / `@expo-google-fonts/noto-sans-jp` | 0.4.3 |
-| アイコン | `lucide-react-native` + `react-native-svg` | 1.46 / 15.15 |
-| 地図 | `react-native-maps` | 1.27.2 |
-| サーバ状態 | TanStack Query | v5 |
-| クライアント状態 | Zustand | v5 |
-| フォーム | React Hook Form + Zod | 7.88 / 4.6 |
-| ボトムシート | `@gorhom/bottom-sheet` | 5.2 |
+| 領域             | 採用                                                            | バージョン      |
+| ---------------- | --------------------------------------------------------------- | --------------- |
+| フレームワーク   | Expo（Dev Client + Prebuild による実機ネイティブビルド）        | SDK 57          |
+| ランタイム       | React Native / React                                            | 0.86.3 / 19.2.3 |
+| 言語             | TypeScript（strict + `noUncheckedIndexedAccess`）               | 6.0             |
+| ルーティング     | expo-router（typed routes 有効）                                | 57              |
+| スタイル         | NativeWind + Tailwind CSS                                       | 4.2.7 / 3.4.19  |
+| フォント         | `@expo-google-fonts/outfit` / `@expo-google-fonts/noto-sans-jp` | 0.4.3           |
+| アイコン         | `lucide-react-native` + `react-native-svg`                      | 1.46 / 15.15    |
+| 地図             | `react-native-maps`                                             | 1.27.2          |
+| サーバ状態       | TanStack Query                                                  | v5              |
+| クライアント状態 | Zustand                                                         | v5              |
+| フォーム         | React Hook Form + Zod                                           | 7.88 / 4.6      |
+| ボトムシート     | `@gorhom/bottom-sheet`                                          | 5.2             |
 
 ### バックエンド（Cloudflare）
 
-| 領域 | 採用 | 役割 |
-|---|---|---|
-| 実行環境 | Cloudflare Workers | API 本体 |
-| フレームワーク | Hono 4.13 | ルーティング + RPC 型エクスポート |
-| DB | Cloudflare D1（SQLite） | 店舗 / レビュー / 予約 / 認証 |
-| ORM | Drizzle ORM 0.45 + drizzle-kit | スキーマ定義とマイグレーション生成 |
-| 認証 | Better Auth 1.7 + `@better-auth/expo` | セッション管理。モバイル側は SecureStore に保存 |
-| オブジェクトストレージ | R2 | 店舗写真 / レビュー写真 / アバター |
-| KV | Workers KV | 集計キャッシュ（人気店ランキング等） |
-| 同時実行制御 | Durable Objects | 予約枠の二重押さえ防止（店舗ごとに直列化） |
-| デプロイ | Wrangler 4.131 | |
+| 領域                   | 採用                                  | 役割                                            |
+| ---------------------- | ------------------------------------- | ----------------------------------------------- |
+| 実行環境               | Cloudflare Workers                    | API 本体                                        |
+| フレームワーク         | Hono 4.13                             | ルーティング + RPC 型エクスポート               |
+| DB                     | Cloudflare D1（SQLite）               | 店舗 / レビュー / 予約 / 認証                   |
+| ORM                    | Drizzle ORM 0.45 + drizzle-kit        | スキーマ定義とマイグレーション生成              |
+| 認証                   | Better Auth 1.7 + `@better-auth/expo` | セッション管理。モバイル側は SecureStore に保存 |
+| オブジェクトストレージ | R2                                    | 店舗写真 / レビュー写真 / アバター              |
+| KV                     | Workers KV                            | 集計キャッシュ（人気店ランキング等）            |
+| 同時実行制御           | Durable Objects                       | 予約枠の二重押さえ防止（店舗ごとに直列化）      |
+| デプロイ               | Wrangler 4.131                        |                                                 |
 
 **型の共有**: Hono の RPC 機能（`hc<AppType>`）で API の型をそのままモバイル側へ流す。
 API のレスポンス型を手で二重定義しない。
@@ -108,11 +108,11 @@ updateShopAsOwner(db: Db, actor: OwnerActor, shopId: ShopId, data: ShopUpdate): 
 
 ## 4. ロール定義
 
-| ロール | 値 | できること |
-|---|---|---|
-| 利用者 | `user` | 検索・閲覧・レビュー投稿・お気に入り・リスト作成・予約・通報 |
-| 店舗管理者 | `owner` | 自店舗の情報/メニュー/写真/営業時間/席の編集、予約の承認、レビュー返信、KPI 閲覧 |
-| システム管理者 | `admin` | 店舗申請の審査、通報対応、ユーザーの停止、マスタ管理、全体 KPI、監査ログ閲覧 |
+| ロール         | 値      | できること                                                                       |
+| -------------- | ------- | -------------------------------------------------------------------------------- |
+| 利用者         | `user`  | 検索・閲覧・レビュー投稿・お気に入り・リスト作成・予約・通報                     |
+| 店舗管理者     | `owner` | 自店舗の情報/メニュー/写真/営業時間/席の編集、予約の承認、レビュー返信、KPI 閲覧 |
+| システム管理者 | `admin` | 店舗申請の審査、通報対応、ユーザーの停止、マスタ管理、全体 KPI、監査ログ閲覧     |
 
 1 アカウント 1 ロール。ただし `user` から店舗申請を出し、審査通過で `owner` へ昇格する遷移は実装する。
 
@@ -223,6 +223,7 @@ apps/mobile/src/app/
 ### 5.2 作り込みを集中させる 3 画面
 
 **利用者 / 地図検索（`(user)/(tabs)/map.tsx`）**
+
 - 全画面地図 + 3 段階スナップのボトムシート（peek / half / full）
 - ズームレベル連動のマーカークラスタリング（グリッド方式。`packages/geo` に実装しテスト）
 - 地図移動で「このエリアを再検索」を表示 → 境界ボックスで再クエリ（debounce 500ms）
@@ -230,12 +231,14 @@ apps/mobile/src/app/
 - ピン選択でシートが該当カードへスクロール、カード選択で地図がその店へ移動（双方向同期）
 
 **利用者 / 店舗詳細（`(user)/shop/[shopId]/index.tsx`）**
+
 - スクロール連動の折りたたみヘッダー（写真パララックス → タイトルバーへ収束）
 - 「営業中 / まもなく閉店 / 本日定休」を営業時間テーブルから算出（`packages/core`）
 - 下部固定のアクションバー（予約する / 電話 / 経路）
 - レビューサマリ（評価分布バー）+ 直近 3 件 + 店舗からの返信
 
 **店舗管理者 / ダッシュボード（`(owner)/(tabs)/dashboard.tsx`）**
+
 - 期間切替（7 / 30 / 90 日）の KPI カード 4 枚（前期間比の増減付き）
 - `react-native-svg` で自作した折れ線グラフ
 - 「未対応」セクション（未承認の予約、未返信のレビュー）から直接遷移
@@ -282,6 +285,7 @@ audit_logs          id, actor_id, action, target_type, target_id, diff(JSON), cr
 ```
 
 **インデックス方針**
+
 - `shops(geohash)` — 半径検索の第 1 段（最重要）
 - `shops(lat, lng)` — 境界ボックスの第 2 段
 - `shops(genre_id, status)`, `shops(area_id, status)` — 一覧の絞り込み
@@ -338,20 +342,21 @@ meshimap/
 
 詳細は `docs/CODING_GUIDELINES.md`。要点のみ。
 
-| 対象 | 規則 | 例 |
-|---|---|---|
-| ファイル・ディレクトリ | kebab-case | `shop-card.tsx`, `business-hours.ts` |
-| React コンポーネント | PascalCase | `ShopCard`, `OpenStatusBadge` |
-| 関数・変数 | camelCase | `calculateDistance`, `isCurrentlyOpen` |
-| 定数 | UPPER_SNAKE_CASE | `DEFAULT_SEARCH_RADIUS_M`, `MAX_PHOTO_COUNT` |
-| 型・インターフェース | PascalCase（`I` 接頭辞なし） | `Shop`, `ReservationStatus` |
-| Zod スキーマ | `<名前>Schema` | `shopCreateSchema` |
-| カスタムフック | `use` + camelCase | `useNearbyShops` |
-| 真偽値 | `is` / `has` / `can` / `should` 接頭辞 | `isOpen`, `hasReplied`, `canReserve` |
-| DB カラム | snake_case（SQLite 慣習） | `owner_id`, `rating_avg` |
-| expo-router の動的セグメント | 具体名（`[id]` を使わない） | `[shopId]`, `[reviewId]` |
+| 対象                         | 規則                                   | 例                                           |
+| ---------------------------- | -------------------------------------- | -------------------------------------------- |
+| ファイル・ディレクトリ       | kebab-case                             | `shop-card.tsx`, `business-hours.ts`         |
+| React コンポーネント         | PascalCase                             | `ShopCard`, `OpenStatusBadge`                |
+| 関数・変数                   | camelCase                              | `calculateDistance`, `isCurrentlyOpen`       |
+| 定数                         | UPPER_SNAKE_CASE                       | `DEFAULT_SEARCH_RADIUS_M`, `MAX_PHOTO_COUNT` |
+| 型・インターフェース         | PascalCase（`I` 接頭辞なし）           | `Shop`, `ReservationStatus`                  |
+| Zod スキーマ                 | `<名前>Schema`                         | `shopCreateSchema`                           |
+| カスタムフック               | `use` + camelCase                      | `useNearbyShops`                             |
+| 真偽値                       | `is` / `has` / `can` / `should` 接頭辞 | `isOpen`, `hasReplied`, `canReserve`         |
+| DB カラム                    | snake_case（SQLite 慣習）              | `owner_id`, `rating_avg`                     |
+| expo-router の動的セグメント | 具体名（`[id]` を使わない）            | `[shopId]`, `[reviewId]`                     |
 
 **禁止**（CI で検出する）
+
 - `any`（`unknown` + 絞り込みを使う）
 - `console.log`（ロガー経由にする）
 - マジックナンバー・マジックストリング（`constants/` に定数として定義）
@@ -369,6 +374,7 @@ meshimap/
 3. **`app/`（画面）** — `features/` の hooks でデータを取り、上記を組み立てる。
 
 **規則**
+
 - データ取得は `features/*/use-*.ts` に閉じる。コンポーネントから直接 `fetch` しない
 - プリミティブは variant を props で受ける（`<Button variant="primary" size="lg" />`）。
   スタイルの分岐を呼び出し側に散らさない
@@ -417,14 +423,14 @@ mutation score = 検知できた改変数 / 生存しなかった改変の総数
 
 ### 11.3 レイヤ別の方針
 
-| 対象 | ツール | 方針 |
-|---|---|---|
-| `packages/geo` | Vitest + Stryker | カバレッジ 100% 必須。境界値（日付変更線、極付近、半径 0）を網羅 |
-| `packages/core` | Vitest + Stryker | 同上。営業時間の日跨ぎ、予約枠の端、評価の丸めを重点的に |
-| `apps/api` リポジトリ層 | Vitest | **権限テストを最優先**。「他人の店舗を更新できないこと」を全操作で検証 |
-| `apps/api` ルート | Vitest | ロール別に 401 / 403 / 200 を検証 |
-| `apps/mobile` コンポーネント | Jest + React Native Testing Library | プリミティブと主要ドメインコンポーネント |
-| `apps/mobile` hooks | Jest | TanStack Query のキャッシュ・楽観的更新の挙動 |
+| 対象                         | ツール                              | 方針                                                                   |
+| ---------------------------- | ----------------------------------- | ---------------------------------------------------------------------- |
+| `packages/geo`               | Vitest + Stryker                    | カバレッジ 100% 必須。境界値（日付変更線、極付近、半径 0）を網羅       |
+| `packages/core`              | Vitest + Stryker                    | 同上。営業時間の日跨ぎ、予約枠の端、評価の丸めを重点的に               |
+| `apps/api` リポジトリ層      | Vitest                              | **権限テストを最優先**。「他人の店舗を更新できないこと」を全操作で検証 |
+| `apps/api` ルート            | Vitest                              | ロール別に 401 / 403 / 200 を検証                                      |
+| `apps/mobile` コンポーネント | Jest + React Native Testing Library | プリミティブと主要ドメインコンポーネント                               |
+| `apps/mobile` hooks          | Jest                                | TanStack Query のキャッシュ・楽観的更新の挙動                          |
 
 ### 11.4 回帰テスト
 
@@ -434,18 +440,18 @@ mutation score = 検知できた改変数 / 生存しなかった改変の総数
 
 ## 12. 実装フェーズ
 
-| Phase | 内容 | 到達点 |
-|---|---|---|
-| 0 | モノレポ基盤 / NativeWind / フォント / テーマ / UI プリミティブ | デザインシステムが動く |
-| 1 | `packages/geo` を TDD で実装（geohash / Haversine / bbox / クラスタ） | ミューテーションスコア 85%+ |
-| 2 | `packages/core` を TDD で実装（営業時間 / 予約枠 / 評価 / スキーマ） | 同上 |
-| 3 | D1 スキーマ + マイグレーション + シード（東京都内に店舗 60 件） | データが引ける |
-| 4 | API 基盤（Hono / 認証 / ロールガード / ブランド型 Actor / 権限テスト） | 権限の抜けがないことを証明できる |
-| 5 | 認証 + ロールルーティング（モバイル） | 3 ロールでログイン分岐する |
-| 6 | 利用者コア（地図 / 検索 / 店舗詳細 / レビュー / お気に入り） | **デモ可能な状態** |
-| 7 | 予約（利用者側 + 店舗側の承認フロー + Durable Objects） | 双方向のフローが動く |
-| 8 | 店舗管理者（ダッシュボード / 店舗編集 / メニュー / レビュー返信） | 管理アプリとして成立 |
-| 9 | システム管理者（審査 / 通報 / ユーザー管理 / 監査ログ） | 3 ロール完成 |
-| 10 | 仕上げ（通知 / ディープリンク / アニメーション / README / デモ動画） | 提出可能 |
+| Phase | 内容                                                                   | 到達点                           |
+| ----- | ---------------------------------------------------------------------- | -------------------------------- |
+| 0     | モノレポ基盤 / NativeWind / フォント / テーマ / UI プリミティブ        | デザインシステムが動く           |
+| 1     | `packages/geo` を TDD で実装（geohash / Haversine / bbox / クラスタ）  | ミューテーションスコア 85%+      |
+| 2     | `packages/core` を TDD で実装（営業時間 / 予約枠 / 評価 / スキーマ）   | 同上                             |
+| 3     | D1 スキーマ + マイグレーション + シード（東京都内に店舗 60 件）        | データが引ける                   |
+| 4     | API 基盤（Hono / 認証 / ロールガード / ブランド型 Actor / 権限テスト） | 権限の抜けがないことを証明できる |
+| 5     | 認証 + ロールルーティング（モバイル）                                  | 3 ロールでログイン分岐する       |
+| 6     | 利用者コア（地図 / 検索 / 店舗詳細 / レビュー / お気に入り）           | **デモ可能な状態**               |
+| 7     | 予約（利用者側 + 店舗側の承認フロー + Durable Objects）                | 双方向のフローが動く             |
+| 8     | 店舗管理者（ダッシュボード / 店舗編集 / メニュー / レビュー返信）      | 管理アプリとして成立             |
+| 9     | システム管理者（審査 / 通報 / ユーザー管理 / 監査ログ）                | 3 ロール完成                     |
+| 10    | 仕上げ（通知 / ディープリンク / アニメーション / README / デモ動画）   | 提出可能                         |
 
 Phase 6 到達時点で「動くポートフォリオ」として成立する。以降は積み増し。

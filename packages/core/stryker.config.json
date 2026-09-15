@@ -5,16 +5,8 @@
   "commandRunner": {
     "command": "npx vitest run --silent"
   },
-  "reporters": [
-    "html",
-    "clear-text",
-    "progress"
-  ],
-  "mutate": [
-    "src/**/*.ts",
-    "!src/**/*.test.ts",
-    "!src/index.ts"
-  ],
+  "reporters": ["html", "clear-text", "progress"],
+  "mutate": ["src/**/*.ts", "!src/**/*.test.ts", "!src/index.ts"],
   "coverageAnalysis": "off",
   "htmlReporter": {
     "fileName": "reports/mutation/index.html"
