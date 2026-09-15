@@ -3357,7 +3357,7 @@ describe('formatBudgetRange', () => {
 
 ---
 
-- [ ] **Step 1: `packages/core/src/schema.ts` を作る**
+- [x] **Step 1: `packages/core/src/schema.ts` を作る**
 
 ```ts
 // API とモバイルで共有する入力スキーマ。Zod v4 を使う（v3 とはエラー形状も API も異なる）。
@@ -3549,7 +3549,7 @@ export type ReservationCreateInput = z.infer<typeof reservationCreateSchema>;
   4. `.partial()` は内側の `.default()` を消さないので、既定値は `shopCreateSchema` 側の `.extend({...})` にだけ書く。
   5. 予算の順序チェックは `typeof x !== 'number'` で `null` と `undefined` を一度に弾く。`x === undefined || x === null || …` と 4 つ並べると、`null` 側の条件が**等価変異**（外しても `null <= 3000` が `true` になるため結果が変わらない）としてミューテーションテストで生き残る（実測で確認し、この形に直した）。
 
-- [ ] **Step 2: `packages/core/src/schema.test.ts` を作る**
+- [x] **Step 2: `packages/core/src/schema.test.ts` を作る**
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -4307,7 +4307,7 @@ describe('部分更新でも前後の空白を落とすこと', () => {
 });
 ```
 
-- [ ] **Step 3: 型チェックとテストを実行する**
+- [x] **Step 3: 型チェックとテストを実行する**
 
   ```bash
   export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH"
@@ -4320,7 +4320,7 @@ describe('部分更新でも前後の空白を落とすこと', () => {
 
   `Cannot read properties of undefined (reading 'toString')` のようなエラーが出たら、`@meshimap/geo` のリンクが張られていない（Task 2-0 Step 2 の `npm install` を飛ばした）可能性が高い。`LATITUDE_MAX` などが `undefined` のまま `.max(undefined)` に渡ると Zod のロケール処理が落ちる、という実測済みの症状。
 
-- [ ] **Step 4: 意図的に壊してテストが検知することを確認する**
+- [x] **Step 4: 意図的に壊してテストが検知することを確認する**
 
   | # | 変更する行（`src/schema.ts`） | 変更後 | 期待: FAIL するテスト（実測） |
   |---|---|---|---|
