@@ -359,4 +359,88 @@ CREATE TABLE `lists` (
 );
 --> statement-breakpoint
 CREATE INDEX `idx_lists_user` ON `lists` (`user_id`);--> statement-breakpoint
-CREATE UNIQUE INDEX `uq_lists_share_token` ON `lists` (`share_token`);
+CREATE UNIQUE INDEX `uq_lists_share_token` ON `lists` (`share_token`);--> statement-breakpoint
+CREATE TABLE `audit_logs` (
+	`id` text PRIMARY KEY NOT NULL,
+	`actor_id` text,
+	`action` text NOT NULL,
+	`target_type` text NOT NULL,
+	`target_id` text NOT NULL,
+	`diff` text,
+	`created_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
+	FOREIGN KEY (`actor_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE set null,
+	CONSTRAINT "ck_audit_logs_id_length" CHECK(length("audit_logs"."id") <= 64),
+	CONSTRAINT "ck_audit_logs_action" CHECK("audit_logs"."action" <> '' AND "audit_logs"."action" NOT GLOB '*[^a-z0-9_.]*'),
+	CONSTRAINT "ck_audit_logs_target_type_length" CHECK(length("audit_logs"."target_type") <= 32),
+	CONSTRAINT "ck_audit_logs_diff_json" CHECK("audit_logs"."diff" IS NULL OR json_valid("audit_logs"."diff"))
+);
+--> statement-breakpoint
+CREATE INDEX `idx_audit_logs_created` ON `audit_logs` ("created_at" desc);--> statement-breakpoint
+CREATE INDEX `idx_audit_logs_actor_created` ON `audit_logs` (`actor_id`,"created_at" desc);--> statement-breakpoint
+CREATE INDEX `idx_audit_logs_target` ON `audit_logs` (`target_type`,`target_id`);--> statement-breakpoint
+CREATE TABLE `notifications` (
+	`id` text PRIMARY KEY NOT NULL,
+	`user_id` text NOT NULL,
+	`type` text NOT NULL,
+	`title` text NOT NULL,
+	`body` text NOT NULL,
+	`data` text,
+	`read_at` integer,
+	`created_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
+	FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade,
+	CONSTRAINT "ck_notifications_id_length" CHECK(length("notifications"."id") <= 64),
+	CONSTRAINT "ck_notifications_type" CHECK("notifications"."type" IN ('reservation_requested', 'reservation_confirmed', 'reservation_rejected', 'reservation_cancelled', 'review_posted', 'review_replied', 'application_approved', 'application_rejected', 'application_returned', 'announcement')),
+	CONSTRAINT "ck_notifications_title_length" CHECK(length("notifications"."title") <= 100),
+	CONSTRAINT "ck_notifications_body_length" CHECK(length("notifications"."body") <= 500),
+	CONSTRAINT "ck_notifications_data_json" CHECK("notifications"."data" IS NULL OR json_valid("notifications"."data"))
+);
+--> statement-breakpoint
+CREATE INDEX `idx_notifications_user_created` ON `notifications` (`user_id`,"created_at" desc);--> statement-breakpoint
+CREATE INDEX `idx_notifications_user_unread` ON `notifications` (`user_id`,"created_at" desc) WHERE "notifications"."read_at" IS NULL;--> statement-breakpoint
+CREATE TABLE `reports` (
+	`id` text PRIMARY KEY NOT NULL,
+	`reporter_id` text,
+	`target_type` text NOT NULL,
+	`target_id` text NOT NULL,
+	`reason` text NOT NULL,
+	`detail` text,
+	`status` text DEFAULT 'open' NOT NULL,
+	`handled_by` text,
+	`handled_at` integer,
+	`created_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
+	FOREIGN KEY (`reporter_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE set null,
+	FOREIGN KEY (`handled_by`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE set null,
+	CONSTRAINT "ck_reports_id_length" CHECK(length("reports"."id") <= 64),
+	CONSTRAINT "ck_reports_target_type" CHECK("reports"."target_type" IN ('shop', 'review', 'user')),
+	CONSTRAINT "ck_reports_status" CHECK("reports"."status" IN ('open', 'in_review', 'resolved', 'rejected')),
+	CONSTRAINT "ck_reports_reason_length" CHECK(length("reports"."reason") <= 100),
+	CONSTRAINT "ck_reports_detail_length" CHECK(length("reports"."detail") <= 1000),
+	CONSTRAINT "ck_reports_handler_requires_time" CHECK("reports"."handled_by" IS NULL OR "reports"."handled_at" IS NOT NULL),
+	CONSTRAINT "ck_reports_closed_requires_time" CHECK("reports"."status" IN ('open', 'in_review') OR "reports"."handled_at" IS NOT NULL)
+);
+--> statement-breakpoint
+CREATE INDEX `idx_reports_status_created` ON `reports` (`status`,"created_at" desc);--> statement-breakpoint
+CREATE INDEX `idx_reports_target` ON `reports` (`target_type`,`target_id`);--> statement-breakpoint
+CREATE INDEX `idx_reports_reporter` ON `reports` (`reporter_id`);--> statement-breakpoint
+CREATE UNIQUE INDEX `uq_reports_reporter_target` ON `reports` (`reporter_id`,`target_type`,`target_id`);--> statement-breakpoint
+CREATE TABLE `shop_applications` (
+	`id` text PRIMARY KEY NOT NULL,
+	`applicant_id` text NOT NULL,
+	`shop_id` text NOT NULL,
+	`documents` text DEFAULT '[]' NOT NULL,
+	`status` text DEFAULT 'pending' NOT NULL,
+	`reviewed_by` text,
+	`review_note` text,
+	`created_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
+	FOREIGN KEY (`applicant_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`shop_id`) REFERENCES `shops`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`reviewed_by`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE set null,
+	CONSTRAINT "ck_shop_applications_id_length" CHECK(length("shop_applications"."id") <= 64),
+	CONSTRAINT "ck_shop_applications_status" CHECK("shop_applications"."status" IN ('pending', 'approved', 'rejected', 'returned')),
+	CONSTRAINT "ck_shop_applications_documents_json" CHECK(json_valid("shop_applications"."documents") AND json_type("shop_applications"."documents") = 'array'),
+	CONSTRAINT "ck_shop_applications_review_note_length" CHECK(length("shop_applications"."review_note") <= 1000)
+);
+--> statement-breakpoint
+CREATE INDEX `idx_shop_applications_status_created` ON `shop_applications` (`status`,"created_at" desc);--> statement-breakpoint
+CREATE INDEX `idx_shop_applications_applicant` ON `shop_applications` (`applicant_id`);--> statement-breakpoint
+CREATE UNIQUE INDEX `uq_shop_applications_shop_pending` ON `shop_applications` (`shop_id`) WHERE "shop_applications"."status" = 'pending';

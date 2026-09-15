@@ -7,3 +7,4 @@ export * from './menu';
 export * from './review';
 export * from './reservation';
 export * from './collection';
+export * from './admin';
