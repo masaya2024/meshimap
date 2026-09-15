@@ -1,8 +1,7 @@
 name: Mutation Tests
 
 # ミューテーションテストは通常のテストと桁が違うほど重い。
-# packages/core はローカル実測で 610 変異 / 1 分 34 秒
-# （docs/superpowers/plans/2026-09-15-phase-2-core-package.md）、
+# packages/core はローカル実測で 609 変異 / 約 2 分（geo は 360 変異 / 約 1 分）、
 # CI ランナーではさらに遅い。push のたびに回すとフィードバックが鈍り、
 # 待ち時間の長さから CI 自体が無視されるようになる。
 # そのため ci.yml から切り離し、手動実行と週次バッチだけにする。
@@ -50,4 +49,9 @@ jobs:
         # しきい値（thresholds.break: 85）は各 stryker.config.json 側に書いてある。
         # CI から --break などを重ねて渡すと設定が二重管理になり、
         # ローカル実行と CI で判定が食い違う余地を作るので何も足さない。
+        #
+        # 85 はあくまで下限。2026-09-15 時点の実測はどちらも 100%
+        # （core 609 変異 / geo 360 変異、いずれも Survived 0）。
+        # 下回ったらテストが変異を殺せていないということなので、
+        # しきい値を下げて通すのではなくテストを足すこと。
         run: npm run test:mutation -w ${{ matrix.workspace }}

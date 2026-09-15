@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import * as coreConstants from '@meshimap/core';
+import * as dbConstants from './constants';
 import {
   APPLICATION_STATUSES,
   ISO_DATE_GLOB_PATTERN,
@@ -91,5 +93,51 @@ describe('GLOB パターン', () => {
     // SQLite の GLOB に桁数指定（\d{4}）はないため、[0-9] を桁数ぶん並べるしかない。
     // 数え間違いがあっても見た目では気づけないので、期待値を直接書いて固定する。
     expect(ISO_DATE_GLOB_PATTERN).toBe('[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]');
+  });
+});
+
+/**
+ * `@meshimap/core` と同じ名前で公開されている定数の数。
+ *
+ * 増減したらこの数を直す。ここを固定しておかないと、core 側の改名で
+ * 重なりが減ったときに「比較する対象が消えた」ことに気づけず、
+ * 下の比較が静かに素通りするようになる。
+ */
+const SHARED_CONSTANT_COUNT = 28;
+
+/**
+ * 名前で引けるようにした両者の公開値。
+ *
+ * module namespace を直接添字で引くと `keyof typeof` のキャストが要る。
+ * `unknown` の辞書に展開してしまえばキャスト無しで引けて、値の比較に必要な
+ * 情報は何も失われない（比較は toEqual が構造で行う）。
+ */
+const dbValues: Record<string, unknown> = { ...dbConstants };
+const coreValues: Record<string, unknown> = { ...coreConstants };
+
+/** 両方が公開している名前。core 側の型は値として現れないので自然に外れる */
+const sharedNames = Object.keys(dbValues)
+  .filter((name) => name in coreValues)
+  .sort();
+
+describe('@meshimap/core との二重定義', () => {
+  /**
+   * このファイルの冒頭が言うとおり、ここは Phase 4 で core からの再エクスポートに
+   * 置き換わるまでの一時的な写しにすぎない。写しである間に値がずれると、
+   * D1 側の CHECK 制約とアプリ側の判定が食い違い、しかも
+   * **既存データがある状態では制約を張り直せない**ところまで進んでしまう。
+   *
+   * 型は別物（api 側は独自に宣言している）なので tsc では捕まらない。
+   * ここで実行時に突き合わせるのが唯一の歯止め。
+   */
+  it('同じ名前の定数は core と同じ値である', () => {
+    expect(sharedNames).toHaveLength(SHARED_CONSTANT_COUNT);
+
+    // 名前をキーに持つオブジェクトどうしで比べる。値だけを比べると
+    // 落ちたときにどの定数がずれたのか差分に出ない。
+    const dbShared = Object.fromEntries(sharedNames.map((name) => [name, dbValues[name]]));
+    const coreShared = Object.fromEntries(sharedNames.map((name) => [name, coreValues[name]]));
+
+    expect(dbShared).toEqual(coreShared);
   });
 });
