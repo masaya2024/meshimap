@@ -6,6 +6,14 @@ const { resolveBabelOptions } = require('jest-expo/src/resolveBabelOptions');
 const SOURCE_TRANSFORM_PATTERN = '\\.[jt]sx?$';
 
 /**
+ * ESM で解決されるパッケージ用の transform キー。
+ * jest-expo の既定は `\.[jt]sx?$` だけで .mjs / .cjs を変換対象にしないため、
+ * .mjs に解決されるパッケージが require(esm) エラーになる。
+ * SOURCE_TRANSFORM_PATTERN とは排他（[mc] が必須）なので二重変換にはならない。
+ */
+const ESM_TRANSFORM_PATTERN = '\\.[mc]js$';
+
+/**
  * npm は babel-jest@30 の peerDependency を満たすため @babel/core@8 をルートへ巻き上げるが、
  * babel-preset-expo@57 は Babel 7 専用で、Babel 8 から読み込むと変換前に落ちる。
  * jest-expo 同梱の babel-jest（@babel/core@7 を解決する）を明示して回避する。
@@ -32,6 +40,11 @@ const TRANSPILED_NODE_MODULES = [
   'native-base',
   'standard-navigation',
   'nativewind',
+  // lucide-react-native は CJS 版も持つが、exports のキー順で `react-native` 条件が
+  // `require` より先に来ており、その条件が .mjs を指す。RN の Jest 環境は
+  // customExportConditions に 'react-native' を含むため .mjs 側に解決される。
+  // 前方一致 'react-native' では先頭一致しないため個別に挙げる
+  'lucide-react-native',
   '@meshimap',
 ];
 
@@ -41,6 +54,7 @@ module.exports = {
   setupFilesAfterEnv: ['<rootDir>/jest-setup.ts'],
   transform: {
     [SOURCE_TRANSFORM_PATTERN]: [BABEL_JEST_PATH, resolveBabelOptions(__dirname)],
+    [ESM_TRANSFORM_PATTERN]: [BABEL_JEST_PATH, resolveBabelOptions(__dirname)],
   },
   transformIgnorePatterns: [
     `/node_modules/(?!(${TRANSPILED_NODE_MODULES.join('|')}))`,
