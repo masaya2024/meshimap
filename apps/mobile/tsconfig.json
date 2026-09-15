@@ -14,7 +14,8 @@
       ]
     },
     "types": [
-      "jest"
+      "jest",
+      "node"
     ]
   },
   "include": [

@@ -14,9 +14,12 @@ const SOURCE_TRANSFORM_PATTERN = '\\.[jt]sx?$';
 const ESM_TRANSFORM_PATTERN = '\\.[mc]js$';
 
 /**
- * npm は babel-jest@30 の peerDependency を満たすため @babel/core@8 をルートへ巻き上げるが、
- * babel-preset-expo@57 は Babel 7 専用で、Babel 8 から読み込むと変換前に落ちる。
- * jest-expo 同梱の babel-jest（@babel/core@7 を解決する）を明示して回避する。
+ * ルートの @babel/core は 8 系。@stryker-mutator/instrumenter が dependencies で
+ * `@babel/core: ~8.0.0` を要求しており、それが巻き上げられている
+ * （package-lock.json の逆引きで確認。babel-jest の peer は `^7.11.0 || ^8.0.0-0` なので 7 でも満たせる）。
+ * 一方 babel-preset-expo@57 は @babel/* を全て ^7 で要求する Babel 7 専用で、
+ * Babel 8 から読み込むと変換前に落ちる。
+ * jest-expo 同梱の babel-jest（配下の @babel/core@7 を解決する）を明示して回避する。
  * ルートの @babel/core が 7 系に戻ったらこの迂回は削除してよい。
  */
 const JEST_EXPO_DIR = path.dirname(require.resolve('jest-expo/package.json'));
