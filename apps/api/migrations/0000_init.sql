@@ -297,4 +297,66 @@ CREATE INDEX `idx_reviews_shop_created` ON `reviews` (`shop_id`,"created_at" des
 CREATE INDEX `idx_reviews_shop_status_created` ON `reviews` (`shop_id`,`status`,"created_at" desc);--> statement-breakpoint
 CREATE INDEX `idx_reviews_user_created` ON `reviews` (`user_id`,"created_at" desc);--> statement-breakpoint
 CREATE UNIQUE INDEX `uq_reviews_shop_user` ON `reviews` (`shop_id`,`user_id`);--> statement-breakpoint
-CREATE UNIQUE INDEX `uq_reviews_id_shop` ON `reviews` (`id`,`shop_id`);
+CREATE UNIQUE INDEX `uq_reviews_id_shop` ON `reviews` (`id`,`shop_id`);--> statement-breakpoint
+CREATE TABLE `reservations` (
+	`id` text PRIMARY KEY NOT NULL,
+	`shop_id` text NOT NULL,
+	`user_id` text NOT NULL,
+	`reserved_at` integer NOT NULL,
+	`party_size` integer NOT NULL,
+	`note` text,
+	`status` text DEFAULT 'pending' NOT NULL,
+	`created_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
+	FOREIGN KEY (`shop_id`) REFERENCES `shops`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade,
+	CONSTRAINT "ck_reservations_id_length" CHECK(length("reservations"."id") <= 64),
+	CONSTRAINT "ck_reservations_party_size" CHECK("reservations"."party_size" BETWEEN 1 AND 20),
+	CONSTRAINT "ck_reservations_status" CHECK("reservations"."status" IN ('pending', 'confirmed', 'rejected', 'cancelled', 'completed', 'no_show')),
+	CONSTRAINT "ck_reservations_note_length" CHECK(length("reservations"."note") <= 500)
+);
+--> statement-breakpoint
+CREATE INDEX `idx_reservations_shop_reserved` ON `reservations` (`shop_id`,`reserved_at`);--> statement-breakpoint
+CREATE INDEX `idx_reservations_shop_status_reserved` ON `reservations` (`shop_id`,`status`,`reserved_at`);--> statement-breakpoint
+CREATE INDEX `idx_reservations_user_reserved` ON `reservations` (`user_id`,"reserved_at" desc);--> statement-breakpoint
+CREATE TABLE `favorites` (
+	`user_id` text NOT NULL,
+	`shop_id` text NOT NULL,
+	`created_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
+	PRIMARY KEY(`user_id`, `shop_id`),
+	FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`shop_id`) REFERENCES `shops`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+CREATE INDEX `idx_favorites_user_created` ON `favorites` (`user_id`,"created_at" desc);--> statement-breakpoint
+CREATE INDEX `idx_favorites_shop` ON `favorites` (`shop_id`);--> statement-breakpoint
+CREATE TABLE `list_items` (
+	`list_id` text NOT NULL,
+	`shop_id` text NOT NULL,
+	`note` text,
+	`sort_order` integer DEFAULT 0 NOT NULL,
+	PRIMARY KEY(`list_id`, `shop_id`),
+	FOREIGN KEY (`list_id`) REFERENCES `lists`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`shop_id`) REFERENCES `shops`(`id`) ON UPDATE no action ON DELETE cascade,
+	CONSTRAINT "ck_list_items_note_length" CHECK(length("list_items"."note") <= 500),
+	CONSTRAINT "ck_list_items_sort_order" CHECK("list_items"."sort_order" >= 0)
+);
+--> statement-breakpoint
+CREATE INDEX `idx_list_items_list_sort` ON `list_items` (`list_id`,`sort_order`);--> statement-breakpoint
+CREATE TABLE `lists` (
+	`id` text PRIMARY KEY NOT NULL,
+	`user_id` text NOT NULL,
+	`name` text NOT NULL,
+	`description` text,
+	`is_public` integer DEFAULT false NOT NULL,
+	`share_token` text,
+	FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade,
+	CONSTRAINT "ck_lists_id_length" CHECK(length("lists"."id") <= 64),
+	CONSTRAINT "ck_lists_name_length" CHECK(length("lists"."name") <= 100),
+	CONSTRAINT "ck_lists_description_length" CHECK(length("lists"."description") <= 1000),
+	CONSTRAINT "ck_lists_is_public" CHECK("lists"."is_public" IN (0, 1)),
+	CONSTRAINT "ck_lists_share_token_length" CHECK(length("lists"."share_token") = 32),
+	CONSTRAINT "ck_lists_share_token_alphabet" CHECK("lists"."share_token" <> '' AND "lists"."share_token" NOT GLOB '*[^a-z0-9]*')
+);
+--> statement-breakpoint
+CREATE INDEX `idx_lists_user` ON `lists` (`user_id`);--> statement-breakpoint
+CREATE UNIQUE INDEX `uq_lists_share_token` ON `lists` (`share_token`);

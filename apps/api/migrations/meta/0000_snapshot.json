@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "12f30d33-c9b4-468b-83b3-ff4f0bb7aff5",
+  "id": "661c02bb-8d12-4964-bcea-fbfb70462548",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "account": {
@@ -1913,6 +1913,426 @@
           "value": "\"reviews\".\"budget\" BETWEEN 0 AND 1000000"
         }
       }
+    },
+    "reservations": {
+      "name": "reservations",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "shop_id": {
+          "name": "shop_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "reserved_at": {
+          "name": "reserved_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "party_size": {
+          "name": "party_size",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "note": {
+          "name": "note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'pending'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
+        }
+      },
+      "indexes": {
+        "idx_reservations_shop_reserved": {
+          "name": "idx_reservations_shop_reserved",
+          "columns": [
+            "shop_id",
+            "reserved_at"
+          ],
+          "isUnique": false
+        },
+        "idx_reservations_shop_status_reserved": {
+          "name": "idx_reservations_shop_status_reserved",
+          "columns": [
+            "shop_id",
+            "status",
+            "reserved_at"
+          ],
+          "isUnique": false
+        },
+        "idx_reservations_user_reserved": {
+          "name": "idx_reservations_user_reserved",
+          "columns": [
+            "user_id",
+            "\"reserved_at\" desc"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "reservations_shop_id_shops_id_fk": {
+          "name": "reservations_shop_id_shops_id_fk",
+          "tableFrom": "reservations",
+          "tableTo": "shops",
+          "columnsFrom": [
+            "shop_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "reservations_user_id_user_id_fk": {
+          "name": "reservations_user_id_user_id_fk",
+          "tableFrom": "reservations",
+          "tableTo": "user",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "ck_reservations_id_length": {
+          "name": "ck_reservations_id_length",
+          "value": "length(\"reservations\".\"id\") <= 64"
+        },
+        "ck_reservations_party_size": {
+          "name": "ck_reservations_party_size",
+          "value": "\"reservations\".\"party_size\" BETWEEN 1 AND 20"
+        },
+        "ck_reservations_status": {
+          "name": "ck_reservations_status",
+          "value": "\"reservations\".\"status\" IN ('pending', 'confirmed', 'rejected', 'cancelled', 'completed', 'no_show')"
+        },
+        "ck_reservations_note_length": {
+          "name": "ck_reservations_note_length",
+          "value": "length(\"reservations\".\"note\") <= 500"
+        }
+      }
+    },
+    "favorites": {
+      "name": "favorites",
+      "columns": {
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "shop_id": {
+          "name": "shop_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
+        }
+      },
+      "indexes": {
+        "idx_favorites_user_created": {
+          "name": "idx_favorites_user_created",
+          "columns": [
+            "user_id",
+            "\"created_at\" desc"
+          ],
+          "isUnique": false
+        },
+        "idx_favorites_shop": {
+          "name": "idx_favorites_shop",
+          "columns": [
+            "shop_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "favorites_user_id_user_id_fk": {
+          "name": "favorites_user_id_user_id_fk",
+          "tableFrom": "favorites",
+          "tableTo": "user",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "favorites_shop_id_shops_id_fk": {
+          "name": "favorites_shop_id_shops_id_fk",
+          "tableFrom": "favorites",
+          "tableTo": "shops",
+          "columnsFrom": [
+            "shop_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "favorites_user_id_shop_id_pk": {
+          "columns": [
+            "user_id",
+            "shop_id"
+          ],
+          "name": "favorites_user_id_shop_id_pk"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "list_items": {
+      "name": "list_items",
+      "columns": {
+        "list_id": {
+          "name": "list_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "shop_id": {
+          "name": "shop_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "note": {
+          "name": "note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        }
+      },
+      "indexes": {
+        "idx_list_items_list_sort": {
+          "name": "idx_list_items_list_sort",
+          "columns": [
+            "list_id",
+            "sort_order"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "list_items_list_id_lists_id_fk": {
+          "name": "list_items_list_id_lists_id_fk",
+          "tableFrom": "list_items",
+          "tableTo": "lists",
+          "columnsFrom": [
+            "list_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "list_items_shop_id_shops_id_fk": {
+          "name": "list_items_shop_id_shops_id_fk",
+          "tableFrom": "list_items",
+          "tableTo": "shops",
+          "columnsFrom": [
+            "shop_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "list_items_list_id_shop_id_pk": {
+          "columns": [
+            "list_id",
+            "shop_id"
+          ],
+          "name": "list_items_list_id_shop_id_pk"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "ck_list_items_note_length": {
+          "name": "ck_list_items_note_length",
+          "value": "length(\"list_items\".\"note\") <= 500"
+        },
+        "ck_list_items_sort_order": {
+          "name": "ck_list_items_sort_order",
+          "value": "\"list_items\".\"sort_order\" >= 0"
+        }
+      }
+    },
+    "lists": {
+      "name": "lists",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "is_public": {
+          "name": "is_public",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "share_token": {
+          "name": "share_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "idx_lists_user": {
+          "name": "idx_lists_user",
+          "columns": [
+            "user_id"
+          ],
+          "isUnique": false
+        },
+        "uq_lists_share_token": {
+          "name": "uq_lists_share_token",
+          "columns": [
+            "share_token"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "lists_user_id_user_id_fk": {
+          "name": "lists_user_id_user_id_fk",
+          "tableFrom": "lists",
+          "tableTo": "user",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "ck_lists_id_length": {
+          "name": "ck_lists_id_length",
+          "value": "length(\"lists\".\"id\") <= 64"
+        },
+        "ck_lists_name_length": {
+          "name": "ck_lists_name_length",
+          "value": "length(\"lists\".\"name\") <= 100"
+        },
+        "ck_lists_description_length": {
+          "name": "ck_lists_description_length",
+          "value": "length(\"lists\".\"description\") <= 1000"
+        },
+        "ck_lists_is_public": {
+          "name": "ck_lists_is_public",
+          "value": "\"lists\".\"is_public\" IN (0, 1)"
+        },
+        "ck_lists_share_token_length": {
+          "name": "ck_lists_share_token_length",
+          "value": "length(\"lists\".\"share_token\") = 32"
+        },
+        "ck_lists_share_token_alphabet": {
+          "name": "ck_lists_share_token_alphabet",
+          "value": "\"lists\".\"share_token\" <> '' AND \"lists\".\"share_token\" NOT GLOB '*[^a-z0-9]*'"
+        }
+      }
     }
   },
   "views": {},
@@ -1946,6 +2366,20 @@
         }
       },
       "idx_reviews_user_created": {
+        "columns": {
+          "\"created_at\" desc": {
+            "isExpression": true
+          }
+        }
+      },
+      "idx_reservations_user_reserved": {
+        "columns": {
+          "\"reserved_at\" desc": {
+            "isExpression": true
+          }
+        }
+      },
+      "idx_favorites_user_created": {
         "columns": {
           "\"created_at\" desc": {
             "isExpression": true
