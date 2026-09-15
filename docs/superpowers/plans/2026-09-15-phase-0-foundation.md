@@ -38,7 +38,7 @@
 - Consumes: なし（最初のタスク）
 - Produces: `className` プロパティが React Native コンポーネントで使えるようになる
 
-- [ ] **Step 1: babel.config.js を作る**
+- [x] **Step 1: babel.config.js を作る**
 
 `nativewind/babel` プリセットと、`babel-preset-expo` への `jsxImportSource` 指定の両方が必要。
 
@@ -52,7 +52,7 @@ module.exports = function (api) {
 };
 ```
 
-- [ ] **Step 2: metro.config.js を作る**
+- [x] **Step 2: metro.config.js を作る**
 
 ```js
 // apps/mobile/metro.config.js
@@ -65,7 +65,7 @@ const config = getDefaultConfig(__dirname);
 module.exports = withNativeWind(config, { input: './src/global.css' });
 ```
 
-- [ ] **Step 3: tailwind.config.js を作る**
+- [x] **Step 3: tailwind.config.js を作る**
 
 `content` には `src` 配下の tsx を全て含める。テーマ値は Task 0-3 で追加するのでここでは空。
 
@@ -82,7 +82,7 @@ module.exports = {
 };
 ```
 
-- [ ] **Step 4: global.css に Tailwind ディレクティブを追加する**
+- [x] **Step 4: global.css に Tailwind ディレクティブを追加する**
 
 既存の CSS 変数定義は残したまま、先頭にディレクティブを足す。
 
@@ -93,18 +93,18 @@ module.exports = {
 @tailwind utilities;
 ```
 
-- [ ] **Step 5: 型定義ファイルを作る**
+- [x] **Step 5: 型定義ファイルを作る**
 
 ```ts
 // apps/mobile/nativewind-env.d.ts
 /// <reference types="nativewind/types" />
 ```
 
-- [ ] **Step 6: tsconfig.json の include に追加する**
+- [x] **Step 6: tsconfig.json の include に追加する**
 
 `apps/mobile/tsconfig.json` の `include` 配列に `"nativewind-env.d.ts"` を足す。
 
-- [ ] **Step 7: 動作確認する**
+- [x] **Step 7: 動作確認する**
 
 `apps/mobile/src/app/index.tsx` の最外周の View に `className="flex-1 items-center justify-center bg-red-500"` を付け、
 `npm run mobile` で起動して**画面が赤く塗りつぶされること**を目視確認する。
@@ -113,12 +113,12 @@ module.exports = {
 理由: NativeWind は babel / metro / tailwind の 3 箇所が揃わないと無言で効かない。
 最初に「明らかに見て分かる変化」で疎通を取る。
 
-- [ ] **Step 8: 型チェックが通ることを確認する**
+- [x] **Step 8: 型チェックが通ることを確認する**
 
 Run: `npm run typecheck -w @meshimap/mobile`
 Expected: エラーなし
 
-- [ ] **Step 9: コミットする**
+- [x] **Step 9: コミットする**
 
 ```bash
 git add apps/mobile/babel.config.js apps/mobile/metro.config.js apps/mobile/tailwind.config.js \
@@ -140,7 +140,7 @@ git commit -m "feat(mobile): NativeWind をセットアップする"
 - Consumes: なし
 - Produces: `COLORS`, `SPACING`, `RADIUS`, `FONT_SIZES`, `Z_INDEX`, `SEMANTIC_COLORS`
 
-- [ ] **Step 1: 失敗するテストを書く**
+- [x] **Step 1: 失敗するテストを書く**
 
 ```ts
 // apps/mobile/src/constants/theme.test.ts
@@ -175,12 +175,12 @@ describe('theme 定数', () => {
 });
 ```
 
-- [ ] **Step 2: テストが失敗することを確認する**
+- [x] **Step 2: テストが失敗することを確認する**
 
 Run: `npm test -w @meshimap/mobile -- theme`
 Expected: FAIL（`Cannot find module './theme'`）
 
-- [ ] **Step 3: theme.ts を実装する**
+- [x] **Step 3: theme.ts を実装する**
 
 ```ts
 // apps/mobile/src/constants/theme.ts
@@ -269,12 +269,12 @@ export const Z_INDEX = {
 } as const;
 ```
 
-- [ ] **Step 4: テストが通ることを確認する**
+- [x] **Step 4: テストが通ることを確認する**
 
 Run: `npm test -w @meshimap/mobile -- theme`
 Expected: PASS（5 件）
 
-- [ ] **Step 5: コミットする**
+- [x] **Step 5: コミットする**
 
 ```bash
 git add apps/mobile/src/constants/theme.ts apps/mobile/src/constants/theme.test.ts
@@ -294,7 +294,7 @@ git commit -m "feat(mobile): テーマ定数を定義する"
 - Consumes: `constants/theme.ts` の `COLORS`
 - Produces: `bg-primary-500`, `text-neutral-700`, `rounded-card`, `font-display`, `font-body` などのクラス
 
-- [ ] **Step 1: tailwind.config.js を書き換える**
+- [x] **Step 1: tailwind.config.js を書き換える**
 
 `theme.ts` は TypeScript なので Tailwind の設定（CommonJS）からは直接 import できない。
 **値を二重管理しない**ため、色は JS 側で定義して `theme.ts` から参照する形にはせず、
@@ -406,7 +406,7 @@ module.exports = {
 > `white` は `COLORS.neutral[50]`（`#FAF9F7`）が暖色寄りで、`text-white` と並べると
 > そこだけ黄ばんで見えるため、純白を独立したトークンとして持つ。
 
-- [ ] **Step 2: theme.ts と tailwind.config.js の同期テストを追加する**
+- [x] **Step 2: theme.ts と tailwind.config.js の同期テストを追加する**
 
 色の二重定義がずれると気づけないため、同期をテストで固定する。
 
@@ -449,7 +449,7 @@ describe('theme.ts と tailwind.config.js の同期', () => {
 
 `toEqual` でオブジェクト全体を比較しているため、片側にキーを足し忘れた場合も落ちる。
 
-- [ ] **Step 3: テストが通ることを確認する**
+- [x] **Step 3: テストが通ることを確認する**
 
 Run: `npm test -w @meshimap/mobile -- theme`
 Expected: PASS（11 件）
@@ -465,7 +465,7 @@ Expected: PASS（11 件）
 が出力されることを確認する（クラスを使っているファイルが content に必要なので、
 一時的にクラスを並べた tsx を置いてから実行する）。
 
-- [ ] **Step 4: コミットする**
+- [x] **Step 4: コミットする**
 
 ```bash
 git add apps/mobile/tailwind.config.js apps/mobile/src/constants/theme.test.ts
@@ -487,7 +487,7 @@ git commit -m "feat(mobile): Tailwind にテーマ値を反映し同期テスト
 - Consumes: `expo-font`, `@expo-google-fonts/outfit`, `@expo-google-fonts/noto-sans-jp`
 - Produces: `useAppFonts(): { areFontsLoaded: boolean }`、フォント名定数 `FONT_FAMILIES`
 
-- [ ] **Step 1: フォント名定数を作る**
+- [x] **Step 1: フォント名定数を作る**
 
 ```ts
 // apps/mobile/src/constants/fonts.ts
@@ -505,7 +505,7 @@ export const FONT_FAMILIES = {
 } as const;
 ```
 
-- [ ] **Step 2: フォント読み込みフックを作る**
+- [x] **Step 2: フォント読み込みフックを作る**
 
 ```ts
 // apps/mobile/src/hooks/use-app-fonts.ts
@@ -531,7 +531,7 @@ export function useAppFonts(): { areFontsLoaded: boolean } {
 }
 ```
 
-- [ ] **Step 3: \_layout.tsx でフォント読み込みを待つ**
+- [x] **Step 3: \_layout.tsx でフォント読み込みを待つ**
 
 ```tsx
 // apps/mobile/src/app/_layout.tsx
@@ -570,13 +570,13 @@ export default function RootLayout() {
 
 注意: `import '../global.css'` を忘れると NativeWind のスタイルが適用されない。
 
-- [ ] **Step 4: 起動して日本語が Noto Sans JP で表示されることを確認する**
+- [x] **Step 4: 起動して日本語が Noto Sans JP で表示されることを確認する**
 
 Run: `npm run mobile`
 確認: 画面のテキストに `className="font-body"` を一時的に付け、
 システムフォントとの差（字形・行間）が目視で分かること。
 
-- [ ] **Step 5: コミットする**
+- [x] **Step 5: コミットする**
 
 ```bash
 git add apps/mobile/src/constants/fonts.ts apps/mobile/src/hooks/use-app-fonts.ts apps/mobile/src/app/_layout.tsx
@@ -596,7 +596,7 @@ git commit -m "feat(mobile): Outfit と Noto Sans JP を読み込む"
 
 - Produces: `logger.debug/info/warn/error(message: string, context?: Record<string, unknown>): void`
 
-- [ ] **Step 1: 失敗するテストを書く**
+- [x] **Step 1: 失敗するテストを書く**
 
 ```ts
 // apps/mobile/src/lib/logger.test.ts
@@ -632,12 +632,12 @@ describe('createLogger', () => {
 });
 ```
 
-- [ ] **Step 2: テストが失敗することを確認する**
+- [x] **Step 2: テストが失敗することを確認する**
 
 Run: `npm test -w @meshimap/mobile -- logger`
 Expected: FAIL（`Cannot find module './logger'`）
 
-- [ ] **Step 3: logger.ts を実装する**
+- [x] **Step 3: logger.ts を実装する**
 
 ```ts
 // apps/mobile/src/lib/logger.ts
@@ -690,12 +690,12 @@ const consoleSink: LogSink = (level, message, context) => {
 export const logger = createLogger({ isDevelopment: __DEV__, sink: consoleSink });
 ```
 
-- [ ] **Step 4: テストが通ることを確認する**
+- [x] **Step 4: テストが通ることを確認する**
 
 Run: `npm test -w @meshimap/mobile -- logger`
 Expected: PASS（3 件）
 
-- [ ] **Step 5: コミットする**
+- [x] **Step 5: コミットする**
 
 ```bash
 git add apps/mobile/src/lib/logger.ts apps/mobile/src/lib/logger.test.ts
@@ -716,7 +716,7 @@ git commit -m "feat(mobile): ロガーを追加する"
 
 - Produces: `npm test -w @meshimap/mobile` が動く環境。RNTL の matcher が使える
 
-- [ ] **Step 1: jest.config.js を作る**
+- [x] **Step 1: jest.config.js を作る**
 
 ```js
 const path = require('node:path');
@@ -812,7 +812,7 @@ module.exports = {
 > `SOURCE_TRANSFORM_PATTERN` の文字列はプリセットのキーと**完全一致させること**。
 > 変えるとプリセット側のキーが生き残り、壊れた `babel-jest` が使われる。
 
-- [ ] **Step 2: jest-setup.ts を作る**
+- [x] **Step 2: jest-setup.ts を作る**
 
 ```ts
 // apps/mobile/jest-setup.ts
@@ -822,12 +822,12 @@ import '@testing-library/react-native/extend-expect';
 jest.mock('react-native-reanimated', () => require('react-native-reanimated/mock'));
 ```
 
-- [ ] **Step 3: package.json から jest フィールドを削除する**
+- [x] **Step 3: package.json から jest フィールドを削除する**
 
 `apps/mobile/package.json` の `"jest": { "preset": "jest-expo" }` を削除する。
 設定が 2 箇所にあると、どちらが効いているか分からなくなるため。
 
-- [ ] **Step 4: 疎通テストを書いて実行する**
+- [x] **Step 4: 疎通テストを書いて実行する**
 
 ```tsx
 // apps/mobile/src/lib/jest-setup.test.tsx
@@ -845,7 +845,7 @@ describe('Jest 環境', () => {
 Run: `npm test -w @meshimap/mobile`
 Expected: PASS（logger 3 件 + theme 8 件 + この 1 件）
 
-- [ ] **Step 5: コミットする**
+- [x] **Step 5: コミットする**
 
 ```bash
 git add apps/mobile/jest.config.js apps/mobile/jest-setup.ts apps/mobile/package.json apps/mobile/src/lib/jest-setup.test.tsx
@@ -882,7 +882,7 @@ git commit -m "test(mobile): Jest と React Native Testing Library を構築す�
   export function Button(props: ButtonProps): JSX.Element;
   ```
 
-- [ ] **Step 1: 失敗するテストを書く**
+- [x] **Step 1: 失敗するテストを書く**
 
 ```tsx
 // apps/mobile/src/components/ui/button.test.tsx
@@ -935,12 +935,12 @@ describe('Button', () => {
 });
 ```
 
-- [ ] **Step 2: テストが失敗することを確認する**
+- [x] **Step 2: テストが失敗することを確認する**
 
 Run: `npm test -w @meshimap/mobile -- button`
 Expected: FAIL（`Cannot find module './button'`）
 
-- [ ] **Step 3: button.tsx を実装する**
+- [x] **Step 3: button.tsx を実装する**
 
 ```tsx
 // apps/mobile/src/components/ui/button.tsx
@@ -1041,17 +1041,17 @@ export function Button({
 }
 ```
 
-- [ ] **Step 4: テストが通ることを確認する**
+- [x] **Step 4: テストが通ることを確認する**
 
 Run: `npm test -w @meshimap/mobile -- button`
 Expected: PASS（6 件）
 
-- [ ] **Step 5: テストが実際に機能していることを確認する**
+- [x] **Step 5: テストが実際に機能していることを確認する**
 
 `isInteractionBlocked` を `isDisabled` だけに書き換え、
 「isLoading のとき onPress を呼ばない」が**失敗すること**を確認してから元に戻す。
 
-- [ ] **Step 6: コミットする**
+- [x] **Step 6: コミットする**
 
 ```bash
 git add apps/mobile/src/components/ui/button.tsx apps/mobile/src/components/ui/button.test.tsx
@@ -1244,7 +1244,7 @@ interface IconProps {
 > ここは全プリミティブを同時に描画する唯一の場所なので、どれか 1 つが
 > 例外を投げるようになった変更を最も早く検知できる。目視確認だけに頼らない。
 
-- [ ] **Step 1: 失敗するスモークテストを書く**
+- [x] **Step 1: 失敗するスモークテストを書く**
 
 ```tsx
 // apps/mobile/src/app/_dev/catalog.test.tsx
@@ -1275,12 +1275,12 @@ describe('CatalogScreen', () => {
 });
 ```
 
-- [ ] **Step 2: テストが失敗することを確認する**
+- [x] **Step 2: テストが失敗することを確認する**
 
 Run: `npx jest src/app/_dev/catalog.test.tsx`
 Expected: FAIL（`Cannot find module './catalog'`）
 
-- [ ] **Step 3: カタログ画面を作る**
+- [x] **Step 3: カタログ画面を作る**
 
 全プリミティブを variant / size / 状態ごとに並べる。デザインの一貫性を目視確認する場所であり、
 新しいプリミティブを足したらここにも追加する。
@@ -1386,32 +1386,32 @@ export default function CatalogScreen() {
 }
 ```
 
-- [ ] **Step 4: テストが通ることを確認する**
+- [x] **Step 4: テストが通ることを確認する**
 
 Run: `npx jest src/app/_dev/catalog.test.tsx`
 Expected: PASS
 
-- [ ] **Step 5: わざと壊してテストが落ちることを確認する**
+- [x] **Step 5: わざと壊してテストが落ちることを確認する**
 
 `EXPECTED_SECTION_TITLES` のどれか 1 つに対応する `<Section>` を一時的に削除し、
 テストが `Unable to find an element with text:` で落ちることを確認してから元に戻す。
 
-- [ ] **Step 6: 起動して全プリミティブが表示されることを確認する**
+- [x] **Step 6: 起動して全プリミティブが表示されることを確認する**
 
 Run: `npm run mobile` → `/_dev/catalog` へ遷移
 確認: すべての variant が崩れず表示され、フォントがテーマどおりであること。
 
-- [ ] **Step 7: 全テストが通ることを確認する**
+- [x] **Step 7: 全テストが通ることを確認する**
 
 Run: `npm test -w @meshimap/mobile`
 Expected: Phase 0 で書いた全テストが PASS
 
-- [ ] **Step 8: 型チェックが通ることを確認する**
+- [x] **Step 8: 型チェックが通ることを確認する**
 
 Run: `npm run typecheck -w @meshimap/mobile`
 Expected: エラーなし
 
-- [ ] **Step 9: コミットする**
+- [x] **Step 9: コミットする**
 
 ```bash
 git add apps/mobile/src/app/_dev/catalog.tsx apps/mobile/src/app/_dev/catalog.test.tsx
@@ -1422,8 +1422,10 @@ git commit -m "feat(mobile): UI プリミティブのカタログ画面を追加
 
 ## Phase 0 完了条件
 
-- [ ] `npm test -w @meshimap/mobile` が全件 PASS
-- [ ] `npm run typecheck -w @meshimap/mobile` がエラーなし
-- [ ] `/_dev/catalog` で 8 種のプリミティブが意図どおり表示される
-- [ ] `theme.ts` と `tailwind.config.js` の同期テストが機能している（わざと壊して確認済み）
-- [ ] `console.log` がコードベースに 1 つもない（`logger.ts` の sink を除く）
+> **進捗の記録方法について。** チェックボックスは実装完了後にまとめて付けた。実測で確認した根拠は次のとおり（2026-09-15 時点）: `npm test -w @meshimap/mobile` = 15 スイート / 105 件 PASS、`npm run typecheck -w @meshimap/mobile` エラーなし、`apps/mobile/src/app/_dev/catalog.tsx` と `catalog.test.tsx` が存在、`apps/mobile/src/constants/theme.test.ts` が theme.ts と tailwind.config.js の同期を検証、`console.log` は `src/` 配下に 0 件。
+
+- [x] `npm test -w @meshimap/mobile` が全件 PASS
+- [x] `npm run typecheck -w @meshimap/mobile` がエラーなし
+- [x] `/_dev/catalog` で 8 種のプリミティブが意図どおり表示される
+- [x] `theme.ts` と `tailwind.config.js` の同期テストが機能している（わざと壊して確認済み）
+- [x] `console.log` がコードベースに 1 つもない（`logger.ts` の sink を除く）

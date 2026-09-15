@@ -96,7 +96,7 @@ constants ← coordinate ← distance
 - Consumes: なし
 - Produces: `EARTH_RADIUS_M: number`、`DEGREES_TO_RADIANS: number`、`GEOHASH_BASE32: string`、`LATITUDE_MIN/MAX`、`LONGITUDE_MIN/MAX`
 
-- [ ] **Step 1: 失敗するテストを書く**
+- [x] **Step 1: 失敗するテストを書く**
 
 `packages/geo/src/constants.test.ts`:
 
@@ -145,7 +145,7 @@ describe('地理定数', () => {
 });
 ```
 
-- [ ] **Step 2: テストが失敗することを確認する**
+- [x] **Step 2: テストが失敗することを確認する**
 
 ```bash
 npm run test -w @meshimap/geo
@@ -153,7 +153,7 @@ npm run test -w @meshimap/geo
 
 期待: `Failed to resolve import "./constants"` で失敗する。**このメッセージを目で見ること。** 見ずに次へ進むと、テストが実際には何も検証していない状態に気付けない。
 
-- [ ] **Step 3: 最小実装を書く**
+- [x] **Step 3: 最小実装を書く**
 
 `packages/geo/src/constants.ts`:
 
@@ -180,7 +180,7 @@ export const LONGITUDE_MIN = -180;
 export const LONGITUDE_MAX = 180;
 ```
 
-- [ ] **Step 4: テストが通ることを確認する**
+- [x] **Step 4: テストが通ることを確認する**
 
 ```bash
 npm run test -w @meshimap/geo
@@ -188,7 +188,7 @@ npm run test -w @meshimap/geo
 
 期待: 7 件すべて PASS。
 
-- [ ] **Step 5: 型チェックを通す**
+- [x] **Step 5: 型チェックを通す**
 
 ```bash
 npm run typecheck -w @meshimap/geo
@@ -196,7 +196,7 @@ npm run typecheck -w @meshimap/geo
 
 期待: エラーなし。
 
-- [ ] **Step 6: コミット**
+- [x] **Step 6: コミット**
 
 ```bash
 git add packages/geo/src/constants.ts packages/geo/src/constants.test.ts
@@ -225,7 +225,7 @@ git commit -m "feat(geo): 地理計算の基礎定数を追加"
 
 > 以降すべての関数は `Coordinate` を受け取る。生の `{ lat, lng }` を受け取る関数を作らないこと。範囲チェックを一箇所に集約するのがこの型の目的であり、迂回路を作ると意味が失われる。
 
-- [ ] **Step 1: 失敗するテストを書く**
+- [x] **Step 1: 失敗するテストを書く**
 
 `packages/geo/src/coordinate.test.ts`:
 
@@ -341,7 +341,7 @@ describe('coordinate', () => {
 });
 ```
 
-- [ ] **Step 2: テストが失敗することを確認する**
+- [x] **Step 2: テストが失敗することを確認する**
 
 ```bash
 npm run test -w @meshimap/geo -- coordinate
@@ -349,7 +349,7 @@ npm run test -w @meshimap/geo -- coordinate
 
 期待: `Failed to resolve import "./coordinate"`。
 
-- [ ] **Step 3: 最小実装を書く**
+- [x] **Step 3: 最小実装を書く**
 
 `packages/geo/src/coordinate.ts`:
 
@@ -404,7 +404,7 @@ export function coordinate(latitude: number, longitude: number): Coordinate {
 }
 ```
 
-- [ ] **Step 4: テストが通ることを確認する**
+- [x] **Step 4: テストが通ることを確認する**
 
 ```bash
 npm run test -w @meshimap/geo -- coordinate
@@ -412,7 +412,7 @@ npm run test -w @meshimap/geo -- coordinate
 
 期待: 20 件すべて PASS。
 
-- [ ] **Step 5: ブランド型がコンパイル時に効いていることを確認する**
+- [x] **Step 5: ブランド型がコンパイル時に効いていることを確認する**
 
 一時ファイル `packages/geo/src/brand-check.tmp.ts` を作って型エラーが出ることを確認する。
 
@@ -434,7 +434,7 @@ npm run typecheck -w @meshimap/geo
 rm packages/geo/src/brand-check.tmp.ts
 ```
 
-- [ ] **Step 6: 意図的にコードを壊してテストが検知することを確認する**
+- [x] **Step 6: 意図的にコードを壊してテストが検知することを確認する**
 
 `coordinate.ts` の `toLatitude` を一時的に次へ変える（境界の `>` を `>=` にする）:
 
@@ -448,7 +448,7 @@ npm run test -w @meshimap/geo -- coordinate
 
 期待: `上限 90 を受け入れる` が FAIL する。**これが FAIL しないなら境界値テストが足りていない。** 確認後、元に戻してテストが全件 PASS することを再確認する。
 
-- [ ] **Step 7: コミット**
+- [x] **Step 7: コミット**
 
 ```bash
 git add packages/geo/src/coordinate.ts packages/geo/src/coordinate.test.ts
@@ -469,7 +469,7 @@ git commit -m "feat(geo): 座標のブランド型とファクトリを追加"
 - Consumes: `constants.ts` の `EARTH_RADIUS_M` / `DEGREES_TO_RADIANS`、`coordinate.ts` の `Coordinate` / `coordinate`
 - Produces: `distanceMeters(from: Coordinate, to: Coordinate): number`
 
-- [ ] **Step 1: 失敗するテストを書く**
+- [x] **Step 1: 失敗するテストを書く**
 
 `packages/geo/src/distance.test.ts`:
 
@@ -538,7 +538,7 @@ describe('distanceMeters', () => {
 });
 ```
 
-- [ ] **Step 2: テストが失敗することを確認する**
+- [x] **Step 2: テストが失敗することを確認する**
 
 ```bash
 npm run test -w @meshimap/geo -- distance
@@ -546,7 +546,7 @@ npm run test -w @meshimap/geo -- distance
 
 期待: `Failed to resolve import "./distance"`。
 
-- [ ] **Step 3: 最小実装を書く**
+- [x] **Step 3: 最小実装を書く**
 
 `packages/geo/src/distance.ts`:
 
@@ -577,7 +577,7 @@ export function distanceMeters(from: Coordinate, to: Coordinate): number {
 }
 ```
 
-- [ ] **Step 4: テストが通ることを確認する**
+- [x] **Step 4: テストが通ることを確認する**
 
 ```bash
 npm run test -w @meshimap/geo -- distance
@@ -585,7 +585,7 @@ npm run test -w @meshimap/geo -- distance
 
 期待: 11 件すべて PASS。
 
-- [ ] **Step 5: 意図的にコードを壊してテストが検知することを確認する**
+- [x] **Step 5: 意図的にコードを壊してテストが検知することを確認する**
 
 `Math.min(1, Math.sqrt(haversine))` を `Math.sqrt(haversine)` に変える。
 
@@ -597,7 +597,7 @@ npm run test -w @meshimap/geo -- distance
 
 さらに `2 * EARTH_RADIUS_M` を `EARTH_RADIUS_M` に変えて実行し、距離系のテストが軒並み FAIL することを確認してから元へ戻す。
 
-- [ ] **Step 6: コミット**
+- [x] **Step 6: コミット**
 
 ```bash
 git add packages/geo/src/distance.ts packages/geo/src/distance.test.ts
@@ -629,7 +629,7 @@ git commit -m "feat(geo): Haversine による距離計算を追加"
 
 > `999.5` が `"1000m"` ではなく `"1.0km"` になるのは、先に四捨五入してから単位を決めているため。`"1000m"` という表示は UI として不自然なので、この順序を意図的に選んでいる。
 
-- [ ] **Step 1: 失敗するテストを書く**
+- [x] **Step 1: 失敗するテストを書く**
 
 `packages/geo/src/format-distance.test.ts`:
 
@@ -690,7 +690,7 @@ describe('formatDistance', () => {
 });
 ```
 
-- [ ] **Step 2: テストが失敗することを確認する**
+- [x] **Step 2: テストが失敗することを確認する**
 
 ```bash
 npm run test -w @meshimap/geo -- format-distance
@@ -698,7 +698,7 @@ npm run test -w @meshimap/geo -- format-distance
 
 期待: `Failed to resolve import "./format-distance"`。
 
-- [ ] **Step 3: 最小実装を書く**
+- [x] **Step 3: 最小実装を書く**
 
 `packages/geo/src/format-distance.ts`:
 
@@ -734,7 +734,7 @@ export function formatDistance(meters: number): string {
 }
 ```
 
-- [ ] **Step 4: テストが通ることを確認する**
+- [x] **Step 4: テストが通ることを確認する**
 
 ```bash
 npm run test -w @meshimap/geo -- format-distance
@@ -742,7 +742,7 @@ npm run test -w @meshimap/geo -- format-distance
 
 期待: 20 件すべて PASS。
 
-- [ ] **Step 5: 意図的にコードを壊してテストが検知することを確認する**
+- [x] **Step 5: 意図的にコードを壊してテストが検知することを確認する**
 
 `const roundedMeters = Math.round(meters);` を `const roundedMeters = Math.floor(meters);` に変える。
 
@@ -752,7 +752,7 @@ npm run test -w @meshimap/geo -- format-distance
 
 期待: `0.5 メートルを "1m" と表示する` と `499.5 メートルを "500m" と表示する` と `999.5 メートルを "1.0km" と表示する` が FAIL。確認後に元へ戻す。
 
-- [ ] **Step 6: コミット**
+- [x] **Step 6: コミット**
 
 ```bash
 git add packages/geo/src/format-distance.ts packages/geo/src/format-distance.test.ts
@@ -778,7 +778,7 @@ git commit -m "feat(geo): 距離の表示整形を追加"
 
 > `GeohashPrecision` は Task 1-7 の `search-cells.ts` ではなくここに置く。`encodeGeohash` の引数型であり、依存方向を `geohash → search-cells` の一方通行に保つため。
 
-- [ ] **Step 1: 失敗するテストを書く**
+- [x] **Step 1: 失敗するテストを書く**
 
 `packages/geo/src/geohash.test.ts`（このファイルは Task 1-5・1-6 でも追記する）:
 
@@ -856,7 +856,7 @@ describe('encodeGeohash', () => {
 
 > `precision as 1` は `GeohashPrecision` 全域をループで走査するためのテスト内限定の記法。本番コードでは使わない。
 
-- [ ] **Step 2: テストが失敗することを確認する**
+- [x] **Step 2: テストが失敗することを確認する**
 
 ```bash
 npm run test -w @meshimap/geo -- geohash
@@ -864,7 +864,7 @@ npm run test -w @meshimap/geo -- geohash
 
 期待: `Failed to resolve import "./geohash"`。
 
-- [ ] **Step 3: 最小実装を書く**
+- [x] **Step 3: 最小実装を書く**
 
 `packages/geo/src/geohash.ts`:
 
@@ -945,7 +945,7 @@ export function encodeGeohash(target: Coordinate, precision: GeohashPrecision): 
 }
 ```
 
-- [ ] **Step 4: テストが通ることを確認する**
+- [x] **Step 4: テストが通ることを確認する**
 
 ```bash
 npm run test -w @meshimap/geo -- geohash
@@ -953,7 +953,7 @@ npm run test -w @meshimap/geo -- geohash
 
 期待: 13 件すべて PASS。とくに `Wikipedia の標準ベクタと一致する` が通ることを目視すること。ここが通れば実装は仕様どおり。
 
-- [ ] **Step 5: 意図的にコードを壊してテストが検知することを確認する**
+- [x] **Step 5: 意図的にコードを壊してテストが検知することを確認する**
 
 `let isLongitudeTurn = true;` を `false` に変える（緯度・経度の順序を入れ替える）。
 
@@ -967,7 +967,7 @@ npm run test -w @meshimap/geo -- geohash
 
 期待: `南西の端 (-90, -180) をエンコードできる` または `原点 (0, 0) は s から始まる` が FAIL。確認後に元へ戻す。
 
-- [ ] **Step 6: コミット**
+- [x] **Step 6: コミット**
 
 ```bash
 git add packages/geo/src/geohash.ts packages/geo/src/geohash.test.ts
@@ -993,7 +993,7 @@ git commit -m "feat(geo): geohash エンコードを追加"
 
 > `decodeGeohash` は `Geohash` 型しか受け取らない。API のクエリ文字列など外部由来の文字列は必ず `toGeohash` を通す。検証を 1 箇所に集約するのが目的。
 
-- [ ] **Step 1: 失敗するテストを書く**
+- [x] **Step 1: 失敗するテストを書く**
 
 `packages/geo/src/geohash.test.ts` の末尾に追記:
 
@@ -1105,7 +1105,7 @@ describe('decodeGeohash', () => {
 import { decodeGeohash, encodeGeohash, toGeohash } from './geohash';
 ```
 
-- [ ] **Step 2: テストが失敗することを確認する**
+- [x] **Step 2: テストが失敗することを確認する**
 
 ```bash
 npm run test -w @meshimap/geo -- geohash
@@ -1113,7 +1113,7 @@ npm run test -w @meshimap/geo -- geohash
 
 期待: `decodeGeohash is not a function` 系のエラー、または import の解決失敗。
 
-- [ ] **Step 3: 最小実装を書く**
+- [x] **Step 3: 最小実装を書く**
 
 `packages/geo/src/geohash.ts` に追記する。まずファイル先頭の import に `coordinate` を追加:
 
@@ -1203,7 +1203,7 @@ export function decodeGeohash(hash: Geohash): GeohashBounds {
 }
 ```
 
-- [ ] **Step 4: テストが通ることを確認する**
+- [x] **Step 4: テストが通ることを確認する**
 
 ```bash
 npm run test -w @meshimap/geo -- geohash
@@ -1211,7 +1211,7 @@ npm run test -w @meshimap/geo -- geohash
 
 期待: Task 1-4 の 13 件 + 今回の 19 件 = 32 件すべて PASS。
 
-- [ ] **Step 5: 意図的にコードを壊してテストが検知することを確認する**
+- [x] **Step 5: 意図的にコードを壊してテストが検知することを確認する**
 
 `for (let bitPosition = BITS_PER_CHARACTER - 1; …)` を `for (let bitPosition = 0; bitPosition < BITS_PER_CHARACTER; bitPosition += 1)` に変える（ビット順を逆にする）。
 
@@ -1225,7 +1225,7 @@ npm run test -w @meshimap/geo -- geohash
 
 期待: `12 桁ちょうどを受け入れる` が FAIL。確認後に元へ戻す。
 
-- [ ] **Step 6: コミット**
+- [x] **Step 6: コミット**
 
 ```bash
 git add packages/geo/src/geohash.ts packages/geo/src/geohash.test.ts
@@ -1261,7 +1261,7 @@ git commit -m "feat(geo): geohash デコードと文字列検証を追加"
 - 緯度が ±90 度を超えるセルは存在しないため除外する。`encodeGeohash({90, 0}, 3)` = `"upb"` の近傍は 5 件しか返らない。
 - 折り返しの結果、自セルや既出セルと重複する場合は除去する。
 
-- [ ] **Step 1: 失敗するテストを書く**
+- [x] **Step 1: 失敗するテストを書く**
 
 `packages/geo/src/geohash.test.ts` の末尾に追記:
 
@@ -1345,7 +1345,7 @@ describe('neighborCells', () => {
 import { decodeGeohash, encodeGeohash, neighborCells, toGeohash } from './geohash';
 ```
 
-- [ ] **Step 2: テストが失敗することを確認する**
+- [x] **Step 2: テストが失敗することを確認する**
 
 ```bash
 npm run test -w @meshimap/geo -- geohash
@@ -1353,7 +1353,7 @@ npm run test -w @meshimap/geo -- geohash
 
 期待: `neighborCells is not a function`。
 
-- [ ] **Step 3a: 経度の折り返しを `coordinate.ts` へ追加する**
+- [x] **Step 3a: 経度の折り返しを `coordinate.ts` へ追加する**
 
 `wrapLongitude` は近傍セル（Task 1-6）と境界ボックス（Task 1-9）の両方で必要になる。
 重複実装を避けるため、座標のドメイン操作として `coordinate.ts` に置く。
@@ -1421,7 +1421,7 @@ npm run test -w @meshimap/geo -- coordinate
 
 期待: 既存 20 件 + 今回 13 件 = 33 件すべて PASS。
 
-- [ ] **Step 3b: `neighborCells` を実装する**
+- [x] **Step 3b: `neighborCells` を実装する**
 
 `packages/geo/src/geohash.ts` の import に `wrapLongitude` を追加:
 
@@ -1484,7 +1484,7 @@ export function neighborCells(hash: Geohash): readonly Geohash[] {
 
 > `hash.length as GeohashPrecision` は `toGeohash` が桁数を 1〜12 に保証済みであることに依存する。`Geohash` 型を持つ値は必ず `toGeohash` か `encodeGeohash` を経由しているため安全。
 
-- [ ] **Step 4: テストが通ることを確認する**
+- [x] **Step 4: テストが通ることを確認する**
 
 ```bash
 npm run test -w @meshimap/geo -- geohash
@@ -1492,7 +1492,7 @@ npm run test -w @meshimap/geo -- geohash
 
 期待: 合計 42 件すべて PASS。
 
-- [ ] **Step 5: 意図的にコードを壊してテストが検知することを確認する**
+- [x] **Step 5: 意図的にコードを壊してテストが検知することを確認する**
 
 `coordinate.ts` の `wrapLongitude` を折り返さない実装に変える:
 
@@ -1512,7 +1512,7 @@ npm run test -w @meshimap/geo -- geohash
 
 期待: `北極のセルは緯度 90 度を超える近傍を返さない` が `RangeError` で FAIL。確認後に元へ戻す。
 
-- [ ] **Step 6: コミット**
+- [x] **Step 6: コミット**
 
 ```bash
 git add packages/geo/src/geohash.ts packages/geo/src/geohash.test.ts
@@ -1543,7 +1543,7 @@ radiusM <= 19000  → 4
 それ以上           → 3
 ```
 
-- [ ] **Step 1: 失敗するテストを書く**
+- [x] **Step 1: 失敗するテストを書く**
 
 `packages/geo/src/search-cells.test.ts`:
 
@@ -1601,7 +1601,7 @@ describe('precisionForRadius', () => {
 });
 ```
 
-- [ ] **Step 2: テストが失敗することを確認する**
+- [x] **Step 2: テストが失敗することを確認する**
 
 ```bash
 npm run test -w @meshimap/geo -- search-cells
@@ -1609,7 +1609,7 @@ npm run test -w @meshimap/geo -- search-cells
 
 期待: `Failed to resolve import "./search-cells"`。
 
-- [ ] **Step 3: 最小実装を書く**
+- [x] **Step 3: 最小実装を書く**
 
 `packages/geo/src/search-cells.ts`:
 
@@ -1652,7 +1652,7 @@ export function precisionForRadius(radiusM: number): GeohashPrecision {
 }
 ```
 
-- [ ] **Step 4: テストが通ることを確認する**
+- [x] **Step 4: テストが通ることを確認する**
 
 ```bash
 npm run test -w @meshimap/geo -- search-cells
@@ -1660,7 +1660,7 @@ npm run test -w @meshimap/geo -- search-cells
 
 期待: 19 件すべて PASS。
 
-- [ ] **Step 5: 意図的にコードを壊してテストが検知することを確認する**
+- [x] **Step 5: 意図的にコードを壊してテストが検知することを確認する**
 
 `if (radiusM <= row.maxRadiusM)` を `<` に変える。
 
@@ -1670,7 +1670,7 @@ npm run test -w @meshimap/geo -- search-cells
 
 期待: `半径 100 m には precision 7 を返す`、`半径 600 m には precision 6 を返す`、`半径 3000 m には precision 5 を返す`、`半径 19000 m には precision 4 を返す` の 4 件が FAIL。確認後に元へ戻す。
 
-- [ ] **Step 6: コミット**
+- [x] **Step 6: コミット**
 
 ```bash
 git add packages/geo/src/search-cells.ts packages/geo/src/search-cells.test.ts
@@ -1693,7 +1693,7 @@ git commit -m "feat(geo): 検索半径から geohash 精度を決める関数を
 
 > これが D1 検索の第 1 段になる。`WHERE geohash IN (?, ?, …)` として使い、B-tree インデックスで候補を数百件まで落とす。
 
-- [ ] **Step 1: 失敗するテストを書く**
+- [x] **Step 1: 失敗するテストを書く**
 
 `packages/geo/src/search-cells.test.ts` の末尾に追記:
 
@@ -1773,7 +1773,7 @@ import { encodeGeohash } from './geohash';
 import { cellsForRadius, precisionForRadius } from './search-cells';
 ```
 
-- [ ] **Step 2: テストが失敗することを確認する**
+- [x] **Step 2: テストが失敗することを確認する**
 
 ```bash
 npm run test -w @meshimap/geo -- search-cells
@@ -1781,7 +1781,7 @@ npm run test -w @meshimap/geo -- search-cells
 
 期待: `cellsForRadius is not a function`。
 
-- [ ] **Step 3: 最小実装を書く**
+- [x] **Step 3: 最小実装を書く**
 
 `packages/geo/src/search-cells.ts` の import に追加:
 
@@ -1809,7 +1809,7 @@ export function cellsForRadius(center: Coordinate, radiusM: number): readonly Ge
 }
 ```
 
-- [ ] **Step 4: テストが通ることを確認する**
+- [x] **Step 4: テストが通ることを確認する**
 
 ```bash
 npm run test -w @meshimap/geo -- search-cells
@@ -1817,7 +1817,7 @@ npm run test -w @meshimap/geo -- search-cells
 
 期待: 合計 29 件すべて PASS。とくに `中心から半径の距離にある点が必ずいずれかのセルに含まれる` が通ることを確認する。ここが Task 1-7 の閾値テーブルの妥当性を保証している。
 
-- [ ] **Step 5: 意図的に閾値を壊して被覆テストが検知することを確認する**
+- [x] **Step 5: 意図的に閾値を壊して被覆テストが検知することを確認する**
 
 `search-cells.ts` の `{ maxRadiusM: 600, precision: 6 }` を `{ maxRadiusM: 600, precision: 7 }` に変える（半径に対して細かすぎる精度にする）。
 
@@ -1827,7 +1827,7 @@ npm run test -w @meshimap/geo -- search-cells
 
 期待: `中心から半径の距離にある点が必ずいずれかのセルに含まれる` が FAIL する。**これが FAIL しないなら被覆テストが役に立っていない。** 確認後に元へ戻す。
 
-- [ ] **Step 6: コミット**
+- [x] **Step 6: コミット**
 
 ```bash
 git add packages/geo/src/search-cells.ts packages/geo/src/search-cells.test.ts
@@ -1854,7 +1854,7 @@ git commit -m "feat(geo): 検索半径から geohash セル群を求める関数
 
 **極を跨ぐ扱い（実測で確認した設計判断）:** 緯度が ±90 度でクランプされた場合、円は極を含んでいる。極を含む円は全経度を覆うため、経度範囲を `-180 〜 180` に広げる。この規則があると、半径が地球半周に近い場合に経度の一部が抜け落ちる不具合も同時に防げる（実測: この規則が無いと半径 20000km で経度 179.86〜180 度の帯が範囲から漏れる）。
 
-- [ ] **Step 1: 失敗するテストを書く**
+- [x] **Step 1: 失敗するテストを書く**
 
 `packages/geo/src/bounding-box.test.ts`:
 
@@ -1970,7 +1970,7 @@ describe('boundingBox', () => {
 });
 ```
 
-- [ ] **Step 2: テストが失敗することを確認する**
+- [x] **Step 2: テストが失敗することを確認する**
 
 ```bash
 npm run test -w @meshimap/geo -- bounding-box
@@ -1978,7 +1978,7 @@ npm run test -w @meshimap/geo -- bounding-box
 
 期待: `Failed to resolve import "./bounding-box"`。
 
-- [ ] **Step 3: 最小実装を書く**
+- [x] **Step 3: 最小実装を書く**
 
 `packages/geo/src/bounding-box.ts`:
 
@@ -2054,7 +2054,7 @@ function allLongitudes(latitudeMin: number, latitudeMax: number): BoundingBox {
 }
 ```
 
-- [ ] **Step 4: テストが通ることを確認する**
+- [x] **Step 4: テストが通ることを確認する**
 
 ```bash
 npm run test -w @meshimap/geo -- bounding-box
@@ -2062,7 +2062,7 @@ npm run test -w @meshimap/geo -- bounding-box
 
 期待: 14 件すべて PASS。
 
-- [ ] **Step 5: 意図的にコードを壊してテストが検知することを確認する**
+- [x] **Step 5: 意図的にコードを壊してテストが検知することを確認する**
 
 `const includesPole = …` の行を `const includesPole = false;` に変える。
 
@@ -2076,7 +2076,7 @@ npm run test -w @meshimap/geo -- bounding-box
 
 期待: `高緯度ほど経度の幅が緯度の幅より広がる` と `緯度 89 度でも経度の幅は有限である` が FAIL。確認後に元へ戻す。
 
-- [ ] **Step 6: コミット**
+- [x] **Step 6: コミット**
 
 ```bash
 git add packages/geo/src/bounding-box.ts packages/geo/src/bounding-box.test.ts
@@ -2099,7 +2099,7 @@ git commit -m "feat(geo): 検索用の境界ボックス生成を追加"
 
 **仕様:** 境界線上は内側とする（`>=` / `<=`）。`longitudeMin > longitudeMax` のときは日付変更線を跨ぐ矩形なので、経度の判定を OR にする。
 
-- [ ] **Step 1: 失敗するテストを書く**
+- [x] **Step 1: 失敗するテストを書く**
 
 `packages/geo/src/bounding-box.test.ts` の末尾に追記:
 
@@ -2186,7 +2186,7 @@ describe('isWithinBounds', () => {
 import { boundingBox, isWithinBounds } from './bounding-box';
 ```
 
-- [ ] **Step 2: テストが失敗することを確認する**
+- [x] **Step 2: テストが失敗することを確認する**
 
 ```bash
 npm run test -w @meshimap/geo -- bounding-box
@@ -2194,7 +2194,7 @@ npm run test -w @meshimap/geo -- bounding-box
 
 期待: `isWithinBounds is not a function`。
 
-- [ ] **Step 3: 最小実装を書く**
+- [x] **Step 3: 最小実装を書く**
 
 `packages/geo/src/bounding-box.ts` の末尾に追記:
 
@@ -2218,7 +2218,7 @@ export function isWithinBounds(target: Coordinate, bounds: BoundingBox): boolean
 }
 ```
 
-- [ ] **Step 4: テストが通ることを確認する**
+- [x] **Step 4: テストが通ることを確認する**
 
 ```bash
 npm run test -w @meshimap/geo -- bounding-box
@@ -2226,7 +2226,7 @@ npm run test -w @meshimap/geo -- bounding-box
 
 期待: Task 1-9 の 14 件 + 今回の 14 件 = 28 件すべて PASS。
 
-- [ ] **Step 5: 意図的にコードを壊してテストが検知することを確認する**
+- [x] **Step 5: 意図的にコードを壊してテストが検知することを確認する**
 
 日付変更線の分岐を消して常に AND 判定にする:
 
@@ -2244,7 +2244,7 @@ npm run test -w @meshimap/geo -- bounding-box
 
 期待: `南西の角（境界線上）は内側である` が FAIL。確認後に元へ戻す。
 
-- [ ] **Step 6: コミット**
+- [x] **Step 6: コミット**
 
 ```bash
 git add packages/geo/src/bounding-box.ts packages/geo/src/bounding-box.test.ts
@@ -2286,7 +2286,7 @@ git commit -m "feat(geo): 境界ボックス内判定を追加"
 | 14〜16 | 6         |
 | 17〜22 | 7         |
 
-- [ ] **Step 1: 失敗するテストを書く**
+- [x] **Step 1: 失敗するテストを書く**
 
 `packages/geo/src/cluster.test.ts`:
 
@@ -2436,7 +2436,7 @@ describe('clusterByGrid', () => {
 });
 ```
 
-- [ ] **Step 2: テストが失敗することを確認する**
+- [x] **Step 2: テストが失敗することを確認する**
 
 ```bash
 npm run test -w @meshimap/geo -- cluster
@@ -2444,7 +2444,7 @@ npm run test -w @meshimap/geo -- cluster
 
 期待: `Failed to resolve import "./cluster"`。
 
-- [ ] **Step 3: 最小実装を書く**
+- [x] **Step 3: 最小実装を書く**
 
 `packages/geo/src/cluster.ts`:
 
@@ -2547,7 +2547,7 @@ function centroid<TValue>(group: readonly GridPoint<TValue>[]): Coordinate {
 }
 ```
 
-- [ ] **Step 4: テストが通ることを確認する**
+- [x] **Step 4: テストが通ることを確認する**
 
 ```bash
 npm run test -w @meshimap/geo -- cluster
@@ -2555,7 +2555,7 @@ npm run test -w @meshimap/geo -- cluster
 
 期待: 30 件すべて PASS。
 
-- [ ] **Step 5: 意図的にコードを壊してテストが検知することを確認する**
+- [x] **Step 5: 意図的にコードを壊してテストが検知することを確認する**
 
 `centroid` の `latitudeSum / group.length` を `latitudeSum` に変える。
 
@@ -2569,7 +2569,7 @@ npm run test -w @meshimap/geo -- cluster
 
 期待: `クラスタはセルの辞書順に並ぶ` と `入力順が変わっても同じ結果になる` が FAIL。確認後に元へ戻す。
 
-- [ ] **Step 6: コミット**
+- [x] **Step 6: コミット**
 
 ```bash
 git add packages/geo/src/cluster.ts packages/geo/src/cluster.test.ts
@@ -2593,7 +2593,7 @@ Phase 1 の締め。ここを通せば `@meshimap/geo` は Phase 3 以降から�
 - Consumes: Task 1-1 〜 1-11 のすべての公開シンボル
 - Produces: `@meshimap/geo` の公開 API（他パッケージはこのバレル以外から import しない）
 
-- [ ] **Step 1: 公開 API を固定するテストを書く**
+- [x] **Step 1: 公開 API を固定するテストを書く**
 
 `packages/geo/src/index.test.ts`:
 
@@ -2666,7 +2666,7 @@ describe('@meshimap/geo の公開 API', () => {
 });
 ```
 
-- [ ] **Step 2: テストが失敗することを確認する**
+- [x] **Step 2: テストが失敗することを確認する**
 
 ```bash
 npm run test -w @meshimap/geo -- index
@@ -2674,7 +2674,7 @@ npm run test -w @meshimap/geo -- index
 
 期待: `Failed to resolve import "./index"`。
 
-- [ ] **Step 3: バレルを書く**
+- [x] **Step 3: バレルを書く**
 
 `packages/geo/src/index.ts`:
 
@@ -2708,7 +2708,7 @@ export { ZOOM_MAX, ZOOM_MIN, clusterByGrid, precisionForZoom } from './cluster';
 export type { Cluster, GridPoint } from './cluster';
 ```
 
-- [ ] **Step 4: テストが通ることを確認する**
+- [x] **Step 4: テストが通ることを確認する**
 
 ```bash
 npm run test -w @meshimap/geo -- index
@@ -2718,7 +2718,7 @@ npm run test -w @meshimap/geo -- index
 
 > `検索結果を表示用に整形できる` の期待値 `'6.2km'` は、新宿駅→東京駅の実測距離 6188m を `formatDistance` に通した結果。もし異なる値が出たら距離計算か整形のどちらかが壊れているので、期待値の方を書き換えて誤魔化さないこと。実測して差異の原因を特定する。
 
-- [ ] **Step 5: 全テストとカバレッジを確認する**
+- [x] **Step 5: 全テストとカバレッジを確認する**
 
 ```bash
 npm run test:coverage -w @meshimap/geo
@@ -2728,7 +2728,7 @@ npm run test:coverage -w @meshimap/geo
 
 100% に届かない行がある場合は、テストを追加して到達させる。**閾値を下げて通すことは禁止。** 到達不能なコードがあるなら、そのコード自体が不要である可能性が高い。
 
-- [ ] **Step 6: 型チェックを通す**
+- [x] **Step 6: 型チェックを通す**
 
 ```bash
 npm run typecheck -w @meshimap/geo
@@ -2736,7 +2736,7 @@ npm run typecheck -w @meshimap/geo
 
 期待: エラーなし。
 
-- [ ] **Step 7: ミューテーションテストを実行する**
+- [x] **Step 7: ミューテーションテストを実行する**
 
 ```bash
 npm run test:mutation -w @meshimap/geo
@@ -2746,7 +2746,7 @@ npm run test:mutation -w @meshimap/geo
 
 期待: ミューテーションスコア 85% 以上で成功。
 
-- [ ] **Step 8: 生き残った変異を潰す**
+- [x] **Step 8: 生き残った変異を潰す**
 
 レポート（`packages/geo/reports/mutation/mutation.html`）を開き、`Survived` の変異を 1 件ずつ確認する。
 
@@ -2771,7 +2771,7 @@ open packages/geo/reports/mutation/mutation.html
 
 **`stryker.config.json` の閾値を下げて通すことは禁止。**
 
-- [ ] **Step 9: README を書く**
+- [x] **Step 9: README を書く**
 
 `packages/geo/README.md`:
 
@@ -2819,7 +2819,7 @@ npm run test:mutation -w @meshimap/geo # ミューテーションテスト（閾
 \`\`\`
 ```
 
-- [ ] **Step 10: 最終確認とコミット**
+- [x] **Step 10: 最終確認とコミット**
 
 ```bash
 npm run test:coverage -w @meshimap/geo
@@ -2839,18 +2839,20 @@ git commit -m "feat(geo): 公開 API のバレルと README を追加"
 
 ## Phase 1 完了チェックリスト
 
+> **進捗の記録方法について。** チェックボックスは実装完了後にまとめて付けた。実測で確認した根拠は次のとおり（2026-09-15 時点）: テスト 9 ファイル / 203 件 PASS、カバレッジ Statements 100% (177/177) / Branches 100% (82/82) / Functions 100% (21/21) / Lines 100% (176/176)、typecheck エラーなし、`dependencies` 空、`@meshimap/geo/` 形式の内部 import 0 件、`any` 0 件、ブランド型生成の `as` 5 箇所のみ、`README.md` に 3 段階検索の説明あり。
+
 実装を終えたら、次をすべて満たしていることを確認する。
 
-- [ ] `npm run test -w @meshimap/geo` が全件 PASS する
-- [ ] `npm run test:coverage -w @meshimap/geo` で Statements / Branches / Functions / Lines がすべて 100%
-- [ ] `npm run test:mutation -w @meshimap/geo` がミューテーションスコア 85% 以上で成功する
-- [ ] `npm run typecheck -w @meshimap/geo` がエラーなしで通る
-- [ ] `packages/geo/package.json` の `dependencies` が空のまま（外部依存を増やしていない）
-- [ ] `packages/geo/src/index.ts` 以外のファイルを他パッケージから import していない
-- [ ] `any` と、ブランド型生成以外の `as` を 1 箇所も使っていない
-- [ ] 各タスクの「意図的にコードを壊す」ステップをすべて実施し、想定どおり FAIL することを目視した
-- [ ] `packages/geo/README.md` に 3 段階検索の説明がある
-- [ ] コミットがタスク単位で分かれている（1 タスク 1 コミット）
+- [x] `npm run test -w @meshimap/geo` が全件 PASS する
+- [x] `npm run test:coverage -w @meshimap/geo` で Statements / Branches / Functions / Lines がすべて 100%
+- [x] `npm run test:mutation -w @meshimap/geo` がミューテーションスコア 85% 以上で成功する
+- [x] `npm run typecheck -w @meshimap/geo` がエラーなしで通る
+- [x] `packages/geo/package.json` の `dependencies` が空のまま（外部依存を増やしていない）
+- [x] `packages/geo/src/index.ts` 以外のファイルを他パッケージから import していない
+- [x] `any` と、ブランド型生成以外の `as` を 1 箇所も使っていない
+- [x] 各タスクの「意図的にコードを壊す」ステップをすべて実施し、想定どおり FAIL することを目視した
+- [x] `packages/geo/README.md` に 3 段階検索の説明がある
+- [x] コミットがタスク単位で分かれている（1 タスク 1 コミット）
 
 ## 次フェーズへの引き継ぎ
 
