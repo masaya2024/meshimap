@@ -1,0 +1,14 @@
+{
+  "//": "型の厳格さだけを集めた設定。target/module/lib のような環境依存の指定は含めない。apps/mobile は expo/tsconfig.base（JSX や RN の型解決を担う）を捨てられないため、この設定だけを追加で継承して厳格さを揃える。",
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "exactOptionalPropertyTypes": true,
+    "forceConsistentCasingInFileNames": true,
+    "verbatimModuleSyntax": true
+  }
+}
