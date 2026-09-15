@@ -147,6 +147,15 @@
 6. **コメントは日本語。** 「何をしているか」ではなく「なぜそうしたか」を書く。JSDoc（`/** */`）は公開 API と定数に付ける。
 7. **マジックナンバー禁止。** 数値リテラルは `constants.ts` に定数として置く（`0` / `1` / `10` のような算術上の自明な値と、テストコード内の期待値は除く）。
 8. **品質ゲート:** カバレッジ 100%（4 指標すべて）、ミューテーションスコア 85% 以上（`stryker.config.json` の `break: 85`）。
+
+> **2026-09-15 の変更:** この計画を実行した当時の設定ファイル名は `stryker.config.json` だったが、
+> 同日に **`stryker.config.mjs` へ移した**。値は変えていない。`.mjs` にしたのは
+> 「なぜ `vitest` ランナーではなく `command` ランナーなのか」「なぜ `--no-file-parallelism` が要るのか」
+> といった実測に基づく判断をコメントで残すためで、JSON にはコメントが書けない。
+> 共通の設定値と根拠はリポジトリ直下の [`stryker.base.mjs`](../../../stryker.base.mjs) に集約し、
+> 各ワークスペースの `stryker.config.mjs` は対象ファイルの指定だけを渡す形になっている。
+> 以降この計画書に出てくる `stryker.config.json` は `stryker.config.mjs` と読み替えること。
+
 9. **命名規則:** 関数・変数は camelCase、型は PascalCase、定数は UPPER_SNAKE_CASE、ファイル名は kebab-case。
 10. **ファイル配置:** すべて `packages/core/src/` 直下（サブディレクトリを作らない）。テストは実装と同じディレクトリに `*.test.ts` で置く（`vitest.config.ts` の `include: ['src/**/*.test.ts']` に合わせる）。
 

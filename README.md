@@ -255,19 +255,68 @@ Phase 0 だけ 1 件なのは、Task 0-8〜0-13（UI プリミティブ）が「
 Stryker が実装コードを機械的に書き換え（`>` → `>=`、条件を `true` 固定、ブロックを空に、など）、
 その改変版でテストが落ちるかを確認します。落ちなければ、そのテストはその挙動を検証できていません。
 
-`packages/core` / `packages/geo` の `stryker.config.json` で `thresholds.break: 85` を設定しており、
-スコアが 85% を下回るとコマンドが失敗します（`high: 95` / `low: 85` も設定）。
+設定は [`stryker.base.mjs`](./stryker.base.mjs) に集約し、各ワークスペースの
+`stryker.config.mjs` は対象ファイルの指定だけを渡します。`thresholds.break: 85` を
+設定しているのでスコアが 85% を下回るとコマンドが失敗します（`high: 95` / `low: 85` も設定）。
 対象は `src/**/*.ts` から `*.test.ts` と `index.ts`（再エクスポートのみのバレル）を除いたものです。
 
-> **`stryker.config.json` があるのは `packages/core` と `packages/geo` だけです。**
-> `apps/api` には `test:mutation` スクリプトがあるものの設定ファイルが無く、実行すると失敗します。
-> `apps/mobile` にはスクリプトも設定もありません。
-> そのためルートの `npm run test:mutation`（`--workspaces --if-present`）は `apps/api` で落ちます。
-> ミューテーションテストは必ずワークスペースを指定して実行してください。
+JSON ではなく `.mjs` にしているのは、**設定値の根拠をコメントで残すため**です。
+「なぜ `vitest` ランナーではなく `command` ランナーなのか」「なぜ `--no-file-parallelism` が必須なのか」は
+いずれも実測に基づく判断で、値だけ残しても後から検証できません。
+
+> **`stryker.config.mjs` があるのは `packages/core` / `packages/geo` / `apps/api` の 3 つです。**
+> `apps/mobile` にはスクリプトも設定もありません（Jest 側で実行しているため）。
 >
 > ```bash
-> npm run test:mutation -w @meshimap/core -w @meshimap/geo
+> npm run test:mutation -w @meshimap/core -w @meshimap/geo -w @meshimap/api
 > ```
+
+#### 並列度を絞っている理由（誤ったスコアを 1 度出しているため）
+
+`command` ランナーは 1 変異ごとに `npx vitest run` を新しいプロセスで起動します。
+この子プロセスがさらにワーカーを張ると、24 コアの機械では
+「Stryker 23 プロセス × vitest ワーカー約 15」で 300 プロセスを超え、全体が停滞します。
+
+最初の `apps/api` の計測はこの状態で走り、**98 変異中 94 件が Timeout**になりました。
+Stryker は Timeout を Killed として数えるため、スコアは「100%」と表示されます。
+つまり**テストが 1 件も走っていないのに満点が出ていました**。
+
+対策として `stryker.base.mjs` で次の 3 つを固定しています。
+
+| 設定                                   | 理由                                                                       |
+| -------------------------------------- | -------------------------------------------------------------------------- |
+| `npx vitest run --no-file-parallelism` | 子プロセスのワーカー分裂を止め、1 変異 = 2 プロセスに固定                  |
+| `concurrency = コア数 / 2`             | 上の 2 プロセスぶんを見込んでコア数に収める                                |
+| `timeoutMS`（api は 20 秒）            | api は素の 1 回が実測 22 秒（miniflare 起動 + マイグレーション）と重いため |
+
+`timeoutMS` は「1 回の実行にかけてよい上限」ではなく**上乗せ分**です。
+実際の打ち切りは `timeoutFactor * netTime + timeoutMS + timeOverheadMS`
+（`@stryker-mutator/core/dist/src/mutants/mutant-test-planner.js:124`、`timeoutFactor` の既定は 1.5）で、
+`netTime` は初回のドライランで測った素の実行時間です。
+api なら `1.5 × 22 秒 + 20 秒 ≈ 53 秒`。ここを素の実行時間と取り違えると、
+「22 秒かかるのに 20 秒で打ち切られるのでは」という誤読になります。
+
+#### 残る Timeout は無限ループで、Killed 扱いが正しい
+
+上の対策後も `packages/core` に 9 件、`packages/geo` に 8 件の Timeout が残ります。
+これは並列度の問題ではなく、**変異そのものが無限ループを作る**ケースです。
+JSON レポートで内訳を確認しました。
+
+| 変異                                                      | なぜ止まらないか                                                |
+| --------------------------------------------------------- | --------------------------------------------------------------- |
+| `geohash.ts:63` `bitCount += 1` → `-=`                    | `bitCount` が `BITS_PER_CHARACTER` に到達せず `hash` が伸びない |
+| `geohash.ts:65` 文字追加の `if` を `false` / 空ブロックに | 同上。`while (hash.length < precision)` が終わらない            |
+| `geohash.ts:54` `characterIndex * 2 + 1` → `- 1`          | 添字が負になり `charAt` が空文字を返すので `hash` が伸びない    |
+| `constants.ts:15` `GEOHASH_BASE32` → `''`                 | 同上。`''.charAt(n)` は常に空文字                               |
+| `geohash.ts:124` `bitPosition -= 1` → `+=`                | デコード側の `for` が終わらない                                 |
+| `reservation-slot.ts:32-37,71` 引数検証を無効化           | `slotMinutes` が 0 でも通り、`start += 0` が終わらない          |
+
+無限ループを止める手段はタイムアウトしか無いので、これらを Killed と数えるのは正しい判定です。
+`stryker.base.mjs` で `json` レポーターを有効にしているのは、この内訳を後から検証できるようにするためです。
+
+対策の効きは `apps/api` の再計測で確認できます。同じ 98 変異が **Killed 98 / Timeout 0** になり、
+`Ran 1.00 tests per mutant on average`（対策前は `0.04`）と出ました。
+変異あたり 1 件のテストが実際に走った、という意味です。
 
 ### 4. 実測値（2026-09-15 時点）
 
@@ -278,8 +327,8 @@ Stryker が実装コードを機械的に書き換え（`>` → `>=`、条件を
 | --------------- | ------------------------ | ---------------------------------------------------------------------------------------- | --------------------------------------------------------- |
 | `packages/core` | 13 ファイル / **326 件** | Stmts 100% (226/226) / Branch 100% (129/129) / Funcs 100% (49/49) / Lines 100% (219/219) | **100%**（609 変異: Killed 600 / Timeout 9 / Survived 0） |
 | `packages/geo`  | 9 ファイル / **205 件**  | Stmts 100% (182/182) / Branch 100% (84/84) / Funcs 100% (22/22) / Lines 100% (181/181)   | **100%**（360 変異: Killed 352 / Timeout 8 / Survived 0） |
-| `apps/api`      | 16 ファイル / **262 件** | しきい値なし（`vitest.config.ts` に `thresholds` を置いていない）                        | 対象外（`stryker.config.json` なし）                      |
-| `apps/mobile`   | 19 スイート / **128 件** | Stmts 100% (100/100) / Branch 100% (80/80) / Funcs 100% (17/17) / Lines 100% (97/97)     | 対象外（`stryker.config.json` なし）                      |
+| `apps/api`      | 16 ファイル / **262 件** | しきい値なし（`vitest.config.ts` に `thresholds` を置いていない）                        | **100%**（98 変異: Killed 98 / Timeout 0 / Survived 0）   |
+| `apps/mobile`   | 19 スイート / **128 件** | Stmts 100% (100/100) / Branch 100% (80/80) / Funcs 100% (17/17) / Lines 100% (97/97)     | 対象外（設定もスクリプトも無し。Jest で実行しているため） |
 
 合計 921 件。再現に使ったコマンドは次のとおりです。
 
@@ -289,16 +338,20 @@ cd packages/geo  && npx vitest run --coverage   #  9 files / 205 tests
 cd apps/api      && npx vitest run              # 16 files / 262 tests
 cd apps/mobile   && npx jest --coverage         # 19 suites / 128 tests
 
-# 約 3 分（core 1m58s + geo 55s）
-npm run test:mutation -w @meshimap/core -w @meshimap/geo
+# 7m04s（api 3m16s → core 2m37s → geo 1m11s の直列。exit 0、3 つとも 100%）
+npm run test:mutation
 ```
+
+`apps/api` だけ変異 1 件あたりが重いのは、`npx vitest run` のたびに miniflare を起動して
+D1 のマイグレーションを流し直すためです（98 変異で 3m32s。1 変異あたり約 2 秒）。
 
 カバレッジの母集団に注意点があります。
 
 - `packages/core` / `packages/geo`: `vitest.config.ts` で `src/index.ts`（バレル）と `*.test.ts` を除外し、
   残りに lines / functions / branches / statements 100% を**必須**にしています。
 - `apps/mobile`: `jest.config.js` の `collectCoverageFrom` で `src/app/**`（画面）を除外し、
-  残りに 100% を必須にしています。画面は Phase 5 以降に作るため、実装が入る時点で除外を外す方針です。
+  残りに 100% を必須にしています。画面ができる Phase 5 の最後にこの除外を外し、
+  代わりに `!src/app/_dev/**`（開発者向け UI カタログ。製品の画面ではない）だけを残します。
 - `apps/api`: カバレッジしきい値はまだ設定していません。Phase 3 が実装途中のためです。
 
 > Stryker の `testRunner` は `vitest` ではなく `command`（`npx vitest run --silent`）を使っています。
@@ -429,7 +482,7 @@ Worker のエントリポイントは Phase 4 の成果物です。
   シード 1247 文を投入するところまで通ります。実測で店舗 60 / レビュー 109 / `shops_fts` 60 件、
   `shops_fts MATCH '"メンヤ"'` が 2 件ヒット（miniflare 経由のテストと同じ値）
 - 4 ワークスペースのテスト（[実測値](#4-実測値2026-09-15-時点)のコマンド）と
-  `npm run test:mutation -w @meshimap/core -w @meshimap/geo`
+  ルートの `npm run test:mutation`（`@meshimap/api` / `@meshimap/core` / `@meshimap/geo` の 3 つを直列実行。約 7 分）
 
 > ルートの `npm test` / `npm run typecheck` / `npm run format:check` は全ワークスペースへ委譲するため、
 > Phase 3 の作業中は `apps/api` の途中成果物で一時的に赤くなることがあります。
@@ -439,16 +492,15 @@ Worker のエントリポイントは Phase 4 の成果物です。
 
 README に書かれていても、以下は**まだ動きません**。
 
-| 項目                                                                                | 理由 / 予定                                      |
-| ----------------------------------------------------------------------------------- | ------------------------------------------------ |
-| `npm run api:dev`                                                                   | `apps/api/src/index.ts` が未作成（Phase 4）      |
-| ルートの `npm run test:mutation`                                                    | `apps/api` に `stryker.config.json` が無く落ちる |
-| 全 61 画面（認証 5 / 利用者 24 / 店舗管理者 18 / システム管理者 13 / ルート直下 1） | Phase 5 以降                                     |
-| API のルート・認証ミドルウェア・ロールガード・リポジトリ層                          | Phase 4                                          |
-| `OwnerActor` / `AdminActor` ブランド型による権限制御                                | Phase 4                                          |
-| 3 段構え検索のクエリ本体（`queries/nearby-shops.ts`）                               | Task 3-13                                        |
-| R2 / Workers KV / Durable Objects の利用                                            | Phase 7 以降（`wrangler.jsonc` に宣言のみ）      |
-| プッシュ通知、ディープリンク、スクリーンショット、デモ動画                          | Phase 10                                         |
+| 項目                                                                                | 理由 / 予定                                 |
+| ----------------------------------------------------------------------------------- | ------------------------------------------- |
+| `npm run api:dev`                                                                   | `apps/api/src/index.ts` が未作成（Phase 4） |
+| 全 61 画面（認証 5 / 利用者 24 / 店舗管理者 18 / システム管理者 13 / ルート直下 1） | Phase 5 以降                                |
+| API のルート・認証ミドルウェア・ロールガード・リポジトリ層                          | Phase 4                                     |
+| `OwnerActor` / `AdminActor` ブランド型による権限制御                                | Phase 4                                     |
+| 3 段構え検索のクエリ本体（`queries/nearby-shops.ts`）                               | Task 3-13                                   |
+| R2 / Workers KV / Durable Objects の利用                                            | Phase 7 以降（`wrangler.jsonc` に宣言のみ） |
+| プッシュ通知、ディープリンク、スクリーンショット、デモ動画                          | Phase 10                                    |
 
 ---
 
@@ -456,15 +508,15 @@ README に書かれていても、以下は**まだ動きません**。
 
 ### ルート（全ワークスペースへ委譲）
 
-| コマンド                                           | 内容                                           | 備考                                   |
-| -------------------------------------------------- | ---------------------------------------------- | -------------------------------------- |
-| `npm test`                                         | 全ワークスペースのテストを実行                 | —                                      |
-| `npm run test:watch`                               | 同上（watch）                                  | —                                      |
-| `npm run test:mutation`                            | 全ワークスペースのミューテーションテストを実行 | **`apps/api` で落ちる**。`-w` 指定推奨 |
-| `npm run typecheck`                                | 全ワークスペースの型検査                       | —                                      |
-| `npm run format` / `format:check`                  | Prettier による整形 / 検査                     | —                                      |
-| `npm run mobile` / `mobile:ios` / `mobile:android` | Expo 開発サーバ                                | —                                      |
-| `npm run api:dev`                                  | `wrangler dev`                                 | **現在は起動しない**（Phase 4）        |
+| コマンド                                           | 内容                                           | 備考                              |
+| -------------------------------------------------- | ---------------------------------------------- | --------------------------------- |
+| `npm test`                                         | 全ワークスペースのテストを実行                 | —                                 |
+| `npm run test:watch`                               | 同上（watch）                                  | —                                 |
+| `npm run test:mutation`                            | 全ワークスペースのミューテーションテストを実行 | 直列で約 7 分（api → core → geo） |
+| `npm run typecheck`                                | 全ワークスペースの型検査                       | —                                 |
+| `npm run format` / `format:check`                  | Prettier による整形 / 検査                     | —                                 |
+| `npm run mobile` / `mobile:ios` / `mobile:android` | Expo 開発サーバ                                | —                                 |
+| `npm run api:dev`                                  | `wrangler dev`                                 | **現在は起動しない**（Phase 4）   |
 
 ルートに Lint スクリプトはありません。ESLint 設定を持つのは `apps/mobile` だけです。
 
@@ -480,17 +532,17 @@ README に書かれていても、以下は**まだ動きません**。
 
 ### `apps/api`（`-w @meshimap/api`）
 
-| コマンド                                                | 内容                                       | 状態                             |
-| ------------------------------------------------------- | ------------------------------------------ | -------------------------------- |
-| `test` / `test:watch`                                   | Vitest（miniflare でローカル D1 を起動）   | 動く                             |
-| `typecheck`                                             | `tsc --noEmit`                             | 動く                             |
-| `db:generate`                                           | Drizzle スキーマからマイグレーション生成   | 動く                             |
-| `db:migrate:local` / `db:migrate:remote`                | D1 へマイグレーション適用                  | remote は Cloudflare 要          |
-| `db:studio`                                             | `drizzle-kit studio`                       | 動く                             |
-| `cf-typegen`                                            | `wrangler types`（バインディングの型生成） | 動く                             |
-| `dev` / `deploy`                                        | `wrangler dev` / `wrangler deploy`         | `src/index.ts` 未作成で不可      |
-| `test:mutation`                                         | `stryker run`                              | `stryker.config.json` 無しで不可 |
-| `db:seed:generate` / `db:seed:local` / `db:reset:local` | シード SQL の生成 / 適用 / 作り直し        | 動く（実測）                     |
+| コマンド                                                | 内容                                       | 状態                         |
+| ------------------------------------------------------- | ------------------------------------------ | ---------------------------- |
+| `test` / `test:watch`                                   | Vitest（miniflare でローカル D1 を起動）   | 動く                         |
+| `typecheck`                                             | `tsc --noEmit`                             | 動く                         |
+| `db:generate`                                           | Drizzle スキーマからマイグレーション生成   | 動く                         |
+| `db:migrate:local` / `db:migrate:remote`                | D1 へマイグレーション適用                  | remote は Cloudflare 要      |
+| `db:studio`                                             | `drizzle-kit studio`                       | 動く                         |
+| `cf-typegen`                                            | `wrangler types`（バインディングの型生成） | 動く                         |
+| `dev` / `deploy`                                        | `wrangler dev` / `wrangler deploy`         | `src/index.ts` 未作成で不可  |
+| `test:mutation`                                         | `stryker run`                              | 動く（`stryker.config.mjs`） |
+| `db:seed:generate` / `db:seed:local` / `db:reset:local` | シード SQL の生成 / 適用 / 作り直し        | 動く（実測）                 |
 
 ### `packages/core` / `packages/geo`
 

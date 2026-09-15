@@ -1691,7 +1691,15 @@ git commit -m "feat(geo): 検索半径から geohash 精度を決める関数を
 - Consumes: Task 1-7 の `precisionForRadius`、`geohash.ts` の `encodeGeohash` / `neighborCells` / `Geohash`、`coordinate.ts` の `Coordinate`
 - Produces: `cellsForRadius(center: Coordinate, radiusM: number): readonly Geohash[]`
 
-> これが D1 検索の第 1 段になる。`WHERE geohash IN (?, ?, …)` として使い、B-tree インデックスで候補を数百件まで落とす。
+> これが D1 検索の第 1 段になる。`WHERE (geohash >= ? AND geohash < ?) OR …` の 9 セルぶんとして使い、
+> B-tree インデックスで候補を数百件まで落とす。
+>
+> **2026-09-15 修正**: 当初この行は `WHERE geohash IN (?, …)` と書いていたが、それでは 0 件になる。
+> `cellsForRadius` が返すセルは半径に応じて精度 3〜7 と長さが変わるのに対し、`shops.geohash` は精度 7 固定で
+> 保存されるため、等値比較は半径 100m（精度 7）のときしか一致しない。前方一致でなければならない。
+> 前方一致は `GLOB ?` でも範囲比較でも索引は効くが（実測でプランは同一）、`GLOB ?` は
+> バインド値が NULL や先頭ワイルドカードだと全表走査へ落ちる。値に左右されない範囲比較を採用する。
+> 実測の根拠は `packages/geo/README.md`「3 段階の近傍検索」にある。
 
 - [x] **Step 1: 失敗するテストを書く**
 
@@ -1795,12 +1803,24 @@ import type { Geohash, GeohashPrecision } from './geohash';
 
 ```ts
 /**
- * 中心と半径から、D1 の `WHERE geohash IN (…)` に渡すセル一覧を返す。
+ * 中心と半径から、第 1 段の SQL に渡すセル一覧を返す。
  * 先頭は必ず中心セル、以降は時計回りの 8 近傍。
  *
  * これは 3 段階検索の第 1 段。ここで候補を粗く絞り、
  * 第 2 段の境界ボックス（`boundingBox` / `isWithinBounds`）と
  * 第 3 段の Haversine（`distanceMeters`）で正確に仕上げる。
+ *
+ * 返すセルは半径に応じて精度 3〜7 と長さが変わるが、`shops.geohash` は
+ * 精度 7 固定で保存される。したがって SQL は等値（`IN`）ではなく
+ * 前方一致でなければならず、その前方一致は範囲比較で書く:
+ *
+ *     WHERE (geohash >= :cell AND geohash < :cell || '{') OR …（9 セルぶん）
+ *
+ * `GLOB ?` でも索引は効くが、バインド値が NULL や先頭ワイルドカードだと
+ * 全表走査へ落ちる。範囲比較なら値に関係なく必ず索引を使うのでこちらにする。
+ * 上限の `{`（U+007A の `z` の次）は、geohash のアルファベットの最大文字が
+ * `z` であることに依る。実測の根拠は packages/geo/README.md
+ * 「3 段階の近傍検索」にある。
  */
 export function cellsForRadius(center: Coordinate, radiusM: number): readonly Geohash[] {
   const precision = precisionForRadius(radiusM);
@@ -2744,6 +2764,14 @@ npm run test:mutation -w @meshimap/geo
 
 `packages/geo/stryker.config.json` の設定どおり、`thresholds.break: 85` を下回ると**コマンドが失敗する**。
 
+> **2026-09-15 の変更:** この計画を実行した当時の設定ファイル名は `stryker.config.json` だったが、
+> 同日に **`stryker.config.mjs` へ移した**。値は変えていない。`.mjs` にしたのは
+> 「なぜ `vitest` ランナーではなく `command` ランナーなのか」「なぜ `--no-file-parallelism` が要るのか」
+> といった実測に基づく判断をコメントで残すためで、JSON にはコメントが書けない。
+> 共通の設定値と根拠はリポジトリ直下の [`stryker.base.mjs`](../../../stryker.base.mjs) に集約し、
+> 各ワークスペースの `stryker.config.mjs` は対象ファイルの指定だけを渡す形になっている。
+> 以降この計画書に出てくる `stryker.config.json` は `stryker.config.mjs` と読み替えること。
+
 期待: ミューテーションスコア 85% 以上で成功。
 
 - [x] **Step 8: 生き残った変異を潰す**
@@ -2792,7 +2820,7 @@ D1 には `ST_DWithin` が無く、SQLite の三角関数も環境差がある�
 
 | 段  | 使う関数         | SQL / TS                                                       | 役割                                   |
 | --- | ---------------- | -------------------------------------------------------------- | -------------------------------------- |
-| 1   | `cellsForRadius` | `WHERE geohash IN (?, …)`                                      | B-tree インデックスで数万件 → 数百件へ |
+| 1   | `cellsForRadius` | `WHERE (geohash >= ? AND geohash < ?) OR …`                    | B-tree インデックスで数万件 → 数百件へ |
 | 2   | `boundingBox`    | `WHERE latitude BETWEEN ? AND ? AND longitude BETWEEN ? AND ?` | 矩形で数百件 → 数十件へ                |
 | 3   | `distanceMeters` | Worker の TypeScript                                           | 正確な円内判定と距離順ソート           |
 
