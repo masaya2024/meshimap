@@ -8,6 +8,21 @@ module.exports = defineConfig([
     ignores: ['dist/*', '.expo/*'],
   },
   {
+    // ルート直下の設定ファイルは CommonJS で、Node のグローバルを使う。
+    // eslint-config-expo の既定はアプリコード（ブラウザ / RN 環境）向けで
+    // これらを未定義として扱うため、この 3 つだけをここで許可する。
+    // globals パッケージの node プリセットを丸ごと入れないのは、設定ファイルで
+    // 実際に使うものだけを明示したいため。
+    files: ['eslint.config.js', 'jest.config.js'],
+    languageOptions: {
+      globals: {
+        __dirname: 'readonly',
+        module: 'writable',
+        require: 'readonly',
+      },
+    },
+  },
+  {
     files: ['**/*.{ts,tsx}'],
     rules: {
       // docs/CODING_GUIDELINES.md の禁止パターンを機械的に検査する。

@@ -40,6 +40,24 @@ jobs:
         # apps/api は下の専用ジョブへ隔離しているため、ここでは対象を明示する。
         run: npm run typecheck -w @meshimap/geo -w @meshimap/core -w @meshimap/mobile
 
+  lint:
+    name: Lint（mobile・ESLint）
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+      - name: 依存をインストール
+        run: npm ci
+      - name: eslint
+        # `expo lint` は未設定なら対話で設定を作ろうとするため、CI では eslint を直接叩く。
+        # 現状 ESLint 設定を持つのは apps/mobile だけなので、対象もそこに限定する。
+        run: npx eslint .
+        working-directory: apps/mobile
+
   format:
     name: 整形検査（Prettier）
     runs-on: ubuntu-latest
