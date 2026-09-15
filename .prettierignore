@@ -6,6 +6,10 @@ apps/api/migrations/
 coverage/
 reports/
 
+# Stryker が変異ごとに作る使い捨てのリポジトリ複製。
+# 実行が中断されると残るので、整形の対象から外しておく
+.stryker-tmp/
+
 # 依存とビルド生成物
 node_modules/
 .expo/

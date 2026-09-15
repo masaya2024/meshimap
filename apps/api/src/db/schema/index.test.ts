@@ -1,6 +1,9 @@
-import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+/**
+ * `index.ts` の再エクスポートと、マイグレーション DDL との対応を検証する。
+ *
+ * 設計書そのものとの突き合わせだけは design-doc-sync.test.ts に分けてある。
+ * このファイルは apps/api の外を読まないので Stryker のサンドボックスでもそのまま動く。
+ */
 import { getTableName, isTable } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 import { SHOPS_FTS_TABLE_NAME } from '../fts';
@@ -46,46 +49,11 @@ const DESIGN_DOC_TABLE_NAMES = [
   'audit_logs',
 ] as const;
 
-/** index.ts が再エクスポートしているべき全テーブル名 */
-const EXPECTED_TABLE_NAMES = [...BETTER_AUTH_TABLE_NAMES, ...DESIGN_DOC_TABLE_NAMES] as const;
-
-const CURRENT_DIR = dirname(fileURLToPath(import.meta.url));
-
-/** src/db/schema/ からリポジトリルートの設計書まで */
-const DESIGN_DOC_PATH = join(
-  CURRENT_DIR,
-  '..',
-  '..',
-  '..',
-  '..',
-  '..',
-  'docs',
-  'superpowers',
-  'specs',
-  '2026-09-15-meshimap-design.md',
-);
-
-/** 設計書 §6 のコードブロックで、テーブル名とカラム列挙を隔てている空白 */
-const DESIGN_DOC_TABLE_PATTERN = /^([a-z_]+) {2,}/gm;
-
 /**
- * 設計書 §6 のコードブロックに列挙されているテーブル名を読み出す。
- *
- * 上の 2 配列を「テストが勝手に決めた期待値」で終わらせないための仕掛け。
- * 設計書に書かずにテーブルを足した場合も、逆に設計書だけ直してスキーマを忘れた場合も、
- * 下の同期テストが落ちる。
- * 継続行は字下げされていて行頭に一致せず、`-- 認証` のようなコメント行も一致しない。
+ * index.ts が再エクスポートしているべき全テーブル名。
+ * この一覧が設計書の列挙とずれていないことは design-doc-sync.test.ts が見る。
  */
-function readDesignDocTableNames(): readonly string[] {
-  const designDoc = readFileSync(DESIGN_DOC_PATH, 'utf8');
-  const section = designDoc.slice(
-    designDoc.indexOf('## 6. データモデル'),
-    designDoc.indexOf('## 7. ディレクトリ構成'),
-  );
-  const codeBlock = section.slice(section.indexOf('```') + 3, section.lastIndexOf('```'));
-
-  return [...codeBlock.matchAll(DESIGN_DOC_TABLE_PATTERN)].map((match) => match[1] ?? '');
-}
+const EXPECTED_TABLE_NAMES = [...BETTER_AUTH_TABLE_NAMES, ...DESIGN_DOC_TABLE_NAMES] as const;
 
 /** drizzle-kit が生成する DDL のテーブル定義行。識別子はバッククォートで囲まれる */
 const CREATE_TABLE_PATTERN = /CREATE TABLE `(?<tableName>[^`]+)`/g;
@@ -113,12 +81,6 @@ describe('schema/index.ts', () => {
     const tableNames = collectExportedTableNames();
 
     expect(new Set(tableNames).size).toBe(tableNames.length);
-  });
-
-  it('期待値の一覧が設計書 §6 の列挙とそろっている', () => {
-    // 並び順は比較しない。設計書は関連の近いテーブルを並べ、こちらはスキーマの
-    // ファイル単位で並べていて、軸が違うだけの差を落とす意味がないため。
-    expect([...EXPECTED_TABLE_NAMES].sort()).toEqual([...readDesignDocTableNames()].sort());
   });
 });
 

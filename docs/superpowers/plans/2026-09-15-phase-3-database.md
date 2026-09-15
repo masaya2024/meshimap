@@ -169,80 +169,81 @@ export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH"
 
 計画を書く前に実際に動かして確認した。**推測ではない。** 実装中に疑わしくなったら再現できる。
 
-| #   | 事実                                                                                                                                                                                                                                                                                                                                                                                          | 確認方法                                                                                                       |
-| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| F1  | `sqliteTable` の第 3 引数は**配列を返す**関数。オブジェクトを返す形は `@deprecated`                                                                                                                                                                                                                                                                                                           | `node_modules/drizzle-orm/sqlite-core/table.d.ts`                                                              |
-| F2  | SQLite の index builder に `.desc()` は**ない**。降順索引は ``sql`${col} desc` `` で書く                                                                                                                                                                                                                                                                                                      | `node_modules/drizzle-orm/sqlite-core/indexes.d.ts`（`IndexColumn = SQLiteColumn \| SQL`）                     |
-| F3  | `primaryKey({ columns: [...] })` のオブジェクト形が現行。可変長引数形は `@deprecated`                                                                                                                                                                                                                                                                                                         | `node_modules/drizzle-orm/sqlite-core/primary-keys.d.ts`                                                       |
-| F4  | `text(name, { enum: [...] })` は SQL 上**ただの `text`**。CHECK は生成されない                                                                                                                                                                                                                                                                                                                | `drizzle-kit generate` の出力を目視                                                                            |
-| F5  | DB レベルで値を縛るには `check(name, sql)` を自分で書く必要がある                                                                                                                                                                                                                                                                                                                             | 同上。`CONSTRAINT "ck_..." CHECK(...)` が出力された                                                            |
-| F6  | `driver: 'd1-http'` の `drizzle.config.ts` は**認証情報なしでも `generate` が通る**（`push` は通らない）                                                                                                                                                                                                                                                                                      | `node node_modules/.bin/drizzle-kit generate --name=init` を実行                                               |
-| F7  | 生成 SQL の文の区切りは `--> statement-breakpoint`                                                                                                                                                                                                                                                                                                                                            | 生成された `migrations/0000_*.sql`                                                                             |
-| F8  | `wrangler d1 migrations apply <db> --local` は**手書きの生 SQL マイグレーションもそのまま適用する**                                                                                                                                                                                                                                                                                           | FTS5 の CREATE VIRTUAL TABLE を含む `.sql` を置いて実行                                                        |
-| F9  | ローカル D1 の実体は `apps/api/.wrangler/state/v3/d1/miniflare-D1DatabaseObject/<hash>.sqlite`                                                                                                                                                                                                                                                                                                | 適用後に `find .wrangler -name '*.sqlite'`                                                                     |
-| F10 | D1 で FK 違反は `FOREIGN KEY constraint failed: SQLITE_CONSTRAINT`、CHECK 違反は `CHECK constraint failed: <制約名>: SQLITE_CONSTRAINT`                                                                                                                                                                                                                                                       | 意図的に違反する INSERT を実行                                                                                 |
-| F11 | FTS5 の `unicode61` トークナイザは**日本語で使い物にならない**（空白で切るため）                                                                                                                                                                                                                                                                                                              | 日本語行を入れて MATCH → 0 件                                                                                  |
-| F12 | FTS5 の `trigram` トークナイザは D1 で**動く**。ただし MATCH の語は **3 文字以上**必要                                                                                                                                                                                                                                                                                                        | `'焼鳥'`（2 文字）→ 0 件 / `'炭火焼'` → ヒット                                                                 |
-| F13 | Miniflare 5 は `new Miniflare(convertV4MiniflareOptions({...}))` の形で起動する。V4 形式の素のオブジェクトを渡すと `ERR_VALIDATION`                                                                                                                                                                                                                                                           | `node_modules/miniflare/dist/src/index.d.ts` に `convertV4MiniflareOptions` の宣言あり                         |
-| F14 | `D1Database.exec()` は**単一行の SQL しか受け付けない**。改行を空白に潰す必要がある                                                                                                                                                                                                                                                                                                           | 改行入りで実行 → 失敗、`.replaceAll('\n',' ')` で成功                                                          |
-| F15 | `@meshimap/geo` は拡張子なしの相対 import を使っているため、素の `node` / `node --experimental-strip-types` では解決できない。**`tsx` を使う**                                                                                                                                                                                                                                                | `ERR_MODULE_NOT_FOUND: .../packages/geo/src/constants` → `tsx` では成功                                        |
-| F16 | D1 では `sqlite_version()` が `not authorized to use function` で拒否される                                                                                                                                                                                                                                                                                                                   | `wrangler d1 execute --local --command "select sqlite_version()"`                                              |
-| F17 | **`check()` の中で `` sql`${値}` `` と書くと DDL に `?` が出力され壊れた SQL になる**。実測: `CHECK("profiles"."role" IN (?, ?, ?))`。定数は `sql.raw()` で**リテラルとして埋め込む**必要がある                                                                                                                                                                                               | `drizzle-kit generate` の出力を両方の書き方で比較                                                              |
-| F18 | `sql.raw()` を使うと `CHECK("profiles"."role" IN ('user', 'owner', 'admin'))` と正しく出力され、D1 に適用すると `CHECK constraint failed: ck_profiles_role` で違反を弾く                                                                                                                                                                                                                      | 生成 → `wrangler d1 migrations apply --local` → 違反 INSERT                                                    |
-| F19 | `areas.parent_id → areas.id` の自己参照 FK は `.references((): AnySQLiteColumn => areas.id, { onDelete: 'set null' })` で正しく生成される                                                                                                                                                                                                                                                     | 生成 SQL に `FOREIGN KEY (`parent_id`) REFERENCES `areas`(`id`) ... ON DELETE set null` を確認                 |
-| F20 | 降順索引は ``index('..').on(sql`${table.col} desc`)`` で `CREATE INDEX ... ("created_at" desc)` になる                                                                                                                                                                                                                                                                                        | 同上                                                                                                           |
-| F21 | ローカル D1 は `database_id` がプレースホルダのままでも動く。Cloudflare へのログインは不要                                                                                                                                                                                                                                                                                                    | `database_id: "PLACEHOLDER_SET_BY_WRANGLER_D1_CREATE"` のまま `migrations apply --local` が成功                |
-| F22 | D1 は**既定で `PRAGMA foreign_keys = 1`**。`PRAGMA foreign_keys` を問い合わせて `{"foreign_keys":1}` を確認。違反時のメッセージは `D1_ERROR: FOREIGN KEY constraint failed: SQLITE_CONSTRAINT (extended: SQLITE_CONSTRAINT_FOREIGNKEY)`。`ON DELETE cascade` も実際に子行が消える                                                                                                             | miniflare 上で親を DELETE して子の件数が 0 になることを確認                                                    |
-| F23 | SQLite は `PRIMARY KEY` だけでは NULL を許す（歴史的仕様）。ただし Drizzle の `.primaryKey()` は `text PRIMARY KEY NOT NULL` を生成するため実害はない                                                                                                                                                                                                                                         | 生成 SQL と miniflare での INSERT で確認                                                                       |
-| F24 | `tsx` は実行位置の `package.json` に `"type": "module"` がないと CJS 扱いになり、トップレベル await が `Top-level await is currently not supported with the "cjs" output format` で落ちる。`apps/api/package.json` は `"type": "module"` なので問題ない                                                                                                                                       | 型なしディレクトリで再現 → `apps/api` では成功                                                                 |
-| F25 | SQLite の GLOB で「許可文字だけからなる」を表すには `col NOT GLOB '*[^a-z0-9-]*'` と書く。`col GLOB '[a-z0-9-]*'` は**先頭 1 文字しか見ない**ので誤り（`'ra men'` が通ってしまう）。空文字も通るため `col <> ''` との AND が要る                                                                                                                                                              | D1 上で 8 パターンを評価して真理値を確認                                                                       |
-| F26 | CHECK 式が NULL に評価される行は**違反とみなされない**（SQLite の仕様）。`length(bio) <= 500` を NULL 可の列にそのまま書いてよい                                                                                                                                                                                                                                                              | `bio = NULL` の INSERT が通ることを確認                                                                        |
-| F27 | SQLite の `length()` は TEXT では**文字数**を返す（`length('あいう')` = 3）。BLOB ではバイト数（= 9）。文字数上限をそのまま書ける                                                                                                                                                                                                                                                             | D1 上で評価                                                                                                    |
-| F28 | `matchesGlob(col, '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]')` で `YYYY-MM-DD` 書式を DB で強制できる（`'2026-9-15'` は拒否される）                                                                                                                                                                                                                                                         | D1 上で CHECK を張って INSERT                                                                                  |
-| F29 | **`geohash GLOB 'xn76f*'` は索引を使うが `geohash LIKE 'xn76f%'` はフルスキャンになる**。SQLite の LIKE 最適化は既定の `case_sensitive_like=OFF` では効かないため。**Drizzle の `like()` を geohash 検索に使ってはいけない**。なお `GLOB ?` はバインド値が前方一致パターンなら索引を使う（実装は範囲比較を採用。理由は `packages/geo/README.md`）                                             | `EXPLAIN QUERY PLAN` を両方で比較。GLOB → `SEARCH shops USING INDEX idx_shops_geohash`、LIKE → `SCAN shops`    |
-| F30 | `GLOB ?`（バインドパラメータ）でも索引が効く。9 セルを `OR` で並べると `MULTI-INDEX OR` になり 9 本とも索引検索になる                                                                                                                                                                                                                                                                         | 同上                                                                                                           |
-| F31 | `WHERE status = ? AND (geohash GLOB ? OR ...)` は `(geohash)` 単独索引だと status 側の索引に流れてしまう。**`(status, geohash)` の複合索引**を足すと 9 本とも `SEARCH ... (status=? AND geohash>? AND geohash<?)` になる                                                                                                                                                                      | 300 行投入 + `ANALYZE` 後に `EXPLAIN QUERY PLAN`                                                               |
-| F32 | 段 1（geohash）と段 2（bbox）を 1 本の SQL にまとめると、プランナはデータ分布に応じて `idx_shops_status_geohash` と `idx_shops_lat_lng` のどちらかを選ぶ。**どちらを選んでも索引検索であり全表走査にはならない**。テストでは「特定の索引名」ではなく「`SCAN shops` が出ないこと」を検証する                                                                                                   | 同上                                                                                                           |
-| F33 | `uniqueIndex(name).on(col).where(sql)` は drizzle-kit 0.31.10 で `CREATE UNIQUE INDEX ... WHERE "t"."is_cover";` として正しく出力される（部分ユニーク索引が使える）                                                                                                                                                                                                                           | `drizzle-kit generate` の出力を確認                                                                            |
-| F34 | 部分ユニーク索引に違反したときのエラーは `UNIQUE constraint failed: shop_photos.shop_id`（索引名ではなく列名が出る）                                                                                                                                                                                                                                                                          | miniflare の D1 で INSERT を実行                                                                               |
-| F35 | `mode: 'boolean'` の列を `sql` の中でそのまま真偽値として使える（`CHECK((t.is_closed AND ...) OR (NOT t.is_closed AND ...))`）。列のみの補間なのでバインドパラメータが混入しない                                                                                                                                                                                                              | `drizzle-kit generate` + D1 で 12 ケース検証                                                                   |
-| F36 | D1 は `CHECK` の失敗を `CHECK constraint failed: <制約名>` として返すので、テストで制約名まで検証できる                                                                                                                                                                                                                                                                                       | 同上                                                                                                           |
-| F37 | `foreignKey({ columns: [a, b], foreignColumns: [X.a, X.b] })` で複合外部キーを張れる。参照先には `uniqueIndex` が必須で、無いと INSERT 時に `foreign key mismatch - "menu_items" referencing "menu_categories"` になる（DDL 適用時にはエラーにならない）                                                                                                                                      | miniflare の D1 でユニーク索引を外して INSERT                                                                  |
-| F38 | 複合外部キーは片方が NULL なら成立する（SQLite の既定は MATCH SIMPLE）。`category_id IS NULL` の未分類メニューを登録できる                                                                                                                                                                                                                                                                    | 同上                                                                                                           |
-| F39 | drizzle-kit 0.31.10 は SQLite の外部キーに `CONSTRAINT <名前>` を出力しない。`foreignKey({ name })` を書いても DDL には出ないので、テストは `FOREIGN KEY constraint failed` で検証する                                                                                                                                                                                                        | 生成された DDL を確認                                                                                          |
-| F40 | `shops → menu_categories → menu_items` と `shops → menu_items` の 2 経路の CASCADE が同時に成立しても SQLite は問題なく削除する                                                                                                                                                                                                                                                               | miniflare の D1 で店舗削除                                                                                     |
-| F41 | SQLite は昇順索引を逆向きに走査できるため、`ORDER BY created_at DESC` に対して `(shop_id, created_at)` でも `(shop_id, created_at DESC)` でも実行計画は同じ（どちらも `USE TEMP B-TREE` が出ない）。索引を**消した**ときだけ `SCAN r \| USE TEMP B-TREE FOR ORDER BY` になる                                                                                                                  | miniflare の D1 で 3 パターンの `EXPLAIN QUERY PLAN` を比較                                                    |
-| F42 | `reviews(shop_id, created_at desc)` の索引があれば `WHERE shop_id = ? ORDER BY created_at DESC` は `SEARCH reviews USING INDEX ...` になり一時 B-Tree は出ない                                                                                                                                                                                                                                | 同上                                                                                                           |
-| F43 | `primaryKey({ columns: [a, b] })` は複合主キー句 PRIMARY KEY(a, b) を生成し、違反時のメッセージは `UNIQUE constraint failed: <table>.<a>, <table>.<b>`（**定義した列順がそのまま出る**）                                                                                                                                                                                                      | miniflare の D1 で `favorites` / `list_items` に二重 INSERT                                                    |
-| F44 | SQLite のユニーク索引は NULL を重複とみなさない。`uniqueIndex` を張った列に NULL は何行でも入る（`lists.share_token` の未共有リスト、`reports.reporter_id` の匿名通報）                                                                                                                                                                                                                       | miniflare の D1 で NULL 行を 2 件 INSERT                                                                       |
-| F45 | **`ON DELETE set null` が起こす UPDATE にも CHECK 制約が効く**。`(handled_by IS NULL) = (handled_at IS NULL)` のような双方向の等式を置くと、対応済み通報がある管理者を削除した時点で `DELETE` が `CHECK constraint failed` で失敗する。含意 2 本（`handled_by IS NULL OR handled_at IS NOT NULL` と `status IN (...) OR handled_at IS NOT NULL`）に分けると通る                               | miniflare の D1 で管理者 `DELETE` を両方の定義で実行                                                           |
-| F46 | CHECK 制約は UPDATE にも効く。`status` だけを `resolved` に変える UPDATE は `ck_reports_closed_requires_time` で弾かれる                                                                                                                                                                                                                                                                      | 同上                                                                                                           |
-| F47 | D1（miniflare / 本番とも SQLite）は JSON1 拡張を持ち、`json_valid()` `json_type()` `json_extract()` を CHECK と SELECT の両方で使える                                                                                                                                                                                                                                                         | miniflare の D1 で壊れた JSON を INSERT し、正しい配列から `json_extract(documents, '$[0].kind')` を取得       |
-| F48 | `text(..., { mode: 'json' }).default([])` は DDL に `DEFAULT '[]'` という**文字列リテラル**として焼き込まれる                                                                                                                                                                                                                                                                                 | `drizzle-kit generate` の出力と実際の SELECT 値を確認                                                          |
-| F49 | `index(...)` に `.where(...)` を付けた部分索引は `WHERE user_id = ? AND read_at IS NULL ORDER BY created_at DESC` で確かに選ばれ、`read_at` 条件のないクエリでは通常索引が選ばれる                                                                                                                                                                                                            | miniflare の D1 で 2 パターンの `EXPLAIN QUERY PLAN`                                                           |
-| F50 | 索引の先頭が式（`created_at desc` だけの索引）でも `ORDER BY created_at DESC LIMIT 50` は `SCAN audit_logs USING INDEX idx_audit_logs_created` になり、一時 B-Tree は出ない                                                                                                                                                                                                                   | miniflare の D1 で `EXPLAIN QUERY PLAN`                                                                        |
-| F51 | D1 は FTS5 を持ち、`unicode61` / `porter` / `trigram` のトークナイザがすべて使える                                                                                                                                                                                                                                                                                                            | miniflare の D1 で `CREATE VIRTUAL TABLE … USING fts5(…)` を 4 パターン実行                                    |
-| F52 | `tokenize='trigram'` は **3 文字以上**の検索語しかヒットしない。`ラーメン`(4) `渋谷区`(3) `こうじ`(3) は当たるが `寿司`(2) `豚骨`(2) `渋谷`(2) はゼロ件。英字は大小を区別しない                                                                                                                                                                                                               | miniflare の D1 で 9 パターンの `MATCH`                                                                        |
-| F53 | `unicode61`（既定）は日本語を分割しない。`濃厚な豚骨ラーメンが看板メニュー` は丸ごと 1 トークンになり、`ラーメン` でも `豚骨` でもヒットしない（全文完全一致だけ当たる）                                                                                                                                                                                                                      | ローカル D1 で `unicode61` の仮想テーブルに同じ文字列を入れて比較                                              |
-| F54 | `wrangler d1 migrations apply --local` は `CREATE TRIGGER … BEGIN … ; … ; END;` を**1 文として正しく扱う**（本体の `;` で分割されない）。非対話環境では確認プロンプトに自動で yes が入る                                                                                                                                                                                                      | 専用の使い捨てプロジェクトで実際に適用し、`sqlite_master` にトリガー 3 本を確認                                |
-| F55 | 検索語を二重引用符で包まずに `MATCH` へ渡すと例外になる。`道玄坂1-2-3` → `no such column: 2`、`(` → `fts5: syntax error`、`O'Brien` → `fts5: syntax error`。包めばすべてただの語句として扱われ、`*` も `OR` もリテラルになる                                                                                                                                                                  | miniflare の D1 で 11 パターンの `MATCH`                                                                       |
-| F56 | `content='shops'` の外部コンテンツ表では影テーブルが `_config` `_data` `_docsize` `_idx` の 4 つだけになり、`_content` は作られない                                                                                                                                                                                                                                                           | `sqlite_master` を一覧                                                                                         |
-| F57 | 外部コンテンツ表の削除は `INSERT INTO shops_fts(shops_fts, rowid, …) VALUES('delete', …)` で行う。`INSERT INTO shops_fts(shops_fts) VALUES('integrity-check')` で本体との食い違いを検出できる                                                                                                                                                                                                 | miniflare の D1 で UPDATE / DELETE 後に実行                                                                    |
-| F58 | `drizzle-kit generate --custom --name=X` は空の SQL ファイルとスナップショットを同時に作るため、手書き SQL を混ぜても次回以降の採番が壊れない                                                                                                                                                                                                                                                 | 使い捨てプロジェクトで `--custom` 実行後に `_journal.json` と `meta/` を確認                                   |
-| F59 | D1 では `sqlite_version()` と `pragma_compile_options` が `SQLITE_AUTH` で拒否される。SQLite のバージョンや機能を実行時に問い合わせることはできない                                                                                                                                                                                                                                           | miniflare の D1 で実行                                                                                         |
-| F60 | `D1Database.exec()` は改行を含む SQL を受け付けないが、改行を空白へ潰すより先に行頭コメントを消さないと `--` 以降が全部コメントになり `SQL code did not contain a statement` で落ちる。`0001_shops_fts.sql` のようにコメント付きの手書き SQL で必ず踏む                                                                                                                                       | 25 テーブル全部を入れた使い捨てプロジェクトで `applyMigrations` 相当を実行して再現、行頭コメント除去で解消     |
-| F61 | `wrangler d1 migrations apply --local` は `0000_init.sql`（80 文）と `0001_shops_fts.sql`（5 文）を順に適用でき、FTS5 の仮想テーブルとトリガー 3 本も通る                                                                                                                                                                                                                                     | 25 テーブルの使い捨てプロジェクトで実行、`_journal` の 2 件が両方 ✅                                           |
-| F62 | シードを `wrangler d1 execute --local --file` で 2 回流しても件数が変わらない（shops 60 / reviews 109 / shops_fts 60 / rating_avg の総和 179.49 が一致）。先頭の `DELETE FROM` 群と `PRAGMA defer_foreign_keys` で冪等になる                                                                                                                                                                  | 同じ D1 に 2 回投入して集計を比較                                                                              |
-| F63 | `shops` に INSERT すると `shops_fts` にトリガー経由で 60 行が入り、`INSERT INTO shops_fts(shops_fts) VALUES('integrity-check')` が成功する（索引と本体が一致している）                                                                                                                                                                                                                        | 60 店舗投入後に実行                                                                                            |
-| F64 | 投入した 60 店舗に対し、渋谷駅からの 3 段階検索は下表のとおりの件数を返す。5000m だけ段 2（矩形）と段 3（厳密）が 28 → 25 と食い違い、Haversine の必要性が数字で出る                                                                                                                                                                                                                          | miniflare の D1 + `packages/geo` で 6 半径ぶん実測                                                             |
-| F65 | `status = 'published' AND (geohash GLOB 'xn76f*' OR geohash GLOB 'xn76g*')` は `MULTI-INDEX OR` で 2 本とも `idx_shops_status_geohash` を使う。`lat`/`lng` の BETWEEN を足しても同じ索引のまま絞り込みだけが増える                                                                                                                                                                            | `EXPLAIN QUERY PLAN` を 60 店舗入りの D1 で実行                                                                |
-| F66 | `GLOB` の右辺をバインド引数にすると索引が効かない（`SEARCH shops USING INDEX idx_shops_status_rating (status=?)` に落ちる）。リテラルなら効く。Drizzle の実行時クエリは必ずバインドになるので、**実装では GLOB ではなく範囲比較 `geohash >= ? AND geohash < ?` を使う**。`'{'`（0x7B）は base32 の最大文字 `'z'`（0x7A）の次なので、`prefix` 〜 `prefix + '{'` がちょうど前方一致の範囲になる | 30,060 行の `shops` に対し GLOB / 範囲比較の両方で `EXPLAIN QUERY PLAN` と実行結果を比較（件数はどちらも一致） |
-| F67 | D1 の `SQLITE_MAX_COMPOUND_SELECT` は **5**。6 項以上の `UNION` / `UNION ALL` は `too many terms in compound SELECT` で失敗する。9 セルを UNION で並べる実装は取れない                                                                                                                                                                                                                        | miniflare の D1 で 2〜12 項の `UNION ALL` を実行し、6 項で失敗することを確認                                   |
-| F68 | 1 本の SQL に geohash の OR と `lat`/`lng` の BETWEEN を両方書くと、プランナは `idx_shops_lat_lng` 1 本を選び geohash 条件は後置フィルタになる。**段 1 だけを SQL に出し、段 2（矩形）は TS 側でやる**と geohash 索引が主役になる                                                                                                                                                             | 30,060 行で「OR + BETWEEN」「OR のみ」を比較                                                                   |
-| F69 | `ANALYZE` を打つ前は 9 セルの OR が `idx_shops_status_rating` の 1 本走査に落ちるが、打つと `MULTI-INDEX OR` で 9 本すべてが `idx_shops_status_geohash` を使う。統計は `sqlite_stat1` に入り、シードを流し直しても残る                                                                                                                                                                        | 60 行のシード投入後と 30,060 行の両方で ANALYZE 前後の `EXPLAIN QUERY PLAN` を比較                             |
-| F70 | `migrations/` を丸ごと消して `drizzle-kit generate --name=init` をやり直すと、`0000_init.sql` は 1 バイトも変わらない（`diff` で確認）。ただし `meta/_journal.json` の `when` は実行時刻なので毎回変わる。**再現性を確かめる対象は .sql だけ**                                                                                                                                                | 25 テーブルの使い捨てプロジェクトで再生成して `diff`                                                           |
-| F71 | スキーマに変更が無い状態で `drizzle-kit generate` を打つと `No schema changes, nothing to migrate 😴` と出てファイルを作らない。空のマイグレーションが増えることはない                                                                                                                                                                                                                        | 同上                                                                                                           |
-| F72 | `drizzle-kit check` はスナップショットとマイグレーションの整合性を検査し、問題なければ `Everything's fine 🐶🔥` と出す。drizzle-kit 0.31.10 のサブコマンド一覧に存在する                                                                                                                                                                                                                      | `npx drizzle-kit --help` と実行結果                                                                            |
+| #   | 事実                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | 確認方法                                                                                                                                                |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| F1  | `sqliteTable` の第 3 引数は**配列を返す**関数。オブジェクトを返す形は `@deprecated`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | `node_modules/drizzle-orm/sqlite-core/table.d.ts`                                                                                                       |
+| F2  | SQLite の index builder に `.desc()` は**ない**。降順索引は ``sql`${col} desc` `` で書く                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | `node_modules/drizzle-orm/sqlite-core/indexes.d.ts`（`IndexColumn = SQLiteColumn \| SQL`）                                                              |
+| F3  | `primaryKey({ columns: [...] })` のオブジェクト形が現行。可変長引数形は `@deprecated`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | `node_modules/drizzle-orm/sqlite-core/primary-keys.d.ts`                                                                                                |
+| F4  | `text(name, { enum: [...] })` は SQL 上**ただの `text`**。CHECK は生成されない                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | `drizzle-kit generate` の出力を目視                                                                                                                     |
+| F5  | DB レベルで値を縛るには `check(name, sql)` を自分で書く必要がある                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | 同上。`CONSTRAINT "ck_..." CHECK(...)` が出力された                                                                                                     |
+| F6  | `driver: 'd1-http'` の `drizzle.config.ts` は**認証情報なしでも `generate` が通る**（`push` は通らない）                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | `node node_modules/.bin/drizzle-kit generate --name=init` を実行                                                                                        |
+| F7  | 生成 SQL の文の区切りは `--> statement-breakpoint`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | 生成された `migrations/0000_*.sql`                                                                                                                      |
+| F8  | `wrangler d1 migrations apply <db> --local` は**手書きの生 SQL マイグレーションもそのまま適用する**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | FTS5 の CREATE VIRTUAL TABLE を含む `.sql` を置いて実行                                                                                                 |
+| F9  | ローカル D1 の実体は `apps/api/.wrangler/state/v3/d1/miniflare-D1DatabaseObject/<hash>.sqlite`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | 適用後に `find .wrangler -name '*.sqlite'`                                                                                                              |
+| F10 | D1 で FK 違反は `FOREIGN KEY constraint failed: SQLITE_CONSTRAINT`、CHECK 違反は `CHECK constraint failed: <制約名>: SQLITE_CONSTRAINT`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | 意図的に違反する INSERT を実行                                                                                                                          |
+| F11 | FTS5 の `unicode61` トークナイザは**日本語で使い物にならない**（空白で切るため）                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | 日本語行を入れて MATCH → 0 件                                                                                                                           |
+| F12 | FTS5 の `trigram` トークナイザは D1 で**動く**。ただし MATCH の語は **3 文字以上**必要                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | `'焼鳥'`（2 文字）→ 0 件 / `'炭火焼'` → ヒット                                                                                                          |
+| F13 | Miniflare 5 は `new Miniflare(convertV4MiniflareOptions({...}))` の形で起動する。V4 形式の素のオブジェクトを渡すと `ERR_VALIDATION`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | `node_modules/miniflare/dist/src/index.d.ts` に `convertV4MiniflareOptions` の宣言あり                                                                  |
+| F14 | `D1Database.exec()` は**単一行の SQL しか受け付けない**。改行を空白に潰す必要がある                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | 改行入りで実行 → 失敗、`.replaceAll('\n',' ')` で成功                                                                                                   |
+| F15 | `@meshimap/geo` は拡張子なしの相対 import を使っているため、素の `node` / `node --experimental-strip-types` では解決できない。**`tsx` を使う**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | `ERR_MODULE_NOT_FOUND: .../packages/geo/src/constants` → `tsx` では成功                                                                                 |
+| F16 | D1 では `sqlite_version()` が `not authorized to use function` で拒否される                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | `wrangler d1 execute --local --command "select sqlite_version()"`                                                                                       |
+| F17 | **`check()` の中で `` sql`${値}` `` と書くと DDL に `?` が出力され壊れた SQL になる**。実測: `CHECK("profiles"."role" IN (?, ?, ?))`。定数は `sql.raw()` で**リテラルとして埋め込む**必要がある                                                                                                                                                                                                                                                                                                                                                                                                                                      | `drizzle-kit generate` の出力を両方の書き方で比較                                                                                                       |
+| F18 | `sql.raw()` を使うと `CHECK("profiles"."role" IN ('user', 'owner', 'admin'))` と正しく出力され、D1 に適用すると `CHECK constraint failed: ck_profiles_role` で違反を弾く                                                                                                                                                                                                                                                                                                                                                                                                                                                             | 生成 → `wrangler d1 migrations apply --local` → 違反 INSERT                                                                                             |
+| F19 | `areas.parent_id → areas.id` の自己参照 FK は `.references((): AnySQLiteColumn => areas.id, { onDelete: 'set null' })` で正しく生成される                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | 生成 SQL に `FOREIGN KEY (`parent_id`) REFERENCES `areas`(`id`) ... ON DELETE set null` を確認                                                          |
+| F20 | 降順索引は ``index('..').on(sql`${table.col} desc`)`` で `CREATE INDEX ... ("created_at" desc)` になる                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | 同上                                                                                                                                                    |
+| F21 | ローカル D1 は `database_id` がプレースホルダのままでも動く。Cloudflare へのログインは不要                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | `database_id: "PLACEHOLDER_SET_BY_WRANGLER_D1_CREATE"` のまま `migrations apply --local` が成功                                                         |
+| F22 | D1 は**既定で `PRAGMA foreign_keys = 1`**。`PRAGMA foreign_keys` を問い合わせて `{"foreign_keys":1}` を確認。違反時のメッセージは `D1_ERROR: FOREIGN KEY constraint failed: SQLITE_CONSTRAINT (extended: SQLITE_CONSTRAINT_FOREIGNKEY)`。`ON DELETE cascade` も実際に子行が消える                                                                                                                                                                                                                                                                                                                                                    | miniflare 上で親を DELETE して子の件数が 0 になることを確認                                                                                             |
+| F23 | SQLite は `PRIMARY KEY` だけでは NULL を許す（歴史的仕様）。ただし Drizzle の `.primaryKey()` は `text PRIMARY KEY NOT NULL` を生成するため実害はない                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | 生成 SQL と miniflare での INSERT で確認                                                                                                                |
+| F24 | `tsx` は実行位置の `package.json` に `"type": "module"` がないと CJS 扱いになり、トップレベル await が `Top-level await is currently not supported with the "cjs" output format` で落ちる。`apps/api/package.json` は `"type": "module"` なので問題ない                                                                                                                                                                                                                                                                                                                                                                              | 型なしディレクトリで再現 → `apps/api` では成功                                                                                                          |
+| F25 | SQLite の GLOB で「許可文字だけからなる」を表すには `col NOT GLOB '*[^a-z0-9-]*'` と書く。`col GLOB '[a-z0-9-]*'` は**先頭 1 文字しか見ない**ので誤り（`'ra men'` が通ってしまう）。空文字も通るため `col <> ''` との AND が要る                                                                                                                                                                                                                                                                                                                                                                                                     | D1 上で 8 パターンを評価して真理値を確認                                                                                                                |
+| F26 | CHECK 式が NULL に評価される行は**違反とみなされない**（SQLite の仕様）。`length(bio) <= 500` を NULL 可の列にそのまま書いてよい                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | `bio = NULL` の INSERT が通ることを確認                                                                                                                 |
+| F27 | SQLite の `length()` は TEXT では**文字数**を返す（`length('あいう')` = 3）。BLOB ではバイト数（= 9）。文字数上限をそのまま書ける                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | D1 上で評価                                                                                                                                             |
+| F28 | `matchesGlob(col, '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]')` で `YYYY-MM-DD` 書式を DB で強制できる（`'2026-9-15'` は拒否される）                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | D1 上で CHECK を張って INSERT                                                                                                                           |
+| F29 | **`geohash GLOB 'xn76f*'` は索引を使うが `geohash LIKE 'xn76f%'` はフルスキャンになる**。SQLite の LIKE 最適化は既定の `case_sensitive_like=OFF` では効かないため。**Drizzle の `like()` を geohash 検索に使ってはいけない**。なお `GLOB ?` はバインド値が前方一致パターンなら索引を使う（実装は範囲比較を採用。理由は `packages/geo/README.md`）                                                                                                                                                                                                                                                                                    | `EXPLAIN QUERY PLAN` を両方で比較。GLOB → `SEARCH shops USING INDEX idx_shops_geohash`、LIKE → `SCAN shops`                                             |
+| F30 | `GLOB ?`（バインドパラメータ）でも索引が効く。9 セルを `OR` で並べると `MULTI-INDEX OR` になり 9 本とも索引検索になる                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | 同上                                                                                                                                                    |
+| F31 | `WHERE status = ? AND (geohash GLOB ? OR ...)` は `(geohash)` 単独索引だと status 側の索引に流れてしまう。**`(status, geohash)` の複合索引**を足すと 9 本とも `SEARCH ... (status=? AND geohash>? AND geohash<?)` になる                                                                                                                                                                                                                                                                                                                                                                                                             | 300 行投入 + `ANALYZE` 後に `EXPLAIN QUERY PLAN`                                                                                                        |
+| F32 | 段 1（geohash）と段 2（bbox）を 1 本の SQL にまとめると、プランナはデータ分布に応じて `idx_shops_status_geohash` と `idx_shops_lat_lng` のどちらかを選ぶ。**どちらを選んでも索引検索であり全表走査にはならない**。テストでは「特定の索引名」ではなく「`SCAN shops` が出ないこと」を検証する                                                                                                                                                                                                                                                                                                                                          | 同上                                                                                                                                                    |
+| F33 | `uniqueIndex(name).on(col).where(sql)` は drizzle-kit 0.31.10 で `CREATE UNIQUE INDEX ... WHERE "t"."is_cover";` として正しく出力される（部分ユニーク索引が使える）                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | `drizzle-kit generate` の出力を確認                                                                                                                     |
+| F34 | 部分ユニーク索引に違反したときのエラーは `UNIQUE constraint failed: shop_photos.shop_id`（索引名ではなく列名が出る）                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | miniflare の D1 で INSERT を実行                                                                                                                        |
+| F35 | `mode: 'boolean'` の列を `sql` の中でそのまま真偽値として使える（`CHECK((t.is_closed AND ...) OR (NOT t.is_closed AND ...))`）。列のみの補間なのでバインドパラメータが混入しない                                                                                                                                                                                                                                                                                                                                                                                                                                                     | `drizzle-kit generate` + D1 で 12 ケース検証                                                                                                            |
+| F36 | D1 は `CHECK` の失敗を `CHECK constraint failed: <制約名>` として返すので、テストで制約名まで検証できる                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | 同上                                                                                                                                                    |
+| F37 | `foreignKey({ columns: [a, b], foreignColumns: [X.a, X.b] })` で複合外部キーを張れる。参照先には `uniqueIndex` が必須で、無いと INSERT 時に `foreign key mismatch - "menu_items" referencing "menu_categories"` になる（DDL 適用時にはエラーにならない）                                                                                                                                                                                                                                                                                                                                                                             | miniflare の D1 でユニーク索引を外して INSERT                                                                                                           |
+| F38 | 複合外部キーは片方が NULL なら成立する（SQLite の既定は MATCH SIMPLE）。`category_id IS NULL` の未分類メニューを登録できる                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | 同上                                                                                                                                                    |
+| F39 | drizzle-kit 0.31.10 は SQLite の外部キーに `CONSTRAINT <名前>` を出力しない。`foreignKey({ name })` を書いても DDL には出ないので、テストは `FOREIGN KEY constraint failed` で検証する                                                                                                                                                                                                                                                                                                                                                                                                                                               | 生成された DDL を確認                                                                                                                                   |
+| F40 | `shops → menu_categories → menu_items` と `shops → menu_items` の 2 経路の CASCADE が同時に成立しても SQLite は問題なく削除する                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | miniflare の D1 で店舗削除                                                                                                                              |
+| F41 | SQLite は昇順索引を逆向きに走査できるため、`ORDER BY created_at DESC` に対して `(shop_id, created_at)` でも `(shop_id, created_at DESC)` でも実行計画は同じ（どちらも `USE TEMP B-TREE` が出ない）。索引を**消した**ときだけ `SCAN r \| USE TEMP B-TREE FOR ORDER BY` になる                                                                                                                                                                                                                                                                                                                                                         | miniflare の D1 で 3 パターンの `EXPLAIN QUERY PLAN` を比較                                                                                             |
+| F42 | `reviews(shop_id, created_at desc)` の索引があれば `WHERE shop_id = ? ORDER BY created_at DESC` は `SEARCH reviews USING INDEX ...` になり一時 B-Tree は出ない                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | 同上                                                                                                                                                    |
+| F43 | `primaryKey({ columns: [a, b] })` は複合主キー句 PRIMARY KEY(a, b) を生成し、違反時のメッセージは `UNIQUE constraint failed: <table>.<a>, <table>.<b>`（**定義した列順がそのまま出る**）                                                                                                                                                                                                                                                                                                                                                                                                                                             | miniflare の D1 で `favorites` / `list_items` に二重 INSERT                                                                                             |
+| F44 | SQLite のユニーク索引は NULL を重複とみなさない。`uniqueIndex` を張った列に NULL は何行でも入る（`lists.share_token` の未共有リスト、`reports.reporter_id` の匿名通報）                                                                                                                                                                                                                                                                                                                                                                                                                                                              | miniflare の D1 で NULL 行を 2 件 INSERT                                                                                                                |
+| F45 | **`ON DELETE set null` が起こす UPDATE にも CHECK 制約が効く**。`(handled_by IS NULL) = (handled_at IS NULL)` のような双方向の等式を置くと、対応済み通報がある管理者を削除した時点で `DELETE` が `CHECK constraint failed` で失敗する。含意 2 本（`handled_by IS NULL OR handled_at IS NOT NULL` と `status IN (...) OR handled_at IS NOT NULL`）に分けると通る                                                                                                                                                                                                                                                                      | miniflare の D1 で管理者 `DELETE` を両方の定義で実行                                                                                                    |
+| F46 | CHECK 制約は UPDATE にも効く。`status` だけを `resolved` に変える UPDATE は `ck_reports_closed_requires_time` で弾かれる                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | 同上                                                                                                                                                    |
+| F47 | D1（miniflare / 本番とも SQLite）は JSON1 拡張を持ち、`json_valid()` `json_type()` `json_extract()` を CHECK と SELECT の両方で使える                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | miniflare の D1 で壊れた JSON を INSERT し、正しい配列から `json_extract(documents, '$[0].kind')` を取得                                                |
+| F48 | `text(..., { mode: 'json' }).default([])` は DDL に `DEFAULT '[]'` という**文字列リテラル**として焼き込まれる                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | `drizzle-kit generate` の出力と実際の SELECT 値を確認                                                                                                   |
+| F49 | `index(...)` に `.where(...)` を付けた部分索引は `WHERE user_id = ? AND read_at IS NULL ORDER BY created_at DESC` で確かに選ばれ、`read_at` 条件のないクエリでは通常索引が選ばれる                                                                                                                                                                                                                                                                                                                                                                                                                                                   | miniflare の D1 で 2 パターンの `EXPLAIN QUERY PLAN`                                                                                                    |
+| F50 | 索引の先頭が式（`created_at desc` だけの索引）でも `ORDER BY created_at DESC LIMIT 50` は `SCAN audit_logs USING INDEX idx_audit_logs_created` になり、一時 B-Tree は出ない                                                                                                                                                                                                                                                                                                                                                                                                                                                          | miniflare の D1 で `EXPLAIN QUERY PLAN`                                                                                                                 |
+| F51 | D1 は FTS5 を持ち、`unicode61` / `porter` / `trigram` のトークナイザがすべて使える                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | miniflare の D1 で `CREATE VIRTUAL TABLE … USING fts5(…)` を 4 パターン実行                                                                             |
+| F52 | `tokenize='trigram'` は **3 文字以上**の検索語しかヒットしない。`ラーメン`(4) `渋谷区`(3) `こうじ`(3) は当たるが `寿司`(2) `豚骨`(2) `渋谷`(2) はゼロ件。英字は大小を区別しない                                                                                                                                                                                                                                                                                                                                                                                                                                                      | miniflare の D1 で 9 パターンの `MATCH`                                                                                                                 |
+| F53 | `unicode61`（既定）は日本語を分割しない。`濃厚な豚骨ラーメンが看板メニュー` は丸ごと 1 トークンになり、`ラーメン` でも `豚骨` でもヒットしない（全文完全一致だけ当たる）                                                                                                                                                                                                                                                                                                                                                                                                                                                             | ローカル D1 で `unicode61` の仮想テーブルに同じ文字列を入れて比較                                                                                       |
+| F54 | `wrangler d1 migrations apply --local` は `CREATE TRIGGER … BEGIN … ; … ; END;` を**1 文として正しく扱う**（本体の `;` で分割されない）。非対話環境では確認プロンプトに自動で yes が入る                                                                                                                                                                                                                                                                                                                                                                                                                                             | 専用の使い捨てプロジェクトで実際に適用し、`sqlite_master` にトリガー 3 本を確認                                                                         |
+| F55 | 検索語を二重引用符で包まずに `MATCH` へ渡すと例外になる。`道玄坂1-2-3` → `no such column: 2`、`(` → `fts5: syntax error`、`O'Brien` → `fts5: syntax error`。包めばすべてただの語句として扱われ、`*` も `OR` もリテラルになる                                                                                                                                                                                                                                                                                                                                                                                                         | miniflare の D1 で 11 パターンの `MATCH`                                                                                                                |
+| F56 | `content='shops'` の外部コンテンツ表では影テーブルが `_config` `_data` `_docsize` `_idx` の 4 つだけになり、`_content` は作られない                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | `sqlite_master` を一覧                                                                                                                                  |
+| F57 | 外部コンテンツ表の削除は `INSERT INTO shops_fts(shops_fts, rowid, …) VALUES('delete', …)` で行う。`INSERT INTO shops_fts(shops_fts) VALUES('integrity-check')` で本体との食い違いを検出できる                                                                                                                                                                                                                                                                                                                                                                                                                                        | miniflare の D1 で UPDATE / DELETE 後に実行                                                                                                             |
+| F58 | `drizzle-kit generate --custom --name=X` は空の SQL ファイルとスナップショットを同時に作るため、手書き SQL を混ぜても次回以降の採番が壊れない                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | 使い捨てプロジェクトで `--custom` 実行後に `_journal.json` と `meta/` を確認                                                                            |
+| F59 | D1 では `sqlite_version()` と `pragma_compile_options` が `SQLITE_AUTH` で拒否される。SQLite のバージョンや機能を実行時に問い合わせることはできない                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | miniflare の D1 で実行                                                                                                                                  |
+| F60 | `D1Database.exec()` は改行を含む SQL を受け付けないが、改行を空白へ潰すより先に行頭コメントを消さないと `--` 以降が全部コメントになり `SQL code did not contain a statement` で落ちる。`0001_shops_fts.sql` のようにコメント付きの手書き SQL で必ず踏む                                                                                                                                                                                                                                                                                                                                                                              | 25 テーブル全部を入れた使い捨てプロジェクトで `applyMigrations` 相当を実行して再現、行頭コメント除去で解消                                              |
+| F61 | `wrangler d1 migrations apply --local` は `0000_init.sql`（80 文）と `0001_shops_fts.sql`（5 文）を順に適用でき、FTS5 の仮想テーブルとトリガー 3 本も通る                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | 25 テーブルの使い捨てプロジェクトで実行、`_journal` の 2 件が両方 ✅                                                                                    |
+| F62 | シードを `wrangler d1 execute --local --file` で 2 回流しても件数が変わらない（shops 60 / reviews 109 / shops_fts 60 / rating_avg の総和 179.49 が一致）。先頭の `DELETE FROM` 群と `PRAGMA defer_foreign_keys` で冪等になる                                                                                                                                                                                                                                                                                                                                                                                                         | 同じ D1 に 2 回投入して集計を比較                                                                                                                       |
+| F63 | `shops` に INSERT すると `shops_fts` にトリガー経由で 60 行が入り、`INSERT INTO shops_fts(shops_fts) VALUES('integrity-check')` が成功する（索引と本体が一致している）                                                                                                                                                                                                                                                                                                                                                                                                                                                               | 60 店舗投入後に実行                                                                                                                                     |
+| F64 | 投入した 60 店舗に対し、渋谷駅からの 3 段階検索は下表のとおりの件数を返す。5000m だけ段 2（矩形）と段 3（厳密）が 28 → 25 と食い違い、Haversine の必要性が数字で出る                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | miniflare の D1 + `packages/geo` で 6 半径ぶん実測                                                                                                      |
+| F65 | `status = 'published' AND (geohash GLOB 'xn76f*' OR geohash GLOB 'xn76g*')` は `MULTI-INDEX OR` で 2 本とも `idx_shops_status_geohash` を使う。`lat`/`lng` の BETWEEN を足しても同じ索引のまま絞り込みだけが増える                                                                                                                                                                                                                                                                                                                                                                                                                   | `EXPLAIN QUERY PLAN` を 60 店舗入りの D1 で実行                                                                                                         |
+| F66 | **2026-09-15 に訂正（旧記述は誤り）。** `GLOB ?` はバインド値が前方一致パターンなら索引を使い、範囲比較とまったく同じプランになる（旧記述はバインドせずに測っていた）。それでも**実装では範囲比較 `geohash >= ? AND geohash < ?` を使う**。理由は速度ではなく、**プランが実行時のバインド値に左右されないこと**。`GLOB ?` は先頭ワイルドカードや NULL を渡されると `SCAN` へ落ちるが、範囲比較は値に関係なく必ず索引を使う。`'{'`（0x7B）は base32 の最大文字 `'z'`（0x7A）の次なので、`prefix` 〜 `prefix + '{'` がちょうど前方一致の範囲になる                                                                                     | 10 パターンを実測（`packages/geo/README.md` に表がある）。契約テストは `apps/api/src/db/schema/shop.test.ts`                                            |
+| F67 | D1 の `SQLITE_MAX_COMPOUND_SELECT` は **5**。6 項以上の `UNION` / `UNION ALL` は `too many terms in compound SELECT` で失敗する。9 セルを UNION で並べる実装は取れない                                                                                                                                                                                                                                                                                                                                                                                                                                                               | miniflare の D1 で 2〜12 項の `UNION ALL` を実行し、6 項で失敗することを確認                                                                            |
+| F68 | 1 本の SQL に geohash の OR と `lat`/`lng` の BETWEEN を両方書くと、プランナは `idx_shops_lat_lng` 1 本を選び geohash 条件は後置フィルタになる。**段 1 だけを SQL に出し、段 2（矩形）は TS 側でやる**と geohash 索引が主役になる                                                                                                                                                                                                                                                                                                                                                                                                    | 30,060 行で「OR + BETWEEN」「OR のみ」を比較                                                                                                            |
+| F69 | `ANALYZE` を打つ前は 9 セルの OR が `idx_shops_status_rating` の 1 本走査に落ちるが、打つと `MULTI-INDEX OR` で 9 本すべてが `idx_shops_status_geohash` を使う。統計は `sqlite_stat1` に入り、シードを流し直しても残る                                                                                                                                                                                                                                                                                                                                                                                                               | 60 行のシード投入後と 30,060 行の両方で ANALYZE 前後の `EXPLAIN QUERY PLAN` を比較                                                                      |
+| F70 | `migrations/` を丸ごと消して `drizzle-kit generate --name=init` をやり直すと、`0000_init.sql` は 1 バイトも変わらない（`diff` で確認）。ただし `meta/_journal.json` の `when` は実行時刻なので毎回変わる。**再現性を確かめる対象は .sql だけ**                                                                                                                                                                                                                                                                                                                                                                                       | 25 テーブルの使い捨てプロジェクトで再生成して `diff`                                                                                                    |
+| F71 | スキーマに変更が無い状態で `drizzle-kit generate` を打つと `No schema changes, nothing to migrate 😴` と出てファイルを作らない。空のマイグレーションが増えることはない                                                                                                                                                                                                                                                                                                                                                                                                                                                               | 同上                                                                                                                                                    |
+| F72 | `drizzle-kit check` はスナップショットとマイグレーションの整合性を検査し、問題なければ `Everything's fine 🐶🔥` と出す。drizzle-kit 0.31.10 のサブコマンド一覧に存在する                                                                                                                                                                                                                                                                                                                                                                                                                                                             | `npx drizzle-kit --help` と実行結果                                                                                                                     |
+| F73 | miniflare の D1 は workerd への loopback HTTP なので、`exec()` 1 回が TCP 接続 1 本になる。1 文ずつ流すと 1 回のテスト実行で 1300 本超の接続が立ち、テストを並列に走らせると macOS の一時ポート（`net.inet.ip.portrange` は 49152-65535 の 16384 個、TIME_WAIT は `net.inet.tcp.msl` 15 秒 × 2 = 30 秒）が尽きて `connect EADDRNOTAVAIL 127.0.0.1:xxxxx` で `beforeAll` ごと落ちる。**Stryker の command ランナーは終了コードしか見ないため、この失敗が「その変異を殺した」と記録され、ミューテーションスコアが偽の 100% になる。** `exec()` は受け取った文字列を改行で割って 1 行 1 文として実行するので、改行で繋いで 1 往復で流す | 4 並列の `npx vitest run` を同時に走らせて全滅を再現。1 往復にまとめたら 12 並列でも 0 件になり、スイートも 22 秒から 3.7 秒になった（2026-09-15 実測） |
 
 ---
 
@@ -548,38 +549,47 @@ export function applyMigrations(d1: D1Database): Promise<number>; // 戻り値�
    * migrations/ 配下の .sql をファイル名順に全部流し込み、実行した文の数を返す。
    * wrangler の d1_migrations テーブルは作らない（テストでは常にまっさらから作るため不要）。
    */
+  /**
+   * 文の配列を D1 へ **1 往復で** 流し込み、流した文の数を返す。
+   * `exec()` は受け取った文字列を改行で割って 1 行 1 文として実行するので、
+   * 1 行へ潰した文を改行で繋ぐだけでよい。1 文ずつ呼んではいけない理由は F73。
+   */
+  async function execAtOnce(d1: D1Database, statements: readonly string[]): Promise<number> {
+    await d1.exec(statements.join('\n'));
+
+    return statements.length;
+  }
+
   export async function applyMigrations(d1: D1Database): Promise<number> {
-    const migrationFileNames = readdirSync(MIGRATIONS_DIR)
+    const statements = readdirSync(MIGRATIONS_DIR)
       .filter((fileName) => fileName.endsWith('.sql'))
-      .sort();
+      .sort()
+      .flatMap((fileName) =>
+        readFileSync(join(MIGRATIONS_DIR, fileName), 'utf8')
+          .split(STATEMENT_SEPARATOR)
+          // D1 の exec() は複数行の SQL を受け付けない（改行があると構文解析に失敗する）。
+          // SQL の意味は改行の有無で変わらないため、空白へ潰して 1 行にしてから渡す。
+          // ただし改行を消す前に行頭コメントを落とすこと。`-- 説明` が残ったまま 1 行になると
+          // 行末までがコメント扱いになり、本体の CREATE 文ごと消えて
+          // 「SQL code did not contain a statement」で落ちる（F60）。
+          .map((rawStatement) =>
+            rawStatement
+              .split('\n')
+              .filter((line) => !LINE_COMMENT_PATTERN.test(line))
+              .join(' ')
+              .trim(),
+          )
+          .filter((statement) => statement.length > 0),
+      );
 
-    let executedStatementCount = 0;
-
-    for (const fileName of migrationFileNames) {
-      const sqlText = readFileSync(join(MIGRATIONS_DIR, fileName), 'utf8');
-
-      for (const rawStatement of sqlText.split(STATEMENT_SEPARATOR)) {
-        // D1 の exec() は複数行の SQL を受け付けない（改行があると構文解析に失敗する）。
-        // SQL の意味は改行の有無で変わらないため、空白へ潰して 1 行にしてから渡す。
-        // ただし改行を消す前に行頭コメントを落とすこと。`-- 説明` が残ったまま 1 行になると
-        // 行末までがコメント扱いになり、本体の CREATE 文ごと消えて
-        // 「SQL code did not contain a statement」で落ちる（F60）。
-        const statement = rawStatement
-          .split('\n')
-          .filter((line) => !LINE_COMMENT_PATTERN.test(line))
-          .join(' ')
-          .trim();
-        if (statement.length === 0) {
-          continue;
-        }
-        await d1.exec(statement);
-        executedStatementCount += 1;
-      }
-    }
-
-    return executedStatementCount;
+    return execAtOnce(d1, statements);
   }
   ```
+
+  **`exec()` を 1 文ずつ呼んではいけない（F73）。** ここを素直にループで書くと
+  マイグレーション 80 文＋シード 1247 文で 1 回のテスト実行が 1300 往復になる。
+  単体では「遅い」で済むが、テストを並列に走らせた瞬間に macOS の一時ポートが尽きて
+  `connect EADDRNOTAVAIL` で `beforeAll` ごと落ちる。**この形で書くこと。**
 
 - [ ] **Step 10: 空のマイグレーションディレクトリを作り、テストを通す**
 
@@ -8010,19 +8020,13 @@ SQL 側で計算する手段は無く、手で書くと 1 文字ずれても検�
    * ここでは改行で割るだけでよい。複数行に跨る文を足したくなったら生成側を直すこと。
    */
   export async function applySeed(d1: D1Database): Promise<number> {
-    const sqlText = readFileSync(SEED_FILE_PATH, 'utf8');
+    const statements = readFileSync(SEED_FILE_PATH, 'utf8')
+      .split('\n')
+      .map((rawStatement) => rawStatement.trim())
+      .filter((statement) => statement.length > 0 && !LINE_COMMENT_PATTERN.test(statement));
 
-    let executedStatementCount = 0;
-    for (const rawStatement of sqlText.split('\n')) {
-      const statement = rawStatement.trim();
-      if (statement.length === 0 || LINE_COMMENT_PATTERN.test(statement)) {
-        continue;
-      }
-      await d1.exec(statement);
-      executedStatementCount += 1;
-    }
-
-    return executedStatementCount;
+    // applyMigrations と同じく 1 往復で流す。1 文ずつ呼ぶと 1247 往復になる（F73）
+    return execAtOnce(d1, statements);
   }
   ```
 
@@ -8123,15 +8127,16 @@ SQL 側で計算する手段は無く、手で書くと 1 文字ずれても検�
 
 #### 実装前に踏んではいけない罠が 3 つある
 
-1. **`GLOB` をバインド引数で使うと索引が効かない（F66）。**
-   `EXPLAIN QUERY PLAN` で確かめると、リテラルなら
-   `MULTI-INDEX OR … idx_shops_status_geohash` になるのに、
-   `?` に差し替えた途端 `SEARCH shops USING INDEX idx_shops_status_rating (status=?)` に落ちる。
-   Drizzle の実行時クエリは必ずバインドになるので、
-   **`GLOB` ではなく範囲比較 `geohash >= ? AND geohash < ?` を使う。**
+1. **`GLOB` は索引が効くかどうかがバインド値に左右される（F66）。**
+   「`GLOB ?` は索引が効かない」と書いていた時期があるが**それは誤り**で、
+   バインド値が前方一致パターンなら `MULTI-INDEX OR … idx_shops_status_geohash` になり、
+   範囲比較とまったく同じプランを出す。
+   それでも **`GLOB` ではなく範囲比較 `geohash >= ? AND geohash < ?` を使う。**
+   `GLOB ?` は先頭ワイルドカード（`*n76f*`）を渡されると `SCAN shops` に落ちるのに対し、
+   範囲比較は値に関係なく必ず索引の範囲検索になる。
+   **選ぶ理由は速度ではなく、プランが実行時の値に依存しないこと。**
    base32 の最大文字は `z`(0x7A) なので、上限を `prefix + '{'`(0x7B) にすれば
-   「prefix で始まる文字列」全体をちょうど覆える。索引の範囲検索そのものなので
-   バインド引数でも確実に効く。
+   「prefix で始まる文字列」全体をちょうど覆える。
 
 2. **`UNION` で 9 セルを並べる実装は D1 では動かない（F67）。**
    D1 の `SQLITE_MAX_COMPOUND_SELECT` は 5 で、6 項以上は
@@ -8611,7 +8616,7 @@ SQL 側で計算する手段は無く、手で書くと 1 文字ずれても検�
   cd /Users/hattori/Downloads/alee/apps/api && npx vitest run src/db/queries/nearby-shops.test.ts
   ```
 
-  18 件が緑になる。
+  20 件が緑になる（Step 8 で穴を塞ぐテストを足すと 25 件になる）。
 
   **境界テストの `describe` は件数テストより後ろに置くこと。**
   3 件の店を足すので、先に走らせると件数の期待値が崩れる。
@@ -8638,22 +8643,48 @@ SQL 側で計算する手段は無く、手で書くと 1 文字ずれても検�
      「境界の geohash」だけ。
      **件数テストだけでは上限文字の誤りを検知できない**ことを体感する
   2. 段 2 の `isWithinBounds` の行を消す
-     → 半径 1000m の段 2 が 5 → 35 件になって落ちる
+     → **落ちない（実測 0 件）。** 計画は「半径 1000m の段 2 が 5 → 35 件になる」と
+     予想したが誤り。理由は 2 つある。(a) テスト側の `countStage2` は実装を通さず
+     独立に矩形を当てているので、実装の段 2 を消しても影響しない。
+     (b) `boundingBox` は円の**外接**矩形なので、段 2 が落とす行は段 3 の Haversine でも
+     必ず落ちる。つまり段 2 は**返り値を変えない枝刈り**であり、
+     出力を見るテストでは原理的に検知できない
+     （`packages/geo/src/bounding-box.ts` の JSDoc が「円ではなく外接矩形」と明記している）
   3. 段 3 の `row.distanceM <= search.radiusM` を `<` にする
-     → 距離 0m の shp_001 は残るが、境界ちょうどの店が無いため**通ってしまう**。
-     そのうえで半径を 190 にしたテストを一時的に足すと 5 → 1 件になる。
-     境界の等号がテストで守られていない箇所があると分かる（そのテストは足したまま残す）
+     → 落ちるのは**半径を「実在する店までの距離そのもの」に合わせた境界テスト 1 件だけ**。
+     計画が書いた「半径 190 のテストを足せば 5 → 1 件になる」は誤りで、
+     半径 190m は `<=` でも `<` でも 1 件になり等号の破壊を検知できない
+     （190.18m の 4 店は両方とも圏外）。
+     **等号を守るテストは、半径に `distanceMeters(中心, その店)` の生値を渡して書く**
   4. `.sort(...)` の第 2 キー `left.id.localeCompare(right.id)` を消す
-     → 190m の 4 軒の順序が不定になり、`limit=3` のテストが不安定になる
+     → 落ちるのは**同一座標の 2 軒を id 降順で INSERT したテスト**。
+     計画が書いた「190m の 4 軒は同距離なので順序が不定になる」は誤りで、
+     4 軒の距離は実測すると全部違う
+     （`190.18482375249062` / `190.18482375432035` / `190.18627483588895` /
+     `190.18627483771871`。経度差の浮動小数点表現が東西で非対称なため）。
+     **距離が 1 ビットも違わないのは座標が完全に一致する場合だけ**なので、
+     第 2 キーを守るテストはそういう 2 軒を作って書く
   5. `or(...cellConditions)` を `cellConditions[0]` だけにする
-     → 中心セルしか見なくなり、半径 5000m が 25 → 8 件になって落ちる
+     → 11 件落ちる。ただし半径 5000m は 25 → **20** 件（計画の「8 件」は誤り。
+     中心セル `xn76f` だけでも段 1 が 30 件残るため）
   6. `eq(shops.status, SHOP_STATUS_PUBLISHED)` を消す
-     → シードは全件 published なので**件数は変わらず通ってしまう**。
-     下書きの店を 1 件手で入れてから壊し直し、件数が増えることを確認する
-  7. `geohashPrefixCondition` を `sql\`${shops.geohash} GLOB ${\`${cell}*\`}\`` に戻す
-→ 件数のテストは全部通るが、`MULTI-INDEX OR` のテストが落ちる（F66）
+     → シードは全件 published なので**件数は変わらず通ってしまう**（計画どおり）。
+     渋谷駅直上に draft の店を 1 件入れる `describe` を恒久テストとして足し、
+     常時検知できるようにする
+  7. `geohashPrefixCondition` の上限を `` `${cell}{` `` から `` `${cell}z` `` ではなく
+     **`cell` そのもの**（`lt(shops.geohash, cell)`）に変える
+     → 範囲が空になるので、半径ごとの件数が全部 0 件になって落ちる。
+     `GLOB` に戻す壊し方は**使わない**。GLOB でも同じプランが出るので
+     `MULTI-INDEX OR` のテストは通ってしまい、壊した検証にならない（F66 の訂正）
 
   **7 つすべて確認したら元に戻し、テストを緑に戻す。**
+
+  > **2026-09-15 の実測結果:** 上の 2 / 3 / 4 は計画の予想が外れた。
+  > 予想どおり落ちたのは 1 / 5 / 6 / 7 だけで、2 は 1 件も落ちなかった。
+  > **「壊したのに落ちない」を潰すためにテストを 5 件足した**
+  > （190m の段 2→段 3、半径 200m の並び順、半径の境界＝閉区間、
+  > 同一座標の並び順、draft 除外）。結果、計画どおりに書くと 20 件のところが 25 件になった。
+  > 計画本文の「18 件が緑になる」という数字も古い。
 
 - [ ] **Step 9: 型検査を通す**
 
@@ -8708,23 +8739,43 @@ Phase 3 の成果物を「次の人がまっさらな環境で再現できる」
 
 - [ ] **Step 3: マイグレーションを消して再生成し、1 バイトも変わらないことを確認する**
 
+  **`migrations/` を消してはいけない。** 手書きの `0001_shops_fts.sql` は生成物ではないので、
+  消すと退避と復元が必要になり、失敗したときに復元漏れが起きる。
+  代わりに**空のディレクトリを別に用意して、そこへ生成させて比べる。**
+  作業ツリーには一切触れないので、途中で止めても壊れない。
+
   ```bash
   export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH"
   cd /Users/hattori/Downloads/alee/apps/api
-  cp migrations/0000_init.sql /tmp/meshimap-init-before.sql
-  cp migrations/0001_shops_fts.sql /tmp/meshimap-fts-before.sql
-  rm -rf migrations
-  npm run db:generate -- --name=init
-  npm run db:generate -- --custom --name=shops_fts
-  cp /tmp/meshimap-fts-before.sql migrations/0001_shops_fts.sql
-  diff /tmp/meshimap-init-before.sql migrations/0000_init.sql && echo '0000 は完全一致'
+  OUT=/tmp/meshimap-migrations-check
+  rm -rf "$OUT" && mkdir -p "$OUT"
+
+  # drizzle-kit の --out は絶対パスに './' を前置してしまい、既存スナップショットを読めなくなる。
+  # 相対パスへ直してから渡すこと（2026-09-15 実測。'.//tmp/...' で ENOENT になった）。
+  REL=$(python3 -c "import os;print(os.path.relpath('$OUT', os.getcwd()))")
+  npx drizzle-kit generate --dialect=sqlite --schema=./src/db/schema/index.ts --out="$REL" --name=init
+
+  diff migrations/0000_init.sql "$OUT/0000_init.sql" && echo '0000 は完全一致'
+  git status --porcelain migrations   # 何も出ないこと
   ```
 
-  `0000 は完全一致` と出る（F70）。
-  手書きの `0001_shops_fts.sql` は生成物ではないので、退避したものを戻す。
+  `0000 は完全一致` と出て、`git status` が空になる（F70）。
 
-  **`meta/_journal.json` の `when` は実行時刻なので毎回変わる。**
-  再現性を確かめる対象は `.sql` だけであり、`_journal.json` の差分は正常。
+  **`migrations/meta/` は `.sql` と違って毎回変わる。** 再現性を確かめる対象は `.sql` だけ。
+
+  | ファイル                  | 変わるもの      | 理由                                        |
+  | ------------------------- | --------------- | ------------------------------------------- |
+  | `meta/_journal.json`      | `when`          | 生成した実行時刻                            |
+  | `meta/0000_snapshot.json` | `id`            | drizzle-kit が毎回 UUID を振り直す          |
+  | `meta/0001_snapshot.json` | `id` / `prevId` | 同上（`prevId` は 0000 の `id` を指すため） |
+
+  **中身（テーブル定義）は 1 文字も変わらない。** スナップショットまで比べるなら
+  `id` と `prevId` を落としてから比較する（2026-09-15 実測。この 2 つ以外は完全一致だった）。
+
+  ```bash
+  diff <(python3 -c "import json;d=json.load(open('migrations/meta/0000_snapshot.json'));d.pop('id',None);d.pop('prevId',None);print(json.dumps(d,sort_keys=True))") \
+       <(python3 -c "import json;d=json.load(open('$OUT/meta/0000_snapshot.json'));d.pop('id',None);d.pop('prevId',None);print(json.dumps(d,sort_keys=True))")
+  ```
 
 - [ ] **Step 4: ローカル D1 をまっさらから作り直す**
 
@@ -8742,14 +8793,31 @@ Phase 3 の成果物を「次の人がまっさらな環境で再現できる」
   export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH"
   cd /Users/hattori/Downloads/alee/apps/api
   npx wrangler d1 execute meshimap-db --local --json --command="
-    SELECT type, count(*) AS objects FROM sqlite_master
-     WHERE name NOT LIKE 'sqlite_%' AND name NOT LIKE 'shops_fts_%'
-     GROUP BY type ORDER BY type"
+    SELECT type, name FROM sqlite_master
+     WHERE type IN ('table', 'trigger') AND name NOT LIKE 'sqlite_%'
+     ORDER BY type, name"
   ```
 
-  `table` が 27（25 テーブル + `d1_migrations` + `shops_fts`）、
-  `trigger` が 3 になる。
-  **`table` が 26 以下なら、`schema/index.ts` に書き忘れたテーブルがある。**
+  **2026-09-15 に実測して訂正。** 以前ここには
+  「`name NOT LIKE 'shops_fts_%'` で絞って `table` 27 / `trigger` 3」と書いていたが、
+  **その絞り込みでは `trigger` が 1 つも出ない。**
+  トリガーの名前が `shops_fts_after_insert` / `_after_update` / `_after_delete` で、
+  除外パターンにそのまま当たってしまうため。数を数えるのをやめて名前を並べる。
+
+  期待する内容は次のとおり。
+
+  | 種別      | 件数   | 内訳                                                                                                       |
+  | --------- | ------ | ---------------------------------------------------------------------------------------------------------- |
+  | `table`   | **32** | アプリの 25 + `d1_migrations` + `shops_fts` + `_cf_METADATA` + FTS5 の内部表 4 本（`shops_fts_data` など） |
+  | `trigger` | **3**  | `shops_fts_after_insert` / `shops_fts_after_update` / `shops_fts_after_delete`                             |
+
+  `_cf_METADATA` は wrangler がローカル D1 に自動で作る管理表で、
+  スキーマの一部ではない。**miniflare 上のテスト（`createMigratedD1()`）には現れない**ので、
+  テスト側の件数と食い違っても異常ではない。
+
+  **アプリのテーブルが 25 本あることを直接数えるなら**、`d1_migrations` /
+  `_cf_METADATA` / `shops_fts` / `shops_fts_*` を除いて数える。
+  **24 本以下なら `schema/index.ts` に書き忘れたテーブルがある。**
 
 - [ ] **Step 6: 外部キーがローカルでも有効なことを確認する**
 
@@ -8768,7 +8836,7 @@ Phase 3 の成果物を「次の人がまっさらな環境で再現できる」
   cd /Users/hattori/Downloads/alee/apps/api && npm test
   ```
 
-  Task 3-0 〜 3-13 で書いたテストファイルがすべて緑になる。
+  Task 3-0 〜 3-13 で書いたテストファイルがすべて緑になる（20 ファイル / 414 件。2026-09-15 実測）。
 
   | ファイル                                  | 主な検証対象                                       |
   | ----------------------------------------- | -------------------------------------------------- |
@@ -8784,12 +8852,14 @@ Phase 3 の成果物を「次の人がまっさらな環境で再現できる」
   | `src/db/schema/reservation.test.ts`       | 予約                                               |
   | `src/db/schema/collection.test.ts`        | お気に入り / リスト                                |
   | `src/db/schema/admin.test.ts`             | 通報 / 申請 / 通知 / 監査ログ                      |
-  | `src/db/schema/check-constraints.test.ts` | CHECK 制約 72 個の境界値と、テスト漏れの検出       |
+  | `src/db/schema/check-constraints.test.ts` | CHECK 制約 104 個の境界値と、テスト漏れの検出      |
   | `src/db/schema/index.test.ts`             | 25 テーブルが漏れなく再エクスポートされている      |
+  | `src/db/schema/design-doc-sync.test.ts`   | 設計書 §6 の表名と Drizzle 定義が一致している      |
   | `src/db/client.test.ts`                   | `createDatabase` が Drizzle を返す                 |
   | `src/db/fts.test.ts`                      | FTS5 仮想テーブル / トリガー / 検索語のエスケープ  |
   | `src/db/seed.test.ts`                     | シードの件数と冪等性                               |
   | `src/db/queries/nearby-shops.test.ts`     | 3 段構えの近傍検索                                 |
+  | `src/db/queries/conditions.test.ts`       | `and()` / `or()` の `undefined` を潰す補助関数     |
 
 - [ ] **Step 7.5: CHECK 制約にテストの漏れがないことを機械的に保証する**
 
@@ -8937,11 +9007,72 @@ Phase 3 の成果物を「次の人がまっさらな環境で再現できる」
 
   Phase 3 は `apps/api` の中だけで完結する想定だが、
   `package.json` に依存を足しているので、ここで全体を通す。
-  `packages/geo` の 203 件のテストも道連れにしていないか確認する。
+  `packages/geo` の 205 件のテストも道連れにしていないか確認する。
 
   ```bash
   cd /Users/hattori/Downloads/alee/packages/geo && npm test
   ```
+
+- [ ] **Step 9.5: ミューテーションテストを走らせ、結果を疑う**
+
+  テストが全部緑になっても「テストが何も守っていない」ことはありうる。
+  Stryker でソースをわざと書き換え、どれだけのテストが気づくかを測る。
+
+  ```bash
+  export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH"
+  cd /Users/hattori/Downloads/alee/apps/api && npm run test:mutation
+  ```
+
+  **スコアだけを見て終わりにしないこと。** 100% が出たら、まず疑う。
+  2026-09-15 にこのスイートは 129/129 の Killed（スコア 100%）を出したが、
+  **1 件も測れていなかった。** 経緯は次のとおり。
+
+  1. `src/db/queries/nearby-shops.ts` の段 2（外接矩形での枝刈り）は、
+     `boundingBox` が円に**外接**する矩形を返す以上、消しても出力が変わらない。
+     出力ベースのテストしか無いのだから、この変異は**生き残るはずだった**。
+  2. 「Killed」という結果が理屈と矛盾したので、変異を手で当ててテストを回した。
+     **377 件すべて通った。** つまり Stryker の判定が間違っている。
+  3. `reports/mutation/mutation.json` の `statusReason` を見ると、
+     129 件すべてに `connect EADDRNOTAVAIL 127.0.0.1:xxxxx` が出ていた。
+     変異ではなく**ポート枯渇**でテストが落ち、それを「殺した」と数えていた（F73）。
+
+  **Stryker の command ランナーは終了コードしか見ない。**
+  だから変異と無関係な基盤の失敗はすべて「変異を殺した」に化ける。
+  スコアが高いことは、テストが良いことの証明にならない。
+
+  結果を信用してよいかは、スコアではなく次の 2 つで判断する。
+
+  ```bash
+  cd /Users/hattori/Downloads/alee/apps/api
+  # 1. 基盤の失敗が混ざっていないか（0 でなければスコアは無効）
+  python3 -c "
+  import json
+  runs = json.load(open('reports/mutation/mutation.json'))['files']
+  reasons = [m.get('statusReason') or '' for f in runs.values() for m in f['mutants']]
+  print('EADDRNOTAVAIL を含む変異:', sum('EADDRNOTAVAIL' in r for r in reasons))
+  print('ENOENT / ECONN を含む変異:', sum(('ENOENT' in r or 'ECONN' in r) for r in reasons))
+  "
+  # 2. 除外したテストの一覧（除外が増えていないか）
+  grep -n 'vitestArgs' stryker.config.mjs
+  ```
+
+  **生き残った変異は 1 件ずつ理由を言えるようにする。** 選択肢は 3 つしかない。
+
+  | 生き残りの正体                   | 取るべき手                                                          |
+  | -------------------------------- | ------------------------------------------------------------------- |
+  | テストの穴                       | テストを足して殺す                                                  |
+  | 出力を変えない最適化             | 出力ではなく**呼び出し回数**を主張するテストを足して殺す            |
+  | 型を通すためだけの到達不能コード | `// Stryker disable all` で囲み、**なぜ到達不能か**をコメントで書く |
+
+  「除外する」は選択肢に無い。`stryker.config.mjs` の除外を増やしてよいのは
+  **サンドボックス外のファイルを読むテスト**だけで、その場合もファイル単位ではなく
+  そのテストを別ファイルへ切り出して**最小の範囲で**除外する。
+  ファイルごと除外すると、同じファイルにある他の主張まで効かなくなり、
+  そこでしか殺せない変異が静かに生き残る（実際 `SHOPS_FTS_TABLE_NAME` がこれで生き残っていた）。
+
+  `packages/core` と `packages/geo` も同じ目で見る。
+  こちらは `EADDRNOTAVAIL` が 0 件で、残る Timeout は
+  `GEOHASH_BASE32` を空文字にすると encode の `while` が終わらないという本物の無限ループだった。
 
 - [ ] **Step 10: わざと壊して品質ゲートが機能することを確認する**
 
@@ -8950,13 +9081,18 @@ Phase 3 の成果物を「次の人がまっさらな環境で再現できる」
      （4 テーブルの DROP）。`index.test.ts` も 25 → 21 で落ちる。
      生成されたファイルを消して戻すこと
   2. `migrations/0001_shops_fts.sql` を消す
-     → Step 4 の `db:reset:local` は通るが、Step 5 の `table` が 26 になり、
-     `fts.test.ts` と `seed.test.ts` の `shops_fts` が落ちる
+     → Step 4 の `db:reset:local` は通るが、Step 5 が **`table` 27 / `trigger` 0** になり、
+     `fts.test.ts` と `seed.test.ts` が合わせて 15 件落ちる（2026-09-15 実測）。
+     減る 5 は `shops_fts` と FTS5 の内部表 4 本。**`trigger` が 3 本とも消えることに注目する。**
+     同期トリガーは仮想テーブルと同じファイルで作っているので、
+     「全文検索だけ止まる」ではなく「索引の更新経路ごと消える」
   3. `seeds/seed.sql` の `ANALYZE;` を消して `db:reset:local`
      → `nearby-shops.test.ts` の `MULTI-INDEX OR` だけが落ちる（F69）
-  4. `drizzle.config.ts` の `out` を `./migrations2` に変える
-     → Step 2 が 25 テーブル分の新規マイグレーションを作る。
-     **設定ファイルの取り違えが静かに通らない**ことを確認する
+  4. `drizzle.config.ts` の `out` を**作業ツリーの外**（例 `/tmp/meshimap-break4`）へ向ける
+     → Step 2 の `No schema changes` が消え、25 テーブル分の新規マイグレーションが
+     そちらに生まれる。**設定ファイルの取り違えが静かに通らない**ことを確認する。
+     `./migrations2` のようにリポジトリ内へ向けると、戻すのに
+     ディレクトリごとの削除が要る。外に出しておけば `git checkout -- drizzle.config.ts` だけで戻る
 
   **4 つすべて確認したら元に戻し、Step 1 から通し直して全部緑にする。**
 
@@ -8978,7 +9114,7 @@ Phase 3 の成果物を「次の人がまっさらな環境で再現できる」
 - [ ] `migrations/0001_shops_fts.sql` が FTS5 仮想テーブルと同期トリガー 3 本を作る
 - [ ] `npx drizzle-kit check` が `Everything's fine 🐶🔥` を返す
 - [ ] `npm run db:generate` が `No schema changes` を返す
-- [ ] `migrations/` を消して再生成しても `0000_init.sql` が 1 バイトも変わらない
+- [ ] 空のディレクトリへ再生成しても `0000_init.sql` が 1 バイトも変わらない（`migrations/` は消さない）
 - [ ] `npm run db:reset:local` がまっさらな状態から通る
 - [ ] `seeds/seed.sql` が 1247 文で、東京 12 エリア 60 店舗を決定的に作る
 - [ ] シードを 2 回流しても件数と `rating_avg` の総和が変わらない
@@ -8989,7 +9125,11 @@ Phase 3 の成果物を「次の人がまっさらな環境で再現できる」
 - [ ] `check-constraints.test.ts` のメタテストが緑（マイグレーション上の CHECK 制約が
       1 つ残らずテストで名指しされている。Task 3-9 完了時点で 104 個）
 - [ ] 部分索引 3 本の `WHERE` 句が `sqlite_master` の DDL で検証されている
-- [ ] `apps/api` の全テストが緑
+- [ ] `apps/api` の全テストが緑（20 ファイル / 414 件）
+- [ ] `npm run test:mutation` が 3 ワークスペースとも閾値 85 を超え、かつ
+      `statusReason` に `EADDRNOTAVAIL` を含む変異が **0 件**（1 件でもあればスコアは無効）
+- [ ] 生き残った変異が 1 件ずつ「テストを足した / 回数で縛った / 到達不能と明記した」
+      のいずれかで説明できる
 - [ ] `npm run typecheck` が `apps/api` と全ワークスペースで通る
 - [ ] `packages/core` 配下のファイルを 1 つも作っていない・触っていない
 

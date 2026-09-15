@@ -238,6 +238,19 @@ describe('buildFtsMatchQuery', () => {
     expect(buildFtsMatchQuery('ラーメン　渋谷区')).toBe('"ラーメン" AND "渋谷区"');
   });
 
+  it('連続した空白は 1 つの区切りとして扱う', () => {
+    // 区切りの正規表現から `\s+` の `+` が落ちると、連続空白のあいだに空文字の語が生まれる。
+    // 空の語が式に混ざると `"ラーメン" AND "" AND "渋谷区"` のような式になり、
+    // 意図しない絞り込みになる。半角の連続・タブ混在・全角の連続をまとめて固定しておく。
+    expect(buildFtsMatchQuery('ラーメン  渋谷区')).toBe('"ラーメン" AND "渋谷区"');
+    expect(buildFtsMatchQuery('ラーメン\t 渋谷区')).toBe('"ラーメン" AND "渋谷区"');
+    expect(buildFtsMatchQuery('ラーメン　　渋谷区')).toBe('"ラーメン" AND "渋谷区"');
+  });
+
+  it('前後の空白は式に残らない', () => {
+    expect(buildFtsMatchQuery('  ラーメン 渋谷区  ')).toBe('"ラーメン" AND "渋谷区"');
+  });
+
   it('3 文字未満の語は落とす（trigram ではヒットしないため）', () => {
     expect(buildFtsMatchQuery('ラーメン 寿司')).toBe('"ラーメン"');
   });

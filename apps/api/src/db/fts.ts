@@ -10,12 +10,22 @@ import { FTS_TRIGRAM_MIN_LENGTH } from './constants';
 export const SHOPS_FTS_TABLE_NAME = 'shops_fts';
 
 /**
- * 語の区切り。
+ * 語の取り出し方。**区切りではなく語そのものを拾う。**
  *
- * JavaScript の `\s` は全角スペース（U+3000）を含むので、これだけで全角区切りも拾える。
- * 正規表現リテラルへ不可視の U+3000 を直接書くと読めなくなるため、`\s` に寄せている。
+ * `split(/\s+/u)` でも結果は同じになるが、そちらは採らない。
+ * 割り方だと連続した空白が空文字列のトークンを生み、それを下流の
+ * `length >= FTS_TRIGRAM_MIN_LENGTH` が捨てる、という形になる。
+ * 捨てる側があるせいで `\s+` の `+` を落としても出力が 1 文字も変わらず、
+ * **区切りの定義が壊れてもどんなテストでも気づけない**（ミューテーションテストで実測）。
+ * 拾い方なら空のトークンがそもそも生まれないので、この式の間違いは必ず出力に出る。
+ *
+ * JavaScript の `\S` は全角スペース（U+3000）を空白として扱うので、全角区切りも拾える。
+ * 正規表現リテラルへ不可視の U+3000 を直接書くと読めなくなるため、`\S` に寄せている。
+ *
+ * `g` 付きの正規表現は `exec` / `test` だと `lastIndex` を持ち越すが、
+ * `String.prototype.match` は呼ぶたびに 0 へ戻すので使い回してよい。
  */
-const TOKEN_SEPARATOR_PATTERN = /\s+/u;
+const TOKEN_PATTERN = /\S+/gu;
 
 /** 複数語をつなぐ FTS5 の演算子。1 語でも欠けたらヒットさせない（絞り込み優先） */
 const TOKEN_JOIN_OPERATOR = ' AND ';
@@ -39,8 +49,7 @@ export function escapeFtsToken(token: string): string {
  * 呼び出し側は `null` を見て LIKE 検索へフォールバックすること（Phase 6）。
  */
 export function buildFtsMatchQuery(rawInput: string): string | null {
-  const usableTokens = rawInput
-    .split(TOKEN_SEPARATOR_PATTERN)
+  const usableTokens = (rawInput.match(TOKEN_PATTERN) ?? [])
     .filter((token) => token.length >= FTS_TRIGRAM_MIN_LENGTH)
     .map((token) => escapeFtsToken(token));
 

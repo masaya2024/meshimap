@@ -113,17 +113,30 @@ export function toExecutableStatements(migrationSql: string): readonly string[] 
 }
 
 /**
+ * 文の配列を D1 へ 1 往復で流し込み、流した文の数を返す。
+ *
+ * `exec()` は受け取った文字列を**改行で割って 1 行 1 文として実行する**。
+ * `toExecutableStatements()` が各文を 1 行へ潰しているので、改行で繋ぐだけでよい。
+ *
+ * 1 文ずつ `exec()` を呼んではいけない。miniflare の D1 は workerd への
+ * loopback HTTP であり、`exec()` 1 回が TCP 接続 1 本になる。1 文ずつ流すと
+ * 1 回のテスト実行で数千本の接続が立ち、テストを並列に走らせた瞬間に
+ * macOS の一時ポート（49152-65535、TIME_WAIT 30 秒）が尽きて
+ * `connect EADDRNOTAVAIL` で落ちる（2026-09-15 実測）。
+ * この前提は local-d1.test.ts の「D1 への往復回数」で固定してある。
+ */
+async function execAtOnce(d1: D1Database, statements: readonly string[]): Promise<number> {
+  await d1.exec(statements.join('\n'));
+
+  return statements.length;
+}
+
+/**
  * migrations/ 配下の .sql をファイル名順に全部流し込み、実行した文の数を返す。
  * wrangler の d1_migrations テーブルは作らない（テストでは常にまっさらから作るため不要）。
  */
 export async function applyMigrations(d1: D1Database): Promise<number> {
-  const statements = toExecutableStatements(readMigrationSql());
-
-  for (const statement of statements) {
-    await d1.exec(statement);
-  }
-
-  return statements.length;
+  return execAtOnce(d1, toExecutableStatements(readMigrationSql()));
 }
 
 /**
@@ -140,9 +153,5 @@ export async function applySeed(d1: D1Database): Promise<number> {
     .split('\n')
     .flatMap((line) => toExecutableStatements(line));
 
-  for (const statement of statements) {
-    await d1.exec(statement);
-  }
-
-  return statements.length;
+  return execAtOnce(d1, statements);
 }

@@ -46,6 +46,11 @@ export default tseslint.config(
       '**/reports/',
       '**/.wrangler/',
       '**/.expo/',
+      // Stryker が変異ごとに作る使い捨てのリポジトリ複製。
+      // 実行が中断されると残り、`npx eslint .` が複製側のソースまで検査して落ちる
+      // （サンドボックスの stryker.config.mjs と vitest.config.ts には
+      // Stryker が @ts-nocheck を差し込むため ban-ts-comment に必ず当たる）。
+      '**/.stryker-tmp/',
       // Drizzle が生成する SQL とメタデータ
       'apps/api/migrations/',
       // wrangler types が生成する巨大な .d.ts
