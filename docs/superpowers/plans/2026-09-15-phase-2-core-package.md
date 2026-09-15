@@ -392,7 +392,7 @@ node -e "const a=[];for(let s=1080;s+90<=1530;s+=90)a.push([s,s+90]);console.log
 
 ---
 
-- [ ] **Step 1: `packages/core/package.json` に `@meshimap/geo` 依存を追加する**
+- [x] **Step 1: `packages/core/package.json` に `@meshimap/geo` 依存を追加する**
 
   Task 2-11 の `schema.ts` が `@meshimap/geo` から `LATITUDE_MIN` / `LATITUDE_MAX` / `LONGITUDE_MIN` / `LONGITUDE_MAX` を import する。ワークスペース参照の書き方は `apps/api/package.json` と `apps/mobile/package.json` に合わせて `"*"` にする。ファイル全体を次の内容にする:
 
@@ -422,7 +422,7 @@ node -e "const a=[];for(let s=1080;s+90<=1530;s+=90)a.push([s,s+90]);console.log
   }
   ```
 
-- [ ] **Step 2: ワークスペースのリンクを張り直す**
+- [x] **Step 2: ワークスペースのリンクを張り直す**
 
   ```bash
   export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH"
@@ -436,7 +436,7 @@ node -e "const a=[];for(let s=1080;s+90<=1530;s+=90)a.push([s,s+90]);console.log
   ls -l node_modules/@meshimap/
   ```
 
-- [ ] **Step 3: `packages/core/stryker.config.json` をコマンドランナーに差し替える**
+- [x] **Step 3: `packages/core/stryker.config.json` をコマンドランナーに差し替える**
 
   既定の `testRunner: "vitest"` は `@stryker-mutator/vitest-runner@10.0.0` と `vitest@5.0.0` の組み合わせで**変異ごとに 0 件しかテストを実行せず**、スコアが 21.14% まで落ちる（本計画作成時に実測）。コマンドランナーに切り替えると同じコード・同じテストで 100.00% になる。ファイル全体を次の内容にする:
 
@@ -464,7 +464,7 @@ node -e "const a=[];for(let s=1080;s+90<=1530;s+=90)a.push([s,s+90]);console.log
 
   `coverageAnalysis` は `"off"` にする（コマンドランナーはテスト単位のカバレッジを収集できないため、`"perTest"` のままだと実行時にエラーになる）。
 
-- [ ] **Step 4: `packages/core/src/constants.ts` を作る**
+- [x] **Step 4: `packages/core/src/constants.ts` を作る**
 
 ```ts
 // ドメイン全体で共有する定数。マジックナンバーをコードに直接書かないための唯一の置き場。
@@ -540,7 +540,7 @@ export const BUSINESS_HOURS_JOINER = ' / ';
 export const REGULAR_HOLIDAY_LABEL = '定休日';
 ```
 
-- [ ] **Step 5: `packages/core/src/constants.test.ts` を作る**
+- [x] **Step 5: `packages/core/src/constants.test.ts` を作る**
 
   定数そのもののテストは一見無意味に見えるが、(a) 単位の取り違え（分とミリ秒）を検知する、(b) 定数同士の整合（`MILLISECONDS_PER_MINUTE * MINUTES_PER_DAY === MILLISECONDS_PER_DAY`）を保証する、という 2 つの役目がある。
 
@@ -609,7 +609,7 @@ describe('ドメインの範囲定数', () => {
 });
 ```
 
-- [ ] **Step 6: 型チェックとテストを実行する**
+- [x] **Step 6: 型チェックとテストを実行する**
 
   ```bash
   export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH"
@@ -620,7 +620,7 @@ describe('ドメインの範囲定数', () => {
 
   期待: 型エラーなし、`Tests  8 passed (8)`。
 
-- [ ] **Step 7: 意図的に壊してテストが検知することを確認する**
+- [x] **Step 7: 意図的に壊してテストが検知することを確認する**
 
   1 つずつ適用し、指定のテストが FAIL することを確認したら**必ず元に戻す**。
 

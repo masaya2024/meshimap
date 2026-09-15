@@ -17,6 +17,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@meshimap/geo": "*",
     "zod": "^4.6.5"
   }
 }

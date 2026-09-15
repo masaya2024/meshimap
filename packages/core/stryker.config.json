@@ -1,10 +1,21 @@
 {
   "$schema": "https://raw.githubusercontent.com/stryker-mutator/stryker-js/master/packages/api/schema/stryker-core.json",
   "packageManager": "npm",
-  "testRunner": "vitest",
-  "reporters": ["html", "clear-text", "progress"],
-  "mutate": ["src/**/*.ts", "!src/**/*.test.ts", "!src/index.ts"],
-  "coverageAnalysis": "perTest",
+  "testRunner": "command",
+  "commandRunner": {
+    "command": "npx vitest run --silent"
+  },
+  "reporters": [
+    "html",
+    "clear-text",
+    "progress"
+  ],
+  "mutate": [
+    "src/**/*.ts",
+    "!src/**/*.test.ts",
+    "!src/index.ts"
+  ],
+  "coverageAnalysis": "off",
   "htmlReporter": {
     "fileName": "reports/mutation/index.html"
   },
