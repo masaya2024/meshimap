@@ -42,6 +42,9 @@ example
 /ios
 /android
 
+# Cloudflare のローカル状態（D1 の SQLite 実体・KV・R2 のエミュレーション）
+.wrangler/
+
 # テスト成果物（カバレッジ / ミューテーションレポート）
 coverage/
 reports/
