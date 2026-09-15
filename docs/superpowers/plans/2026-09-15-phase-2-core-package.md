@@ -2326,7 +2326,7 @@ describe('日付が変わってから開く前日の行', () => {
 
 ---
 
-- [ ] **Step 1: `packages/core/src/reservation-slot.ts` を作る**
+- [x] **Step 1: `packages/core/src/reservation-slot.ts` を作る**
 
 ```ts
 // 営業時間から予約枠を切り出す。D1 の seat_settings（capacity / slot_minutes / max_parallel）に対応。
@@ -2423,7 +2423,7 @@ export function generateSlots(
 
   `acceptsReservation` を**ここで見ない**理由: 「枠が存在するか」と「いま受け付けているか」は別の関心事で、受付停止中でも枠の一覧（満席表示）は出したい。受付可否は `canReserve`（Task 2-8）の責務。
 
-- [ ] **Step 2: `packages/core/src/reservation-slot.test.ts` を作る**
+- [x] **Step 2: `packages/core/src/reservation-slot.test.ts` を作る**
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -2613,7 +2613,7 @@ describe('assertSeatSettings（境界ちょうどは受け入れる）', () => {
 });
 ```
 
-- [ ] **Step 3: 型チェックとテストを実行する**
+- [x] **Step 3: 型チェックとテストを実行する**
 
   ```bash
   export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH"
@@ -2624,7 +2624,7 @@ describe('assertSeatSettings（境界ちょうどは受け入れる）', () => {
 
   期待: `Tests  22 passed (22)`。
 
-- [ ] **Step 4: 意図的に壊してテストが検知することを確認する**
+- [x] **Step 4: 意図的に壊してテストが検知することを確認する**
 
   | # | 変更する行（`src/reservation-slot.ts`） | 変更後 | 期待: FAIL するテスト（実測） |
   |---|---|---|---|
@@ -2652,7 +2652,7 @@ describe('assertSeatSettings（境界ちょうどは受け入れる）', () => {
 
 ---
 
-- [ ] **Step 1: `packages/core/src/reservation-availability.ts` を作る**
+- [x] **Step 1: `packages/core/src/reservation-availability.ts` を作る**
 
 ```ts
 // 予約枠に対して「いま予約を受けられるか」を判定する。理由コードを返して UI の文言を分ける。
@@ -2721,7 +2721,7 @@ export function canReserve(request: ReservationRequest): ReservationAvailability
 
   **判定順が UI の文言を決める**ので、順番自体が仕様である: 受付停止（`not-accepting`）→ 人数が席数を超過（`party-too-large`）→ 同時受付件数の上限（`parallel-full`）→ 残席不足（`seats-full`）。この順序はテストで固定する。
 
-- [ ] **Step 2: `packages/core/src/reservation-availability.test.ts` を作る**
+- [x] **Step 2: `packages/core/src/reservation-availability.test.ts` を作る**
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -2933,7 +2933,7 @@ describe('canReserve', () => {
 });
 ```
 
-- [ ] **Step 3: 型チェックとテストを実行する**
+- [x] **Step 3: 型チェックとテストを実行する**
 
   ```bash
   export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH"
@@ -2944,7 +2944,7 @@ describe('canReserve', () => {
 
   期待: `Tests  15 passed (15)`。
 
-- [ ] **Step 4: 意図的に壊してテストが検知することを確認する**
+- [x] **Step 4: 意図的に壊してテストが検知することを確認する**
 
   | # | 変更する行（`src/reservation-availability.ts`） | 変更後 | 期待: FAIL するテスト（実測） |
   |---|---|---|---|
