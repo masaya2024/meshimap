@@ -39,7 +39,7 @@
 - **リポジトリ層の関数シグネチャは `(db, actor, ...)` の順で固定する。** 設計書 3.2 の `updateShopAsOwner(db: Db, actor: OwnerActor, shopId: ShopId, data: ShopUpdate)` に合わせる。機械検査は「第 1 引数が `db`、第 2 引数が `actor` または `viewer` でありブランド型 Actor であること」を検証するので、「権限主体を省略できない」という要件は同じ強度で担保される。
 - **リポジトリ層で `db.transaction()` を使わない。** 本番の D1 は対話的トランザクションを持たない。Task 4-10 の機械検査で使用を禁止する。
 - `packages/core` と `packages/geo` は読むだけ。Phase 4 で編集しない。
-- **Phase 3 の成果物（`apps/api/src/db/` 配下と `apps/api/vitest.config.ts` と `apps/api/migrations/`）は読むだけ。** Phase 4 が新しく書くのは `src/lib/` `src/auth/` `src/middleware/` `src/repositories/` `src/routes/` `src/test/` `src/index.ts` と `src/db/client.ts` だけ。
+- **Phase 3 の成果物（`apps/api/src/db/` 配下と `apps/api/vitest.config.ts` と `apps/api/migrations/`）は読むだけ。** Phase 4 が新しく書くのは `src/lib/` `src/auth/` `src/middleware/` `src/repositories/` `src/routes/` `src/test/` `src/index.ts` だけ。`src/db/client.ts`（`createDatabase` / `Database`）も **Phase 3 が作成済み**なので、上書きせず import して使う。
 - **テスト用の D1 を Phase 4 で自作しない。** Phase 3 の `src/db/testing/local-d1.ts` の `createMigratedD1()` を使う（根拠は後述「テスト環境の選定」）。
 
 ---
@@ -281,7 +281,7 @@ Phase 4 のコードは常に `../db/schema` から import する。
 | `apps/api/src/auth/actor.ts`                     | **ブランド型 Actor** とファクトリ・型ガード                                                                                                                        | 新規     |
 | `apps/api/src/auth/auth.ts`                      | Better Auth 初期化（D1 + Drizzle アダプタ）                                                                                                                        | 新規     |
 | `apps/api/src/auth/load-actor.ts`                | セッション + profiles から Actor を組み立てる                                                                                                                      | 新規     |
-| `apps/api/src/db/client.ts`                      | `createDatabase(d1)` と `Database` 型                                                                                                                              | 新規     |
+| `apps/api/src/db/client.ts`                      | `createDatabase(d1)` と `Database` 型。**Phase 3 の成果物。Phase 4 では読むだけ**                                                                                  | 変更なし |
 | `apps/api/src/middleware/error-handler.ts`       | 例外 → JSON。スタックトレースを漏らさない                                                                                                                          | 新規     |
 | `apps/api/src/middleware/auth.ts`                | セッション検証 → `viewer` を Context に載せる                                                                                                                      | 新規     |
 | `apps/api/src/middleware/role-guard.ts`          | ロール不一致で 403 ＋ 型ナローイングヘルパ                                                                                                                         | 新規     |
@@ -613,8 +613,12 @@ describe('seedShop', () => {
 npm run test -w @meshimap/api -- fixtures
 ```
 
-期待: `Failed to resolve import "./fixtures"` で失敗する。**このメッセージを目で見ること。**
+期待: `Cannot find module './fixtures' imported from .../apps/api/src/test/fixtures.test.ts` で失敗する。**このメッセージを目で見ること。**
 見ずに次へ進むと、テストが実際には何も検証していない状態に気付けない。
+
+> 解決エラーの文言はツールの版で変わる。**Vitest 5 は `Cannot find module '<指定子>' imported from <テストファイルの絶対パス>`**
+> を出す（`Failed to resolve import "..."` は Vitest 4 以前の文言）。大事なのは「import が解決できずに
+> 落ちた」ことを目で確認することであって、文字列の一致ではない。
 
 - [ ] **Step 3: 最小実装を書く**
 
@@ -842,7 +846,14 @@ export async function createTestWorld(): Promise<TestWorld> {
 npm run test -w @meshimap/api -- fixtures
 ```
 
-期待: `呼ぶたびに独立した D1 を返す（テスト間で状態が漏れない）` が FAIL（`seenFromOther` が 1 になる）。
+期待: **大量に落ちる**。実測では 13 件中 12 件が FAIL、1 件だけ PASS。
+
+出方は「`seenFromOther` が 1 になった」という assertion ではなく、miniflare の
+`Attempted to use poisoned stub` である。世界を使い回すと、最初のテストの `afterEach` で
+`dispose()` された D1 スタブを 2 件目以降が掴み続けるため、assert に到達する前に
+スタブの利用そのものが拒否される。**この出方を見ること。**
+「1 件目だけが通り、以降が全滅する」形を覚えておくと、実装中に同じ壊れ方をしたときに
+「世界を使い回してしまった」と即断できる。
 **ここが FAIL しないなら、以降のテストは互いの書き込みを見てしまう。** 確認後に元へ戻す。
 
 次に `seedMasters` の `areas` の INSERT を削る:
@@ -912,6 +923,7 @@ import { HTTPException } from 'hono/http-exception';
 import { describe, expect, it } from 'vitest';
 import {
   ERROR_MESSAGE_FORBIDDEN,
+  ERROR_MESSAGE_INTERNAL,
   ERROR_MESSAGE_INVALID_INPUT,
   ERROR_MESSAGE_NOT_FOUND,
   ERROR_MESSAGE_UNAUTHORIZED,
@@ -947,6 +959,16 @@ describe('HTTP エラーファクトリ', () => {
     expect(error.message).toBe(ERROR_MESSAGE_INVALID_INPUT);
   });
 
+  it('文言は決められた日本語そのものである', () => {
+    // 上の各テストは定数どうしを比べているだけなので、文言が空文字に変わっても通ってしまう。
+    // リテラルと突き合わせて初めて「文言が消えた」に気づける
+    expect(ERROR_MESSAGE_UNAUTHORIZED).toBe('ログインが必要です');
+    expect(ERROR_MESSAGE_FORBIDDEN).toBe('この操作を行う権限がありません');
+    expect(ERROR_MESSAGE_NOT_FOUND).toBe('対象が見つかりません');
+    expect(ERROR_MESSAGE_INVALID_INPUT).toBe('入力内容が正しくありません');
+    expect(ERROR_MESSAGE_INTERNAL).toBe('サーバ内部でエラーが発生しました');
+  });
+
   it('文言に内部情報を示す語が含まれていない', () => {
     // 「どのテーブルか」「どのカラムか」が分かる文言は情報漏洩になる
     const messages = [
@@ -973,7 +995,7 @@ describe('HTTP エラーファクトリ', () => {
 npm run test -w @meshimap/api -- http-error
 ```
 
-期待: `Failed to resolve import "./http-error"` で失敗する。**このメッセージを目で見ること。**
+期待: `Cannot find module './http-error' imported from .../apps/api/src/lib/http-error.test.ts` で失敗する。**このメッセージを目で見ること。**
 
 - [ ] **Step 3: 最小実装を書く**
 
@@ -1125,14 +1147,24 @@ export function invalidInput(): HTTPException {
 
 ```ts
 import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import * as core from '@meshimap/core';
 import { describe, expect, it } from 'vitest';
 import { PROFILE_DISPLAY_NAME_MAX_LENGTH } from '../lib/constants';
 import * as db from './constants';
 
-/** マイグレーション本文。CHECK 制約に焼かれた数値と TypeScript 側の定数を突き合わせる */
+/**
+ * マイグレーション本文。CHECK 制約に焼かれた数値と TypeScript 側の定数を突き合わせる。
+ *
+ * `readFileSync(new URL(...))` と書けないのは、この tsconfig のグローバル `URL` が
+ * `@cloudflare/workers-types` のもので、Node の `fs` が要求する `node:url` の `URL` と
+ * 別物として扱われるため（TS2769 を実測）。src/db/testing/local-d1.ts と同じく
+ * パス文字列へ落としてから読む。
+ */
+const CURRENT_DIR = dirname(fileURLToPath(import.meta.url));
 const migrationSql = readFileSync(
-  new URL('../../migrations/0000_init.sql', import.meta.url),
+  join(CURRENT_DIR, '..', '..', 'migrations', '0000_init.sql'),
   'utf8',
 );
 
@@ -1220,7 +1252,7 @@ describe('@meshimap/core と src/db/constants.ts の値の一致', () => {
 npm run test -w @meshimap/api -- constants-parity
 ```
 
-期待: 31 件すべて PASS（数値 24 件 + ロール 3 件 + マイグレーション突き合わせ 3 件 + 状態値の不在 1 件）。
+期待: 30 件すべて PASS（数値 24 件 + ロール 2 件 + マイグレーション突き合わせ 3 件 + 状態値の不在 1 件）。
 
 > `@meshimap/core` は `apps/api/package.json` の `dependencies` にあり、
 > `node_modules/@meshimap/core` はリポジトリルートの `packages/core` へのシンボリックリンクとして
@@ -1272,7 +1304,7 @@ grep -n "dev.vars" .gitignore
 npm run test -w @meshimap/api -- http-error
 ```
 
-期待: 6 件すべて PASS。
+期待: 7 件すべて PASS。
 
 - [ ] **Step 8: 意図的にコードを壊してテストが検知することを確認する**
 
@@ -1286,7 +1318,11 @@ export const ERROR_MESSAGE_NOT_FOUND = 'この店舗にアクセスする権限�
 npm run test -w @meshimap/api -- http-error
 ```
 
-期待: `notFound は 404 の HTTPException を返す` と `notFound の文言は「権限がない」と「存在しない」を区別しない` の 2 件が FAIL。**これが FAIL しないなら、情報漏洩を防ぐテストが機能していない。** 確認後に元へ戻す。
+期待: `文言は決められた日本語そのものである` と `notFound の文言は「権限がない」と「存在しない」を区別しない` の 2 件が FAIL。
+`notFound は 404 の HTTPException を返す` は**落ちない**（`expect(error.message).toBe(ERROR_MESSAGE_NOT_FOUND)` が
+同じ定数どうしの比較なので、文言を書き換えても両辺が一緒に変わる）。この同語反復を埋めるために
+`文言は決められた日本語そのものである` をリテラル比較で置いてある。
+**2 件とも FAIL しないなら、情報漏洩を防ぐテストが機能していない。** 確認後に元へ戻す。
 
 さらに `forbidden()` の `403` を `404` に変えて実行し、`forbidden は 403 の HTTPException を返す` が FAIL することを確認してから元へ戻す。
 
@@ -1440,7 +1476,8 @@ describe('型ガード', () => {
 
 ```ts
 // このファイルは実行されない。tsc が「本来コンパイルエラーになるべきコード」を検査する。
-// @ts-expect-error が付いた行が実際にはエラーにならない場合、tsc は
+// `@ts-expect-error` が付いた行が実際にはエラーにならない場合、tsc は（この行のように
+// 先頭を記号で始めればディレクティブとして解釈されない）
 // 「Unused '@ts-expect-error' directive」として失敗する。つまりブランド型が壊れたら typecheck が落ちる。
 import { ROLE_OWNER, ROLE_USER, toUserId } from '@meshimap/core';
 import { toActor } from './actor';
@@ -1491,7 +1528,7 @@ export const factoryToOwner: OwnerActor = toActor('usr_bob', ROLE_USER);
 npm run test -w @meshimap/api -- actor
 ```
 
-期待: `Failed to resolve import "./actor"` で失敗する。**このメッセージを目で見ること。**
+期待: `Cannot find module './actor' imported from .../apps/api/src/auth/actor.test.ts` で失敗する。**このメッセージを目で見ること。**
 
 - [ ] **Step 4: 最小実装を書く**
 
@@ -1536,6 +1573,21 @@ export type Actor = UserActor | OwnerActor | AdminActor;
 export type Viewer = Actor | AnonymousActor;
 
 /**
+ * ブランド型の唯一の生成点。
+ * `actorBrand` は declare 専用でランタイムの値が無く、オブジェクトリテラルとして書けないため
+ * ここでだけ as を使う。packages/core/src/identifier.ts と同じ「検証済みの値にだけ as を当てる」方針。
+ * リテラルへ直接 as を当てないのは、規約（consistent-type-assertions）が
+ * `const x: T = { ... }` を書けない場合に限って値経由の as を許すため。
+ */
+function brandActor<TRole extends string, TUserId>(
+  role: TRole,
+  userId: TUserId,
+): BrandedActor<TRole, TUserId> {
+  const unbranded = { role, userId };
+  return unbranded as BrandedActor<TRole, TUserId>;
+}
+
+/**
  * Actor の唯一の生成点。
  * 呼んでよいのは `src/auth/load-actor.ts` とテストだけで、これは Task 4-3 の検査で機械的に強制する。
  * 設計書 3.2 の「コンストラクタを外部に公開しない」を、TypeScript に friend 修飾子がないため
@@ -1546,12 +1598,11 @@ export function toActor(userId: string, role: Role): Actor {
   const brandedUserId = toUserId(userId);
   switch (role) {
     case ROLE_USER:
-      // ブランド型の生成点（規約 82 行目の例外）。検証を通過した値だけがここに到達する
-      return Object.freeze({ role: ROLE_USER, userId: brandedUserId } as UserActor);
+      return Object.freeze(brandActor(ROLE_USER, brandedUserId));
     case ROLE_OWNER:
-      return Object.freeze({ role: ROLE_OWNER, userId: brandedUserId } as OwnerActor);
+      return Object.freeze(brandActor(ROLE_OWNER, brandedUserId));
     case ROLE_ADMIN:
-      return Object.freeze({ role: ROLE_ADMIN, userId: brandedUserId } as AdminActor);
+      return Object.freeze(brandActor(ROLE_ADMIN, brandedUserId));
   }
 }
 
@@ -1559,10 +1610,7 @@ export function toActor(userId: string, role: Role): Actor {
  * 未認証を表す唯一の値。
  * Actor と違い userId が null なので、所有者スコープの関数へは型として渡せない。
  */
-export const ANONYMOUS_VIEWER: AnonymousActor = Object.freeze({
-  role: ROLE_ANONYMOUS,
-  userId: null,
-} as AnonymousActor);
+export const ANONYMOUS_VIEWER: AnonymousActor = Object.freeze(brandActor(ROLE_ANONYMOUS, null));
 
 export function isUserActor(viewer: Viewer): viewer is UserActor {
   return viewer.role === ROLE_USER;
@@ -1587,7 +1635,7 @@ export function isAuthenticatedActor(viewer: Viewer): viewer is Actor {
 npm run test -w @meshimap/api -- actor
 ```
 
-期待: 12 件すべて PASS。
+期待: 11 件すべて PASS。
 
 - [ ] **Step 6: 型レベルテストが通ることを確認する**
 
@@ -1670,7 +1718,7 @@ git commit -m "feat(api): 権限主体のブランド型 Actor を追加"
 
 **Interfaces:**
 
-- Consumes: `node:fs/promises` の `readdir` / `readFile`、`node:path`、`node:url` の `fileURLToPath`、`typescript` の `createSourceFile` / `isImportDeclaration`
+- Consumes: `node:fs/promises` の `readdir` / `readFile`、`node:path`、`node:url` の `fileURLToPath`、`typescript` の `createSourceFile` / `isImportDeclaration` / `isNamedImports` / `isNamespaceImport`
 - Produces: なし（検査専用）
 
 - [ ] **Step 1: `tsconfig.json` の `types` に `"node"` を足す**
@@ -1689,7 +1737,7 @@ git commit -m "feat(api): 権限主体のブランド型 Actor を追加"
     "jsx": "react-jsx",
     "jsxImportSource": "hono/jsx"
   },
-  "include": ["src/**/*.ts", "worker-configuration.d.ts"]
+  "include": ["src/**/*.ts", "scripts/**/*.ts", "worker-configuration.d.ts"]
 }
 ```
 
@@ -1698,13 +1746,23 @@ git commit -m "feat(api): 権限主体のブランド型 Actor を追加"
 `URL` / `TextEncoder` / `AbortController` / `crypto.randomUUID()` / `crypto.subtle.digest` / `drizzle(d1)` /
 `new Hono<{ Bindings }>()` を使うファイルで `tsc --noEmit` がエラー 0 になることを実測して確認した。
 
+> **`"node"` を足しても、グローバルの `URL` は `@cloudflare/workers-types` のまま**である点に注意。
+> `readFileSync(new URL(...), 'utf8')` は `node:fs` が要求する `node:url` の `URL` と別物と判定され
+> **TS2769 で落ちる**（Task 4-1 の `constants-parity.test.ts` で実測）。ファイルを読むときは
+> `fileURLToPath(import.meta.url)` でパス文字列へ落としてから `node:path` の `join` で組み立てること。
+> 本計画のソース走査テストはすべてこの形に揃えてある。
+
 ```bash
 npm run typecheck -w @meshimap/api
 ```
 
 期待: エラー 0（このタスクの時点では `worker-configuration.d.ts` が未生成でも `include` に無いファイルは無視される）。
 
-- [ ] **Step 2: 失敗するテストを書く**
+- [ ] **Step 2: 検査テストを書く**
+
+検査器（`collectActorFactoryViolations`）は純関数として切り出し、**検査器そのものの取りこぼしを
+自己テストで塞ぐ**。ソースを文字列リテラルで渡して AST 化するので、実ファイルを作らずに
+「名前空間 import」「別名 import」「型だけの import」を試せる。
 
 `apps/api/src/auth/actor-encapsulation.test.ts`:
 
@@ -1720,8 +1778,13 @@ const SOURCE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '
 /**
  * Actor の生成関数を import してよいファイル（src/ からの相対パス）。
  * ここを増やすときは「本当に認証経路か」を必ず確認すること。
+ *
+ * 下の「ホワイトリストに載っているファイルが実在する」検査があるため、
+ * **まだ存在しないファイルをここに先に書くことはできない**。
+ * `auth/load-actor.ts` と `middleware/auth.ts` は Task 4-6 で作るので、
+ * この時点では書かない（Task 4-6 Step 1 で足して 3 件になる）。
  */
-const ACTOR_FACTORY_ALLOWLIST = new Set(['auth/load-actor.ts', 'test/fixtures.ts']);
+const ACTOR_FACTORY_ALLOWLIST = new Set(['test/fixtures.ts']);
 
 /** 生成系のシンボル。型だけの import は対象外（型は漏れても権限は作れない） */
 const ACTOR_FACTORY_SYMBOLS = new Set(['toActor', 'ANONYMOUS_VIEWER']);
@@ -1742,9 +1805,18 @@ async function listSourceFiles(directory: string): Promise<string[]> {
   return files;
 }
 
-/** そのファイルが actor モジュールから値として import しているシンボル名を返す */
-function collectValueImportsFromActor(sourceFile: ts.SourceFile): string[] {
-  const imported: string[] = [];
+/** 名前空間 import に対する違反メッセージ。個別シンボルの文言と混ざらないよう分けている */
+const NAMESPACE_IMPORT_REASON = 'actor モジュール全体を名前空間として import している';
+
+/**
+ * そのファイルが actor モジュールの生成能力を持ち込んでいれば、違反メッセージを返す。
+ *
+ * 名前空間 import を別扱いするのは、`import * as actorModule from './actor'` と書けば
+ * `actorModule.toActor(...)` で同じ生成ができるのに、名前付き import の検査では
+ * 1 つも引っかからないため。ここを見落とすと検査全体が素通りになる。
+ */
+function collectActorFactoryViolations(sourceFile: ts.SourceFile, relativePath: string): string[] {
+  const violations: string[] = [];
   for (const statement of sourceFile.statements) {
     if (!ts.isImportDeclaration(statement)) {
       continue;
@@ -1762,18 +1834,70 @@ function collectValueImportsFromActor(sourceFile: ts.SourceFile): string[] {
       continue;
     }
     const bindings = clause.namedBindings;
-    if (bindings === undefined || !ts.isNamedImports(bindings)) {
+    if (bindings === undefined) {
+      continue;
+    }
+    if (ts.isNamespaceImport(bindings)) {
+      violations.push(`${relativePath} が ${NAMESPACE_IMPORT_REASON}`);
+      continue;
+    }
+    if (!ts.isNamedImports(bindings)) {
       continue;
     }
     for (const element of bindings.elements) {
       if (element.isTypeOnly) {
         continue;
       }
-      imported.push(element.name.text);
+      // `import { toActor as make }` では name が別名になるので、元の名前がある propertyName を優先する
+      const originalName = (element.propertyName ?? element.name).text;
+      if (ACTOR_FACTORY_SYMBOLS.has(originalName)) {
+        violations.push(`${relativePath} が ${originalName} を import している`);
+      }
     }
   }
-  return imported;
+  return violations;
 }
+
+describe('検査器そのものの取りこぼし', () => {
+  /** 実ファイルを作らずに検査ロジックだけを試すためのヘルパ */
+  function violationsOf(code: string): string[] {
+    const sourceFile = ts.createSourceFile('probe.ts', code, ts.ScriptTarget.ES2022, true);
+    return collectActorFactoryViolations(sourceFile, 'probe.ts');
+  }
+
+  it('名前付き import の toActor を捕まえる', () => {
+    expect(violationsOf("import { toActor } from './actor';")).toEqual([
+      'probe.ts が toActor を import している',
+    ]);
+  });
+
+  it('名前空間 import も捕まえる', () => {
+    // `import * as actorModule from './actor'` は actorModule.toActor(...) と書けるため、
+    // 名前付き import と同じだけ生成能力がある。ここを見落とすと検査は素通りする
+    expect(violationsOf("import * as actorModule from './actor';")).toEqual([
+      'probe.ts が actor モジュール全体を名前空間として import している',
+    ]);
+  });
+
+  it('別名を付けた import も、元の名前で捕まえる', () => {
+    expect(violationsOf("import { toActor as make } from './actor';")).toEqual([
+      'probe.ts が toActor を import している',
+    ]);
+  });
+
+  it('型だけの import は見逃す', () => {
+    expect(violationsOf("import type { Actor } from './actor';")).toEqual([]);
+    expect(violationsOf("import { type Actor } from './actor';")).toEqual([]);
+  });
+
+  it('型ガードなど生成能力のない値 import は見逃す', () => {
+    expect(violationsOf("import { isOwnerActor } from './actor';")).toEqual([]);
+  });
+
+  it('別モジュールの同名 import は見逃す', () => {
+    expect(violationsOf("import { toActor } from './not-actor';")).toEqual([]);
+  });
+});
 
 describe('Actor ファクトリの閉じ込め', () => {
   it('toActor と ANONYMOUS_VIEWER を import してよいのはホワイトリストのファイルだけ', async () => {
@@ -1801,11 +1925,7 @@ describe('Actor ファクトリの閉じ込め', () => {
         true,
         ts.ScriptKind.TS,
       );
-      for (const name of collectValueImportsFromActor(sourceFile)) {
-        if (ACTOR_FACTORY_SYMBOLS.has(name)) {
-          violations.push(`${relativePath} が ${name} を import している`);
-        }
-      }
+      violations.push(...collectActorFactoryViolations(sourceFile, relativePath));
     }
 
     expect(violations).toEqual([]);
@@ -1824,14 +1944,37 @@ describe('Actor ファクトリの閉じ込め', () => {
 });
 ```
 
-- [ ] **Step 3: テストが失敗することを確認する**
+- [ ] **Step 3: テストが通ることと、違反を本当に捕まえることを確認する**
 
 ```bash
 npm run test -w @meshimap/api -- actor-encapsulation
 npm run typecheck -w @meshimap/api
 ```
 
-期待: `ホワイトリストに載っているファイルが実在する` が FAIL する（`auth/load-actor.ts` と `test/fixtures.ts` はまだ存在しない）。1 件目の検査は violations が空なので PASS する。**この状態を目で見ること。** 以降のタスクでファイルを作ると PASS に変わる。
+期待: 8 件すべて PASS（検査器の自己テスト 6 件 + 閉じ込め検査 2 件）。
+
+このタスクは「検査を書く」タスクなので、素直に書くと**最初から緑**になる。それでは検査が働いて
+いるのか分からないため、**わざと違反を作って赤を見る**こと。`apps/api/src/lib/logger.ts` の先頭に
+一時的に次の 1 行を足す:
+
+```ts
+import { toActor } from '../auth/actor';
+```
+
+```bash
+npm run test -w @meshimap/api -- actor-encapsulation
+```
+
+期待: `toActor と ANONYMOUS_VIEWER を import してよいのはホワイトリストのファイルだけ` が
+`['lib/logger.ts が toActor を import している']` で FAIL する。**このメッセージを目で見ること。**
+`import * as actorModule from '../auth/actor';` に書き換えると
+`lib/logger.ts が actor モジュール全体を名前空間として import している` で落ちることも確認する
+（名前空間 import を見落とすと検査全体が素通りになるため、ここは必ず両方試す）。確認後に必ず消す。
+
+> 許可リストは Task 4-6 で `auth/load-actor.ts` と `middleware/auth.ts` を足して 3 件になる。
+> 「ホワイトリストに載っているファイルが実在する」検査があるので、**まだ無いファイルを先に書くと
+> このタスクが赤のまま次へ進むことになる**。だからここでは `test/fixtures.ts`（Task 4-0 で作成済み）
+> だけを載せている。
 
 > `typescript` は**ルートの devDependencies に 6.0.3 が入っている**ため、追加インストールは不要。Vitest は Node 環境で走るので `import ts from 'typescript'` がそのまま解決できる。
 
@@ -1842,7 +1985,8 @@ git add apps/api/src/auth/actor-encapsulation.test.ts apps/api/tsconfig.json
 git commit -m "test(api): Actor 生成関数の import 元を検査するテストを追加"
 ```
 
-> このタスクは検査だけなので実装ファイルがない。Task 4-6 完了時点で 2 件とも PASS になる。
+> このタスクは検査だけなので実装ファイルがない。許可リストは Task 4-6 の Step 5 と Step 10 で
+> 1 件ずつ増え、Task 4-6 完了時点で実物と同じ 3 件になる。
 
 ---
 
@@ -1860,13 +2004,28 @@ git commit -m "test(api): Actor 生成関数の import 元を検査するテス�
   - `errorHandler: ErrorHandler<AppEnv>`
   - `notFoundHandler: NotFoundHandler<AppEnv>`
 
+> **hono 4.13.7 では「文字列を throw しても 500 の固定文言」にはならない。**
+> `node_modules/hono/dist/hono-base.js` の `#handleError` は
+>
+> ```js
+> #handleError(err, c) {
+>   if (err instanceof Error) {
+>     return this.errorHandler(err, c);
+>   }
+>   throw err;
+> }
+> ```
+>
+> となっており、`Error` でない値は `errorHandler` に渡さずそのまま再送出する。
+> 応答本文が一切作られないので情報漏洩は起きないが、**テストの期待は「500 の固定文言」ではなく
+> 「再送出される／`logError` が呼ばれない」**にしなければ落ちる。
+
 - [ ] **Step 1: 失敗するテストを書く**
 
 `apps/api/src/middleware/error-handler.test.ts`:
 
 ```ts
 import { Hono } from 'hono';
-import { HTTPException } from 'hono/http-exception';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   ERROR_MESSAGE_INTERNAL,
@@ -1874,15 +2033,21 @@ import {
   forbidden,
   notFound,
 } from '../lib/http-error';
+import type { AppEnv } from '../lib/app-env';
 import * as logger from '../lib/logger';
 import { errorHandler, notFoundHandler } from './error-handler';
+
+/** Error インスタンス以外を throw した場合の検証用。文言自体に意味は無い */
+const THROWN_STRING = 'ただの文字列';
 
 /** 機密が混ざった例外メッセージ。これが応答に出てはいけない */
 const LEAKY_MESSAGE =
   'D1_ERROR: no such column: shops.owner_id at /var/app/src/repositories/shop-repository.ts:42';
 
-function createApp(): Hono {
-  return new Hono()
+// errorHandler / notFoundHandler は ErrorHandler<AppEnv> なので、
+// 素の Hono（BlankEnv）に渡すと型が合わない。アプリ本体と同じ型引数で組み立てる
+function createApp(): Hono<AppEnv> {
+  return new Hono<AppEnv>()
     .onError(errorHandler)
     .notFound(notFoundHandler)
     .get('/ok', (c) => c.json({ status: 'ok' }))
@@ -1896,7 +2061,9 @@ function createApp(): Hono {
       throw new Error(LEAKY_MESSAGE);
     })
     .get('/throw-string', () => {
-      throw 'ただの文字列';
+      // Error 以外が throw された場合の経路を再現する。
+      // eslint-disable-next-line @typescript-eslint/only-throw-error -- 非 Error の throw を意図的に起こす検証
+      throw THROWN_STRING;
     });
 }
 
@@ -1945,11 +2112,21 @@ describe('errorHandler', () => {
     expect(body).not.toMatch(/at\s|\.ts:|\.js:|stack/i);
   });
 
-  it('文字列が throw されても 500 の固定文言になる', async () => {
-    vi.spyOn(logger, 'logError').mockImplementation(() => undefined);
-    const res = await createApp().request('/throw-string');
-    expect(res.status).toBe(500);
-    expect(await res.json()).toEqual({ error: { status: 500, message: ERROR_MESSAGE_INTERNAL } });
+  it('Error でない値の throw は onError に渡らず再送出される（応答本文が作られない）', async () => {
+    // hono 4.13.7 の #handleError は `err instanceof Error` を満たさない値を
+    // errorHandler へ渡さずそのまま再送出する（node_modules/hono/dist/hono-base.js で確認）。
+    // 単一ハンドラ経路では同期 try/catch の中で再送出されるため、request() は
+    // 拒否された Promise ではなく同期 throw になる。だから try/catch で受ける。
+    // 応答本文が一切作られないので、throw された値がクライアントへ出る経路は無い。
+    const spy = vi.spyOn(logger, 'logError').mockImplementation(() => undefined);
+    let thrown: unknown;
+    try {
+      await createApp().request('/throw-string');
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBe(THROWN_STRING);
+    expect(spy).not.toHaveBeenCalled();
   });
 
   it('未知の例外はサーバ側ログに残す', async () => {
@@ -1980,7 +2157,7 @@ describe('notFoundHandler', () => {
 npm run test -w @meshimap/api -- error-handler
 ```
 
-期待: `Failed to resolve import "./error-handler"` で失敗する。**このメッセージを目で見ること。**
+期待: `Cannot find module './error-handler' imported from .../apps/api/src/middleware/error-handler.test.ts` で失敗する。**このメッセージを目で見ること。**
 
 - [ ] **Step 3: 最小実装を書く**
 
@@ -2040,7 +2217,12 @@ npm run test -w @meshimap/api -- error-handler
 
 期待: `未知の例外は 500 と固定文言に置き換える` / `未知の例外のメッセージを応答本文に含めない` / `スタックトレースを応答本文に含めない` の 3 件が FAIL。**これが FAIL しないなら、情報漏洩を検出できていない。** 確認後に元へ戻す。
 
-次に `err instanceof HTTPException` を `!(err instanceof HTTPException)` に変えて実行し、`HTTPException のステータスと文言をそのまま返す` が FAIL することを確認してから元へ戻す。
+次に `err instanceof HTTPException` を `!(err instanceof HTTPException)` に変えて実行し、**7 件が FAIL する**ことを確認してから元へ戻す
+（`HTTPException のステータスと文言をそのまま返す` / `403 の HTTPException も同じ形で返す` /
+`未知の例外は 500 と固定文言に置き換える` / `未知の例外のメッセージを応答本文に含めない` /
+`スタックトレースを応答本文に含めない` / `未知の例外はサーバ側ログに残す` /
+`HTTPException はサーバ側ログに残さない（想定内のため）`。判定を反転すると
+「想定内／想定外」の両側が同時に入れ替わるので、片側 1 件では済まない）。
 
 - [ ] **Step 6: コミット**
 
@@ -2055,13 +2237,15 @@ git commit -m "feat(api): 情報を漏らさないエラーハンドラを追加
 
 **Files:**
 
-- Create: `apps/api/src/db/client.ts`
 - Create: `apps/api/src/auth/auth.ts`
 - Test: `apps/api/src/auth/auth.test.ts`
+- 読むだけ: `apps/api/src/db/client.ts`（**Phase 3 で作成済み**）
 
-> Phase 3 の `apps/api/src/` を実際に列挙して確認済み。`db/client.ts` は存在しない
-> （`db/constants.ts` / `db/sql-helpers.ts` / `db/schema/*` / `db/testing/local-d1.ts` のみ）。
-> このタスクで新規に作る。
+> `apps/api/src/db/client.ts` は **Phase 3 のコミットで既に入っている**（19 行。`createDatabase` と
+> `Database` を export し、`apps/api/src/db/client.test.ts` も 7 件ある）。
+> 「Phase 3 の `apps/api/src/db/` 配下は読むだけ」というグローバル制約どおり、
+> **このタスクで作り直さない**。書き換えると Phase 3 の型（`DrizzleD1Database<typeof schema>`）と
+> 戻り値の型注釈が失われ、`client.test.ts` が壊れる。
 
 **Interfaces:**
 
@@ -2070,14 +2254,13 @@ git commit -m "feat(api): 情報を漏らさないエラーハンドラを追加
   - `better-auth` の `betterAuth`
   - `better-auth/adapters/drizzle` の `drizzleAdapter`
   - `@better-auth/expo` の `expo`
+  - `../db/client`（**Phase 3**）の `createDatabase(d1: D1Database): Database` / `type Database = DrizzleD1Database<typeof schema>`
   - `../db/schema`（Phase 3）の `account` / `profiles` / `session` / `user` / `verification`
   - `../db/constants` の `ROLE_USER` / `PROFILE_STATUS_ACTIVE`
   - `../lib/constants` の `PROFILE_DISPLAY_NAME_MAX_LENGTH`
   - `../lib/app-env` の `AppBindings`
   - `../test/fixtures`（テストのみ）の `createTestWorld` / `readRow` / `countRows`
 - Produces:
-  - `createDatabase(d1: D1Database): Database`
-  - `type Database = ReturnType<typeof createDatabase>`
   - `AUTH_BASE_PATH: '/api/auth'`
   - `createAuth(db: Database, env: AppBindings): Auth`
   - `type Auth = ReturnType<typeof createAuth>`
@@ -2108,7 +2291,6 @@ import { countRows, createTestWorld, readRow } from '../test/fixtures';
 import type { TestWorld } from '../test/fixtures';
 import { createDatabase } from '../db/client';
 import { PROFILE_DISPLAY_NAME_MAX_LENGTH } from '../lib/constants';
-import type { AppBindings } from '../lib/app-env';
 import { AUTH_BASE_PATH, createAuth } from './auth';
 
 const TEST_BINDINGS = {
@@ -2123,6 +2305,8 @@ const TEST_BINDINGS = {
  * AppBindings を満たすためだけにダミーを置くと、使っていない依存が増えて壊れやすくなるので、
  * createAuth が実際に読む 3 つのキーだけを持つオブジェクトを渡す。
  * createAuth の引数型を AppBindings から「必要な 3 キーだけ」に絞ることで as を使わずに済ませる。
+ * （`AppBindings` 型そのものはこのファイルで使わない。import すると `noUnusedLocals` と
+ * `@typescript-eslint/no-unused-vars` の両方で落ちるので**書かない**こと）
  */
 function createTestAuth(world: TestWorld) {
   return createAuth(createDatabase(world.d1), TEST_BINDINGS);
@@ -2311,26 +2495,12 @@ describe('createAuth', () => {
 npm run test -w @meshimap/api -- auth.test
 ```
 
-期待: `Failed to resolve import "../db/client"` で失敗する。**このメッセージを目で見ること。**
+期待: `Cannot find module './auth' imported from .../apps/api/src/auth/auth.test.ts` で失敗する。**このメッセージを目で見ること。**
+
+> `../db/client` は **Phase 3 で実在する**ので解決エラーにはならない。落ちるのは `./auth` だけ。
+> ここで `../db/client` が見つからないと出るなら、Phase 3 の成果物を消してしまっている。
 
 - [ ] **Step 3: 最小実装を書く**
-
-`apps/api/src/db/client.ts`:
-
-```ts
-import { drizzle } from 'drizzle-orm/d1';
-import * as schema from './schema';
-
-/**
- * D1 バインディングから Drizzle クライアントを作る。
- * Workers では env がリクエストごとにしか取れないため、モジュール top-level でキャッシュしない。
- */
-export function createDatabase(d1: D1Database) {
-  return drizzle(d1, { schema });
-}
-
-export type Database = ReturnType<typeof createDatabase>;
-```
 
 `apps/api/src/auth/auth.ts`:
 
@@ -2471,7 +2641,7 @@ Phase 5 で Expo からのディープリンク経由の認証を通すときに
 - [ ] **Step 6: コミット**
 
 ```bash
-git add apps/api/src/db/client.ts apps/api/src/auth/auth.ts apps/api/src/auth/auth.test.ts
+git add apps/api/src/auth/auth.ts apps/api/src/auth/auth.test.ts
 git commit -m "feat(api): D1 + Drizzle 上の Better Auth 初期化と profiles 自動作成を追加"
 ```
 
@@ -2497,7 +2667,7 @@ git commit -m "feat(api): D1 + Drizzle 上の Better Auth 初期化と profiles 
   - `@meshimap/core` の `isRole`
   - `hono/factory` の `createMiddleware`
   - `../db/schema`（Phase 3）の `profiles`
-  - `../db/client`（Task 4-5）の `createDatabase` / `Database`
+  - `../db/client`（**Phase 3**）の `createDatabase` / `Database`
   - `../db/constants`（Phase 3）の `PROFILE_STATUS_ACTIVE` / `ROLE_ADMIN` / `ROLE_OWNER` / `ROLE_USER` / `PROFILE_STATUS_SUSPENDED` / `PROFILE_STATUS_DELETED`
   - `../auth/actor`（Task 4-2）の `toActor` / `ANONYMOUS_VIEWER` / `ROLE_ANONYMOUS` / `Actor`
   - `../auth/auth`（Task 4-5）の `createAuth` / `AUTH_BASE_PATH`
@@ -2588,7 +2758,7 @@ export type TestUser = {
  * すでに `role = 'user'` の行を作っているため。INSERT すると PRIMARY KEY 衝突で落ちる。
  *
  * 認証経路を本物のまま通すので、Actor は必ず authMiddleware が生成する
- * （fixtures は `toActor` を呼ばない。Task 4-3 の閉じ込め検査に頼らずに済む）。
+ * （この関数は `toActor` を呼ばない。リポジトリ単体テスト用の `buildActorForTest` とは別経路）。
  */
 export async function signUpAs(
   world: TestWorld,
@@ -2697,12 +2867,21 @@ function createTestAuth(world: TestWorld) {
 }
 ```
 
-併せて次の 2 箇所を書き換える。
+併せて次の 3 箇所を書き換える。
 
 1. `signUpRequest` / `signInRequest` の中の `TEST_BINDINGS.BETTER_AUTH_URL` を `TEST_BASE_URL` にする。
 2. `別の秘密鍵で作ったインスタンスでは同じ Cookie が通らない` の中の
    `{ ...TEST_BINDINGS, BETTER_AUTH_SECRET: 'a-completely-different-secret-value-32ch' }` を
    `{ ...createTestBindings(world), BETTER_AUTH_SECRET: 'a-completely-different-secret-value-32ch' }` にする。
+3. `createTestAuth` の上のコメント後半 3 行（`createAuth が実際に読む 3 つのキーだけ…` から
+   `…両方で落ちるので**書かない**こと）` まで）を、次の 2 行に差し替える。
+   Task 4-5 の時点では `AppBindings` を import しない理由を書く必要があったが、
+   fixtures に寄せたあとは「鍵の文字列を散らさない」ことが理由になる。
+
+```ts
+ * fixtures の createTestBindings が返す「実際に読むキーだけ」のオブジェクトを渡す。
+ * 秘密鍵の文字列を 2 箇所に散らすと、片方だけ変えたときに原因を追いにくくなる。
+```
 
 `TEST_BETTER_AUTH_SECRET` は `createTestBindings` の中でしか使わないので、このファイルでは import しない
 （import すると `noUnusedLocals` でコンパイルエラーになる）。
@@ -2867,7 +3046,7 @@ describe('loadActor', () => {
 npm run test -w @meshimap/api -- load-actor
 ```
 
-期待: `Failed to resolve import "./load-actor"` で失敗する。**このメッセージを目で見ること。**
+期待: `Cannot find module './load-actor' imported from .../apps/api/src/auth/load-actor.test.ts` で失敗する。**このメッセージを目で見ること。**
 
 - [ ] **Step 5: loadActor を実装する**
 
@@ -2941,13 +3120,26 @@ export async function loadActor(db: Database, userId: string): Promise<ActorLoad
 }
 ```
 
+**同時に Task 4-3 の許可リストへ `auth/load-actor.ts` を足す。** このファイルは `toActor` を
+import するので、足さないと `actor-encapsulation.test.ts` の
+`toActor と ANONYMOUS_VIEWER を import してよいのはホワイトリストのファイルだけ` が
+`['auth/load-actor.ts が toActor を import している']` で落ちる。
+
+`apps/api/src/auth/actor-encapsulation.test.ts`:
+
+```ts
+const ACTOR_FACTORY_ALLOWLIST = new Set(['auth/load-actor.ts', 'test/fixtures.ts']);
+```
+
 - [ ] **Step 6: テストが通ることを確認する**
 
 ```bash
 npm run test -w @meshimap/api -- load-actor
+npm run test -w @meshimap/api -- actor-encapsulation
 ```
 
-期待: 14 件すべて PASS。
+期待: `load-actor` は 14 件すべて PASS。`actor-encapsulation` も 8 件すべて PASS（許可リストを
+足さずに走らせると閉じ込め検査が落ちるので、**先にわざと足さずに 1 回走らせて赤を見ておくとよい**）。
 
 - [ ] **Step 7: 意図的にコードを壊してテストが検知することを確認する**
 
@@ -3208,7 +3400,7 @@ describe('authMiddleware', () => {
 npm run test -w @meshimap/api -- middleware/auth
 ```
 
-期待: `Failed to resolve import "./auth"` で失敗する。**このメッセージを目で見ること。**
+期待: `Cannot find module './auth' imported from .../apps/api/src/middleware/auth.test.ts` で失敗する。**このメッセージを目で見ること。**
 
 - [ ] **Step 10: authMiddleware を実装する**
 
@@ -3266,13 +3458,40 @@ export const authMiddleware = createMiddleware<AppEnv>(async (c, next) => {
 });
 ```
 
+**許可リストへ `middleware/auth.ts` を足す。** ここが「セッションが無い＝匿名」を決める唯一の場所で、
+`ANONYMOUS_VIEWER` を import するため。これで Task 4-3 の許可リストは実物と同じ 3 件になる。
+
+`apps/api/src/auth/actor-encapsulation.test.ts`:
+
+```ts
+/**
+ * Actor の生成関数を import してよいファイル（src/ からの相対パス）。
+ * ここを増やすときは「本当に認証経路か」を必ず確認すること。
+ *
+ * 下の「ホワイトリストに載っているファイルが実在する」検査があるため、
+ * **まだ存在しないファイルをここに先に書くことはできない**。
+ *
+ * `middleware/auth.ts` が載っているのは、そこが「セッションが無い＝匿名」を決める
+ * 唯一の場所だから。ANONYMOUS_VIEWER は権限を 1 つも持たない値なので、
+ * これを他所から作られても権限は増えないが、viewer を決める経路が散ると
+ * 「どこで匿名に落ちたのか」を追えなくなるため認証経路に閉じ込める。
+ */
+const ACTOR_FACTORY_ALLOWLIST = new Set([
+  'auth/load-actor.ts',
+  'middleware/auth.ts',
+  'test/fixtures.ts',
+]);
+```
+
 - [ ] **Step 11: テストが通ることを確認する**
 
 ```bash
 npm run test -w @meshimap/api -- middleware/auth
+npm run test -w @meshimap/api -- actor-encapsulation
 ```
 
-期待: 11 件すべて PASS。同時に Task 4-3 の `ホワイトリストに載っているファイルが実在する` も PASS になる。
+期待: `middleware/auth` は 11 件すべて PASS。`actor-encapsulation` も 8 件すべて PASS
+（許可リストの 3 件がすべて実在するようになった）。
 
 - [ ] **Step 12: 型チェックを通す**
 
@@ -3535,7 +3754,7 @@ describe('require*Actor ヘルパ', () => {
 npm run test -w @meshimap/api -- role-guard
 ```
 
-期待: `Failed to resolve import "./role-guard"` で失敗する。**このメッセージを目で見ること。**
+期待: `Cannot find module './role-guard' imported from .../apps/api/src/middleware/role-guard.test.ts` で失敗する。**このメッセージを目で見ること。**
 
 - [ ] **Step 3: 最小実装を書く**
 
@@ -3690,7 +3909,7 @@ git commit -m "feat(api): ロールガードと Actor 絞り込みヘルパを�
     `latitude` / `longitude` / `budgetLunchMinYen` などの**キャメルケースかつ Yen サフィックス付き**のプロパティ名を持つ）
   - `@meshimap/geo` の `coordinate` / `encodeGeohash`
   - `../auth/actor`（Task 4-2）の `isAdminActor` / `isOwnerActor` と型 `AdminActor` / `OwnerActor` / `Viewer`
-  - `../db/client`（Task 4-5）の `Database`、`../db/schema`（Phase 3）の `shops`
+  - `../db/client`（**Phase 3**）の `Database`、`../db/schema`（Phase 3）の `shops`
   - `../db/constants`（Phase 3）の `SHOP_GEOHASH_PRECISION` / `SHOP_STATUS_DRAFT` / `SHOP_STATUS_PUBLISHED`
   - `../lib/constants`（Task 4-1）の `SHOP_LIST_DEFAULT_LIMIT` / `SHOP_LIST_MAX_LIMIT`
 - Produces:
@@ -3816,11 +4035,13 @@ import {
   createTestWorld,
   ownerActorOrThrow,
   readRow,
+  runWrite,
   seedMasters,
   seedShop,
   seedUser,
   TEST_AREA_ID,
   TEST_GENRE_ID,
+  TEST_LONGITUDE,
   userActorOrThrow,
 } from '../test/fixtures';
 import type { TestWorld } from '../test/fixtures';
@@ -3845,6 +4066,9 @@ const GINZA_GEOHASH = 'xn76umv';
 /** 大阪駅。encodeGeohash(coordinate(34.702485, 135.495951), 7) の実測値 */
 const OSAKA_GEOHASH = 'xn0m7m3';
 const OSAKA_LATITUDE = 34.702485;
+/** 差し替え先の master。genre_id / area_id が本当に書き換わったと言うには別の行が要る */
+const OTHER_GENRE_ID = 'gnr_sushi';
+const OTHER_AREA_ID = 'are_shinjuku';
 const OSAKA_LONGITUDE = 135.495951;
 
 /** shopCreateSchema.parse を通した後の形。default が適用済みなので全キーが揃っている */
@@ -4103,7 +4327,7 @@ describe('shop-repository', () => {
       // リポジトリ単体では通る。set() が常に updatedAt を含むので SQL は成立する
       const updated = await updateShopAsOwner(db, ownerA, toShopId('shp_a_pub'), {}, new Date(200));
       expect(updated?.updatedAt).toEqual(new Date(200));
-      expect(updated?.name).toBe('shp_a_pub 店');
+      expect(updated?.name).toBe('A の公開店');
     });
 
     it('緯度と経度を両方指定すると geohash を再計算する', async () => {
@@ -4141,6 +4365,81 @@ describe('shop-repository', () => {
       );
       expect(updated?.budgetLunchMin).toBe(800);
       expect(updated?.budgetLunchMax).toBe(1500);
+    });
+
+    it('任意項目をすべて指定すると、対応する列へ 1 つずつ書き込む', async () => {
+      // genre_id / area_id は外部キー。別の値へ確かに変わったと言うために master をもう 1 組入れる
+      await runWrite(
+        world,
+        'INSERT INTO genres (id, name, slug, icon_key, sort_order) VALUES (?, ?, ?, ?, ?)',
+        OTHER_GENRE_ID,
+        '寿司',
+        'sushi',
+        null,
+        1,
+      );
+      await runWrite(
+        world,
+        'INSERT INTO areas (id, name, parent_id, prefecture) VALUES (?, ?, ?, ?)',
+        OTHER_AREA_ID,
+        '新宿',
+        null,
+        '東京都',
+      );
+
+      await updateShopAsOwner(
+        db,
+        ownerA,
+        toShopId('shp_a_pub'),
+        {
+          nameKana: 'エーノコウカイテン',
+          genreId: OTHER_GENRE_ID,
+          areaId: OTHER_AREA_ID,
+          description: '説明を入れた',
+          postalCode: '160-0022',
+          address: '東京都新宿区新宿3-1-1',
+          phone: '03-1234-5678',
+          website: 'https://example.com',
+          budgetDinnerMinYen: 3000,
+          budgetDinnerMaxYen: 6000,
+        },
+        new Date(100),
+      );
+
+      // 戻り値ではなく生 SQL で見る。プロパティ名と列名の対応がずれていても
+      // 戻り値どうしの比較では一致してしまい、取り違えに気づけない
+      const row = await readRow(
+        world,
+        'SELECT name_kana, genre_id, area_id, description, postal_code, address, phone, website, budget_dinner_min, budget_dinner_max FROM shops WHERE id = ?',
+        'shp_a_pub',
+      );
+
+      expect(row).toEqual({
+        name_kana: 'エーノコウカイテン',
+        genre_id: OTHER_GENRE_ID,
+        area_id: OTHER_AREA_ID,
+        description: '説明を入れた',
+        postal_code: '160-0022',
+        address: '東京都新宿区新宿3-1-1',
+        phone: '03-1234-5678',
+        website: 'https://example.com',
+        budget_dinner_min: 3000,
+        budget_dinner_max: 6000,
+      });
+    });
+
+    it('経度だけの指定では経度も geohash も変えない', async () => {
+      // 緯度側の条件だけを落とす変異は、undefined の緯度から geohash を
+      // 計算しようとしてここで初めて表に出る
+      const updated = await updateShopAsOwner(
+        db,
+        ownerA,
+        toShopId('shp_a_pub'),
+        { longitude: OSAKA_LONGITUDE },
+        new Date(100),
+      );
+      expect(updated?.lng).toBe(TEST_LONGITUDE);
+      expect(updated?.geohash).toBe(SEEDED_GEOHASH);
     });
 
     it('null を明示した項目は null で上書きする', async () => {
@@ -4280,7 +4579,7 @@ describe('shop-repository', () => {
 npm run test -w @meshimap/api -- shop-repository
 ```
 
-期待: `Failed to resolve import "./shop-repository"` で失敗する。**このメッセージを目で見ること。**
+期待: `Cannot find module './shop-repository' imported from .../apps/api/src/repositories/shop-repository.test.ts` で失敗する。**このメッセージを目で見ること。**
 
 - [ ] **Step 4: 定数の存在を確認する**
 
@@ -4303,10 +4602,10 @@ grep -n "SHOP_LIST_DEFAULT_LIMIT\|SHOP_LIST_MAX_LIMIT" apps/api/src/lib/constant
 `apps/api/src/repositories/shop-repository.ts`:
 
 ```ts
-import { and, desc, eq, or } from 'drizzle-orm';
-import type { SQL } from 'drizzle-orm';
 import type { ShopCreateInput, ShopId, ShopUpdateInput, UserId } from '@meshimap/core';
 import { coordinate, encodeGeohash } from '@meshimap/geo';
+import { and, desc, eq, or } from 'drizzle-orm';
+import type { SQL } from 'drizzle-orm';
 import { isAdminActor, isOwnerActor } from '../auth/actor';
 import type { AdminActor, OwnerActor, Viewer } from '../auth/actor';
 import type { Database } from '../db/client';
@@ -4529,7 +4828,7 @@ npm run test -w @meshimap/api -- shop-repository
 npm run typecheck -w @meshimap/api
 ```
 
-期待: テスト 37 件すべて PASS。`typecheck` はエラー 0。
+期待: テスト 39 件すべて PASS。`typecheck` はエラー 0。
 
 - [ ] **Step 7: 意図的にコードを壊してテストが検知することを確認する**
 
@@ -4600,7 +4899,7 @@ git commit -m "feat(api): 所有者チェックを WHERE 句で表現する店�
   - `../db/constants`（Phase 3）の `REVIEW_STATUS_DELETED` / `REVIEW_STATUS_PUBLISHED`
   - `../auth/actor`（Task 4-2）の `isAdminActor` と型 `AdminActor` / `UserActor` / `Viewer`
   - `@meshimap/core` の `ReviewCreateInput` / `ReviewId` / `ShopId`
-  - `../db/client`（Task 4-5）の `Database`
+  - `../db/client`（**Phase 3**）の `Database`
 - Produces:
   - `type ReviewRow = typeof reviews.$inferSelect`
   - `listVisibleReviews(db: Database, viewer: Viewer, shopId: ShopId): Promise<ReviewRow[]>`
@@ -5063,7 +5362,7 @@ describe('review-repository', () => {
 npm run test -w @meshimap/api -- review-repository
 ```
 
-期待: `Failed to resolve import "./review-repository"` で失敗する。**このメッセージを目で見ること。**
+期待: `Cannot find module './review-repository' imported from .../apps/api/src/repositories/review-repository.test.ts` で失敗する。**このメッセージを目で見ること。**
 
 - [ ] **Step 4: fixtures のヘルパが揃っていることを確認する**
 
@@ -5081,9 +5380,9 @@ grep -n "export function buildActorForTest\|export async function seedReview\|ex
 `apps/api/src/repositories/review-repository.ts`:
 
 ```ts
+import type { ReviewCreateInput, ReviewId, ShopId } from '@meshimap/core';
 import { and, desc, eq, ne } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
-import type { ReviewCreateInput, ReviewId, ShopId } from '@meshimap/core';
 import { isAdminActor } from '../auth/actor';
 import type { AdminActor, UserActor, Viewer } from '../auth/actor';
 import type { Database } from '../db/client';
@@ -5258,10 +5557,15 @@ git commit -m "feat(api): 投稿者チェックを WHERE 句で表現するレ�
 
 **Interfaces:**
 
-- Consumes: `node:fs` の `readdirSync` / `readFileSync`、`node:path` の `join`、`typescript` 6.0.3（ルートの devDependencies。追加インストール不要）。`import.meta.dirname` を使うため Task 4-3 の tsconfig 変更（`types` に `"node"`）が前提
-- Produces: なし（検査専用）
+- Consumes: `node:fs` の `readdirSync` / `readFileSync`、`node:path`（既定 import）、`node:url` の `fileURLToPath`、`typescript` 6.0.3（ルートの devDependencies。追加インストール不要）。`node:*` を使うため Task 4-3 の tsconfig 変更（`types` に `"node"`）が前提
+- Produces: `collectConventionViolations(sourceFile: ts.SourceFile, label: string): string[]`（同一ファイル内の自己テストから呼ぶため export する。他ファイルからは import しない）
 
-### 検査する 5 つの規約
+> **`import.meta.dirname` は使わない**。グローバルの `URL` が `@cloudflare/workers-types` のものに
+> 差し替わっている影響でファイル読み込み系が TS2769 になるのを避けるため、リポジトリ内のソース走査は
+> すべて `path.dirname(fileURLToPath(import.meta.url))` に揃えてある
+> （`auth/actor-encapsulation.test.ts` / `db/constants-parity.test.ts` と同形）。
+
+### 検査する 8 つの規約
 
 | #   | 規約                                                                                          | 破られたときに起きること                                                  |
 | --- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
@@ -5271,6 +5575,8 @@ git commit -m "feat(api): 投稿者チェックを WHERE 句で表現するレ�
 | 4   | 第 2 引数の**名前**が `actor` / `viewer`（未使用時の `_` 接頭辞可）                           | 呼び出し側が何を渡すべきか読み取れない                                    |
 | 5   | 第 2 引数の**型**が `UserActor` / `OwnerActor` / `AdminActor` / `Actor` / `Viewer` のいずれか | `actor: string` で素通りする                                              |
 | 6   | ファイル内に `db.transaction(` が現れない                                                     | ローカルの node:sqlite では通るが本番 D1 で落ちる（グローバル制約の再掲） |
+| 7   | `export default` / `export *` / 分割代入 export / 他モジュールの再エクスポートを使わない      | 署名を辿れなくなり、検査を素通りする関数が生える                          |
+| 8   | export してよいのは関数リテラルとリテラル定数だけ（`class` の export は禁止）                 | メソッドの中に Actor を取らない処理が隠れる                               |
 
 > **型名のテキストだけを見ていて十分か**: 十分ではない。`type Viewer = string` と別名定義すれば抜けられる。
 > しかしそれは `auth/actor.ts` を書き換える行為で、Task 4-2 の型テスト（`@ts-expect-error` 7 件）が同時に壊れる。
@@ -5282,34 +5588,87 @@ git commit -m "feat(api): 投稿者チェックを WHERE 句で表現するレ�
 
 ```ts
 import { readFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
-/** 第 2 引数に許される型名。auth/actor.ts の export と一致させること */
+/**
+ * リポジトリ層の規約をソースコードそのものに対して機械的に検査する。
+ *
+ * 設計書 3.2 の二層防御のうち「Actor を第 2 引数として必ず受け取る」という型側の担保は、
+ * 新しい関数を 1 つ書き忘れるだけで穴が開く。レビューに頼らず、ここで構文レベルで落とす。
+ *
+ * `import.meta.dirname` ではなく fileURLToPath を使う理由:
+ * グローバルの `URL` が @cloudflare/workers-types のものに差し替わっているため
+ * `readFileSync(new URL(...))` は TS2769 になる。src/auth/actor-encapsulation.test.ts と同じ形に揃える。
+ */
+const REPOSITORIES_DIR = path.dirname(fileURLToPath(import.meta.url));
+
+/** 第 2 引数に許される型名。src/auth/actor.ts の export と一致させること */
 const ACTOR_TYPE_NAMES = new Set(['UserActor', 'OwnerActor', 'AdminActor', 'Actor', 'Viewer']);
 /** 未使用引数は noUnusedParameters を満たすため `_` を付ける。引数を要求すること自体が目的なので削らない */
 const ACTOR_PARAMETER_NAMES = new Set(['actor', '_actor', 'viewer', '_viewer']);
 const DB_PARAMETER_NAME = 'db';
 const DB_TYPE_NAME = 'Database';
-const REPOSITORIES_DIR = join(import.meta.dirname, '.');
+/** 本番の D1 に対話的トランザクションは無い。ローカルの miniflare では通ってしまうので構文で禁じる */
+const FORBIDDEN_TRANSACTION_CALL = 'db.transaction(';
 
-type ExportedFunction = {
+type ExportedSignature = {
   readonly name: string;
   readonly parameters: ts.NodeArray<ts.ParameterDeclaration>;
 };
 
-/** export された「関数」だけを拾う。export type / export const（非関数）は対象外 */
-function collectExportedFunctions(sourceFile: ts.SourceFile): ExportedFunction[] {
-  const found: ExportedFunction[] = [];
+type ExportScanResult = {
+  readonly signatures: ExportedSignature[];
+  readonly violations: string[];
+};
+
+function isFunctionLiteral(node: ts.Expression): node is ts.ArrowFunction | ts.FunctionExpression {
+  return ts.isArrowFunction(node) || ts.isFunctionExpression(node);
+}
+
+/**
+ * 「関数が隠れている余地がない値」かどうか。
+ * `export const findShop = makeFinder(shops)` のような間接参照は引数が構文に現れず、
+ * 検査を素通りする抜け道になるため、リテラル以外の初期化子は一律で違反にする。
+ */
+function isLiteralConstant(node: ts.Expression): boolean {
+  if (ts.isAsExpression(node) || ts.isSatisfiesExpression(node)) {
+    return isLiteralConstant(node.expression);
+  }
+  if (ts.isPrefixUnaryExpression(node)) {
+    return isLiteralConstant(node.operand);
+  }
+  return (
+    ts.isNumericLiteral(node) ||
+    ts.isStringLiteral(node) ||
+    ts.isNoSubstitutionTemplateLiteral(node) ||
+    ts.isArrayLiteralExpression(node) ||
+    ts.isObjectLiteralExpression(node) ||
+    node.kind === ts.SyntaxKind.TrueKeyword ||
+    node.kind === ts.SyntaxKind.FalseKeyword ||
+    node.kind === ts.SyntaxKind.NullKeyword
+  );
+}
+
+/**
+ * ファイル内のトップレベル関数を export の有無に関わらず索引する。
+ * `export { findShop }` 形式の公開では宣言側に export 修飾子が付かないため、
+ * 修飾子だけを見ていると実体を見失う。
+ * オーバーロードがあると同じ名前に複数のシグネチャがぶら下がるので配列で持つ。
+ */
+function indexLocalCallables(sourceFile: ts.SourceFile): Map<string, ExportedSignature[]> {
+  const index = new Map<string, ExportedSignature[]>();
+  const add = (name: string, parameters: ts.NodeArray<ts.ParameterDeclaration>): void => {
+    const current = index.get(name) ?? [];
+    current.push({ name, parameters });
+    index.set(name, current);
+  };
+
   for (const statement of sourceFile.statements) {
-    const modifiers = ts.canHaveModifiers(statement) ? (ts.getModifiers(statement) ?? []) : [];
-    const isExported = modifiers.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword);
-    if (!isExported) {
-      continue;
-    }
     if (ts.isFunctionDeclaration(statement) && statement.name !== undefined) {
-      found.push({ name: statement.name.text, parameters: statement.parameters });
+      add(statement.name.text, statement.parameters);
       continue;
     }
     if (ts.isVariableStatement(statement)) {
@@ -5317,15 +5676,130 @@ function collectExportedFunctions(sourceFile: ts.SourceFile): ExportedFunction[]
         const initializer = declaration.initializer;
         if (
           initializer !== undefined &&
-          (ts.isArrowFunction(initializer) || ts.isFunctionExpression(initializer)) &&
+          isFunctionLiteral(initializer) &&
           ts.isIdentifier(declaration.name)
         ) {
-          found.push({ name: declaration.name.text, parameters: initializer.parameters });
+          add(declaration.name.text, initializer.parameters);
         }
       }
     }
   }
-  return found;
+  return index;
+}
+
+/** `export { a as b }` の再エクスポートを、同じファイル内の宣言まで辿って解決する */
+function resolveReExport(
+  statement: ts.ExportDeclaration,
+  clause: ts.NamedExports,
+  localCallables: Map<string, ExportedSignature[]>,
+  label: string,
+): ExportScanResult {
+  const signatures: ExportedSignature[] = [];
+  const violations: string[] = [];
+
+  for (const specifier of clause.elements) {
+    if (specifier.isTypeOnly) {
+      continue;
+    }
+    const exportedName = specifier.name.text;
+    if (statement.moduleSpecifier !== undefined) {
+      // 署名が別ファイルにあるので、このファイルだけを見る検査器では中身を確かめられない
+      violations.push(
+        `${label}: ${exportedName} を別モジュールから再エクスポートしている（署名が検査から外れる）`,
+      );
+      continue;
+    }
+    // import の別名と同じく、ローカル側の名前は propertyName に入る（`export { local as public }`）
+    const localName = (specifier.propertyName ?? specifier.name).text;
+    const resolved = localCallables.get(localName);
+    if (resolved === undefined) {
+      violations.push(`${label}: ${exportedName} の実体を同じファイル内に解決できない`);
+      continue;
+    }
+    for (const signature of resolved) {
+      signatures.push({ name: exportedName, parameters: signature.parameters });
+    }
+  }
+  return { signatures, violations };
+}
+
+/**
+ * export された「関数」だけを拾う。`export type` / 非関数の `export const` は対象外。
+ * オーバーロード宣言は実装シグネチャとは別の公開された呼び出し口なので、1 つずつ拾う
+ * （実装だけを見ると、Actor を取らないオーバーロードが公開されたまま素通りする）。
+ */
+function scanExports(sourceFile: ts.SourceFile, label: string): ExportScanResult {
+  const signatures: ExportedSignature[] = [];
+  const violations: string[] = [];
+  const localCallables = indexLocalCallables(sourceFile);
+
+  for (const statement of sourceFile.statements) {
+    // `export default findShop;` は修飾子を持たない ExportAssignment なので個別に見る
+    if (ts.isExportAssignment(statement)) {
+      violations.push(`${label}: default export は禁止`);
+      continue;
+    }
+
+    if (ts.isExportDeclaration(statement)) {
+      if (statement.isTypeOnly) {
+        // 型だけの再エクスポートは実行時の呼び出し口を増やさない
+        continue;
+      }
+      const clause = statement.exportClause;
+      if (clause === undefined) {
+        violations.push(`${label}: export * による再エクスポートは禁止（署名が検査から外れる）`);
+        continue;
+      }
+      if (ts.isNamespaceExport(clause)) {
+        violations.push(`${label}: export * as による再エクスポートは禁止（署名が検査から外れる）`);
+        continue;
+      }
+      const resolved = resolveReExport(statement, clause, localCallables, label);
+      signatures.push(...resolved.signatures);
+      violations.push(...resolved.violations);
+      continue;
+    }
+
+    const modifiers = ts.canHaveModifiers(statement) ? (ts.getModifiers(statement) ?? []) : [];
+    if (!modifiers.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword)) {
+      continue;
+    }
+    if (modifiers.some((modifier) => modifier.kind === ts.SyntaxKind.DefaultKeyword)) {
+      // 規約で default export は禁止。中身も続けて検査したいので continue しない
+      violations.push(`${label}: default export は禁止`);
+    }
+
+    if (ts.isClassDeclaration(statement)) {
+      violations.push(`${label}: class の export は禁止（リポジトリ層は関数だけを export する）`);
+      continue;
+    }
+
+    if (ts.isFunctionDeclaration(statement) && statement.name !== undefined) {
+      signatures.push({ name: statement.name.text, parameters: statement.parameters });
+      continue;
+    }
+
+    if (ts.isVariableStatement(statement)) {
+      for (const declaration of statement.declarationList.declarations) {
+        if (!ts.isIdentifier(declaration.name)) {
+          violations.push(`${label}: 分割代入による export は禁止`);
+          continue;
+        }
+        const name = declaration.name.text;
+        const initializer = declaration.initializer;
+        if (initializer !== undefined && isFunctionLiteral(initializer)) {
+          signatures.push({ name, parameters: initializer.parameters });
+          continue;
+        }
+        if (initializer === undefined || !isLiteralConstant(initializer)) {
+          violations.push(
+            `${label}: ${name} は関数リテラルでもリテラル定数でもない値を export している（関数が隠れていても検査できない）`,
+          );
+        }
+      }
+    }
+  }
+  return { signatures, violations };
 }
 
 function parameterTypeName(parameter: ts.ParameterDeclaration): string | null {
@@ -5341,227 +5815,330 @@ function parameterName(parameter: ts.ParameterDeclaration): string | null {
   return ts.isIdentifier(parameter.name) ? parameter.name.text : null;
 }
 
-/** 規約違反を人間が読める文字列の配列で返す。空配列なら合格 */
-export function findConventionViolations(filePath: string): string[] {
-  const source = readFileSync(filePath, 'utf8');
-  const sourceFile = ts.createSourceFile(filePath, source, ts.ScriptTarget.ESNext, true);
+/**
+ * 規約違反を人間が読める文字列の配列で返す。空配列なら合格。
+ *
+ * ソースファイルだけを見る純関数にしてあるので、実ファイルを作らずに
+ * `ts.createSourceFile` した文字列で検査器そのものをテストできる。
+ */
+export function collectConventionViolations(sourceFile: ts.SourceFile, label: string): string[] {
   const violations: string[] = [];
 
-  // D1 には対話的トランザクションが無い。ローカルの node:sqlite では通ってしまうので文字列で禁じる
-  if (source.includes('db.transaction(')) {
-    violations.push(`${filePath}: db.transaction( を使っている`);
+  if (sourceFile.text.includes(FORBIDDEN_TRANSACTION_CALL)) {
+    violations.push(`${label}: ${FORBIDDEN_TRANSACTION_CALL} を使っている`);
   }
 
-  const functions = collectExportedFunctions(sourceFile);
-  if (functions.length === 0) {
-    violations.push(`${filePath}: export された関数が 1 つも無い`);
+  const scanned = scanExports(sourceFile, label);
+  violations.push(...scanned.violations);
+  if (scanned.signatures.length === 0) {
+    violations.push(`${label}: export された関数が 1 つも無い`);
   }
 
-  for (const fn of functions) {
-    const first = fn.parameters[0];
-    const second = fn.parameters[1];
+  for (const signature of scanned.signatures) {
+    const first = signature.parameters[0];
+    const second = signature.parameters[1];
     if (first === undefined || second === undefined) {
-      violations.push(`${filePath}: ${fn.name} の引数が 2 つ未満（db と actor が必須）`);
+      violations.push(`${label}: ${signature.name} の引数が 2 つ未満（db と actor が必須）`);
       continue;
     }
     if (parameterName(first) !== DB_PARAMETER_NAME || parameterTypeName(first) !== DB_TYPE_NAME) {
-      violations.push(`${filePath}: ${fn.name} の第 1 引数が db: Database ではない`);
+      violations.push(`${label}: ${signature.name} の第 1 引数が db: Database ではない`);
     }
     const secondName = parameterName(second);
     if (secondName === null || !ACTOR_PARAMETER_NAMES.has(secondName)) {
       violations.push(
-        `${filePath}: ${fn.name} の第 2 引数名が actor / viewer ではない（${String(secondName)}）`,
+        `${label}: ${signature.name} の第 2 引数名が actor / viewer ではない（${String(secondName)}）`,
       );
     }
     const secondType = parameterTypeName(second);
     if (secondType === null || !ACTOR_TYPE_NAMES.has(secondType)) {
       violations.push(
-        `${filePath}: ${fn.name} の第 2 引数の型が Actor 系ではない（${String(secondType)}）`,
+        `${label}: ${signature.name} の第 2 引数の型が Actor 系ではない（${String(secondType)}）`,
       );
     }
   }
   return violations;
 }
 
+function parseSource(fileName: string, source: string): ts.SourceFile {
+  return ts.createSourceFile(fileName, source, ts.ScriptTarget.ES2022, true, ts.ScriptKind.TS);
+}
+
+/** 実ファイルを読んで検査する薄いラッパ。ファイル入出力をここだけに閉じ込める */
+function violationsOfFile(fileName: string): string[] {
+  const filePath = path.join(REPOSITORIES_DIR, fileName);
+  const source = readFileSync(filePath, 'utf8');
+  return collectConventionViolations(parseSource(filePath, source), fileName);
+}
+
 function listRepositoryFiles(): string[] {
   return readdirSync(REPOSITORIES_DIR)
     .filter((name) => name.endsWith('.ts'))
-    .filter((name) => !name.endsWith('.test.ts'))
-    .map((name) => join(REPOSITORIES_DIR, name));
+    .filter((name) => !name.endsWith('.test.ts'));
 }
+
+describe('検査器そのものの取りこぼし', () => {
+  /** 実ファイルを作らずに検査ロジックだけを試すためのヘルパ */
+  function violationsOf(code: string): string[] {
+    return collectConventionViolations(parseSource('probe.ts', code), 'probe.ts');
+  }
+
+  const COMPLIANT_SOURCE = `
+import type { Database } from '../db/client';
+
+export type ShopRow = { readonly id: string };
+export const SOME_CONSTANT = 1;
+
+function notExported(value: number): number {
+  return value;
+}
+
+export async function listThings(db: Database, viewer: Viewer, limit?: number): Promise<ShopRow[]> {
+  return [];
+}
+
+export async function updateThingAsOwner(db: Database, actor: OwnerActor, id: ShopId): Promise<null> {
+  return null;
+}
+
+export async function deleteThingAsAdmin(db: Database, _actor: AdminActor, id: ShopId): Promise<boolean> {
+  return false;
+}
+
+export const arrowGood = async (db: Database, viewer: Viewer): Promise<void> => {};
+`;
+
+  it('規約を満たすソースには違反を出さない', () => {
+    expect(violationsOf(COMPLIANT_SOURCE)).toEqual([]);
+  });
+
+  it('Actor を取らない関数を違反として検出する', () => {
+    const violations = violationsOf(
+      'export async function noActor(db: Database, shopId: ShopId): Promise<void> {}',
+    );
+    expect(violations.join('\n')).toContain('noActor の第 2 引数名が actor / viewer ではない');
+  });
+
+  it('引数順が逆の関数を違反として検出する', () => {
+    const violations = violationsOf(
+      'export async function wrongOrder(actor: OwnerActor, db: Database): Promise<void> {}',
+    );
+    expect(violations.join('\n')).toContain('wrongOrder の第 1 引数が db: Database ではない');
+  });
+
+  it('第 2 引数の型が string の関数を違反として検出する', () => {
+    const violations = violationsOf(
+      'export async function stringActor(db: Database, actor: string): Promise<void> {}',
+    );
+    expect(violations.join('\n')).toContain('stringActor の第 2 引数の型が Actor 系ではない');
+  });
+
+  it('引数を取らない関数を違反として検出する', () => {
+    const violations = violationsOf('export async function noParams(): Promise<void> {}');
+    expect(violations.join('\n')).toContain('noParams の引数が 2 つ未満');
+  });
+
+  it('アロー関数の export も検査する', () => {
+    // `export const fn = (...) => {}` は FunctionDeclaration ではないので、
+    // 関数宣言だけを見ていると 1 件も引っかからない
+    const violations = violationsOf(
+      'export const arrowBad = async (db: Database, shopId: ShopId): Promise<void> => {};',
+    );
+    expect(violations.join('\n')).toContain('arrowBad の第 2 引数名が actor / viewer ではない');
+  });
+
+  it('関数式の export も検査する', () => {
+    const violations = violationsOf(
+      'export const expressionBad = async function (db: Database, shopId: ShopId) {};',
+    );
+    expect(violations.join('\n')).toContain(
+      'expressionBad の第 2 引数名が actor / viewer ではない',
+    );
+  });
+
+  it('db.transaction( を違反として検出する', () => {
+    const violations = violationsOf(
+      [
+        'export async function usesTransaction(db: Database, actor: AdminActor): Promise<void> {',
+        '  await db.transaction(async () => {});',
+        '}',
+      ].join('\n'),
+    );
+    expect(violations.join('\n')).toContain('db.transaction( を使っている');
+  });
+
+  it('export された関数が無いファイルを違反として検出する', () => {
+    const violations = violationsOf(
+      [
+        'export type OnlyAType = { readonly id: string };',
+        'export const ONLY_A_CONSTANT = 1;',
+        'function notExported(): void {}',
+      ].join('\n'),
+    );
+    expect(violations.join('\n')).toContain('export された関数が 1 つも無い');
+  });
+
+  it('オーバーロード宣言も 1 つずつ検査する', () => {
+    // 実装シグネチャは規約を満たしているので、実装だけを見ると 1 件も引っかからない。
+    // だが 1 本目のオーバーロードは Actor を取らない呼び出し口として公開されている
+    const violations = violationsOf(
+      [
+        'export function findShop(db: Database, shopId: ShopId): null;',
+        'export function findShop(db: Database, viewer: Viewer, shopId: ShopId): null;',
+        'export function findShop(db: Database, viewer: Viewer, shopId?: ShopId): null {',
+        '  return null;',
+        '}',
+      ].join('\n'),
+    );
+    expect(violations.join('\n')).toContain(
+      'findShop の第 2 引数名が actor / viewer ではない（shopId）',
+    );
+  });
+
+  it('すべてのオーバーロードが規約を満たしていれば通す', () => {
+    const violations = violationsOf(
+      [
+        'export function findShop(db: Database, viewer: Viewer): null;',
+        'export function findShop(db: Database, viewer: Viewer, shopId: ShopId): null;',
+        'export function findShop(db: Database, viewer: Viewer, shopId?: ShopId): null {',
+        '  return null;',
+        '}',
+      ].join('\n'),
+    );
+    expect(violations).toEqual([]);
+  });
+
+  it('default export を違反として検出する（宣言形）', () => {
+    const violations = violationsOf(
+      'export default async function findShop(db: Database, viewer: Viewer): Promise<void> {}',
+    );
+    expect(violations.join('\n')).toContain('default export は禁止');
+  });
+
+  it('default export を違反として検出する（代入形）', () => {
+    // `export default findShop` は ExportAssignment なので、修飾子だけを見ていると素通りする
+    const violations = violationsOf(
+      [
+        'async function findShop(db: Database, viewer: Viewer): Promise<void> {}',
+        'export default findShop;',
+      ].join('\n'),
+    );
+    expect(violations.join('\n')).toContain('default export は禁止');
+  });
+
+  it('同じファイル内の関数を export { } で公開しても検査する', () => {
+    // 宣言側に export 修飾子が付かないので、修飾子だけを見ていると素通りする
+    const violations = violationsOf(
+      [
+        'async function findShop(db: Database, shopId: ShopId): Promise<void> {}',
+        'export { findShop };',
+      ].join('\n'),
+    );
+    expect(violations.join('\n')).toContain('findShop の第 2 引数名が actor / viewer ではない');
+  });
+
+  it('別名を付けた export { x as y } も、元の宣言を辿って検査する', () => {
+    const violations = violationsOf(
+      [
+        'async function findShop(db: Database, shopId: ShopId): Promise<void> {}',
+        'export { findShop as lookupShop };',
+      ].join('\n'),
+    );
+    expect(violations.join('\n')).toContain('lookupShop の第 2 引数名が actor / viewer ではない');
+  });
+
+  it('別名を付けた export { x as y } は規約を満たしていれば通す', () => {
+    const violations = violationsOf(
+      [
+        'async function findShop(db: Database, viewer: Viewer): Promise<void> {}',
+        'export { findShop as lookupShop };',
+      ].join('\n'),
+    );
+    expect(violations).toEqual([]);
+  });
+
+  it('別モジュールからの再エクスポートを違反として検出する', () => {
+    // 署名が別ファイルにあるので、このファイルだけを見る検査器では中身を確かめようがない
+    const violations = violationsOf("export { findShop } from '../db/queries/nearby-shops';");
+    expect(violations.join('\n')).toContain('findShop を別モジュールから再エクスポートしている');
+  });
+
+  it('export * を違反として検出する', () => {
+    const violations = violationsOf("export * from '../db/queries/nearby-shops';");
+    expect(violations.join('\n')).toContain('export * による再エクスポートは禁止');
+  });
+
+  it('export * as を違反として検出する', () => {
+    const violations = violationsOf("export * as queries from '../db/queries/nearby-shops';");
+    expect(violations.join('\n')).toContain('export * as による再エクスポートは禁止');
+  });
+
+  it('型だけの再エクスポートは見逃す', () => {
+    const violations = violationsOf(
+      [
+        "export type { ShopRow } from './shop-repository';",
+        'export async function listThings(db: Database, viewer: Viewer): Promise<void> {}',
+      ].join('\n'),
+    );
+    expect(violations).toEqual([]);
+  });
+
+  it('関数リテラル以外の値を export していたら違反として検出する', () => {
+    // `export const findShop = makeFinder(shops)` は関数を返しうるのに
+    // 引数が構文に現れないため、検査を素通りさせる抜け道になる
+    const violations = violationsOf(
+      [
+        'export const findShop = makeFinder(shops);',
+        'export async function listThings(db: Database, viewer: Viewer): Promise<void> {}',
+      ].join('\n'),
+    );
+    expect(violations.join('\n')).toContain('findShop は関数リテラルでもリテラル定数でもない');
+  });
+
+  it('class の export を違反として検出する', () => {
+    const violations = violationsOf(
+      [
+        'export class ShopRepository {',
+        '  find(shopId: ShopId): null {',
+        '    return null;',
+        '  }',
+        '}',
+      ].join('\n'),
+    );
+    expect(violations.join('\n')).toContain('class の export は禁止');
+  });
+});
 
 describe('リポジトリ層の規約', () => {
   const files = listRepositoryFiles();
 
   it('走査対象のリポジトリファイルが 1 つ以上ある', () => {
-    // 対象ゼロだと以下の it.each が 0 件になり、偽の緑になる
+    // 対象がゼロだと以下の it.each が 0 件になり、何も検査していないのに緑になる
     expect(files.length).toBeGreaterThan(0);
   });
 
-  it.each(files)('%s は規約を満たす', (filePath) => {
-    expect(findConventionViolations(filePath)).toEqual([]);
-  });
-
-  describe('検査ロジック自体の自己テスト', () => {
-    it('Actor を取らない関数を違反として検出する', () => {
-      const violations = findConventionViolations(
-        join(import.meta.dirname, '__fixtures__', 'violating-repo.ts.txt'),
-      );
-      expect(violations.join('\n')).toContain('noActor の第 2 引数名が actor / viewer ではない');
-    });
-
-    it('引数順が逆の関数を違反として検出する', () => {
-      const violations = findConventionViolations(
-        join(import.meta.dirname, '__fixtures__', 'violating-repo.ts.txt'),
-      );
-      expect(violations.join('\n')).toContain('wrongOrder の第 1 引数が db: Database ではない');
-    });
-
-    it('第 2 引数の型が string の関数を違反として検出する', () => {
-      const violations = findConventionViolations(
-        join(import.meta.dirname, '__fixtures__', 'violating-repo.ts.txt'),
-      );
-      expect(violations.join('\n')).toContain('stringActor の第 2 引数の型が Actor 系ではない');
-    });
-
-    it('引数を取らない関数を違反として検出する', () => {
-      const violations = findConventionViolations(
-        join(import.meta.dirname, '__fixtures__', 'violating-repo.ts.txt'),
-      );
-      expect(violations.join('\n')).toContain('noParams の引数が 2 つ未満');
-    });
-
-    it('アロー関数の export も検査する', () => {
-      const violations = findConventionViolations(
-        join(import.meta.dirname, '__fixtures__', 'violating-repo.ts.txt'),
-      );
-      expect(violations.join('\n')).toContain('arrowBad の第 2 引数名が actor / viewer ではない');
-    });
-
-    it('db.transaction( を違反として検出する', () => {
-      const violations = findConventionViolations(
-        join(import.meta.dirname, '__fixtures__', 'violating-repo.ts.txt'),
-      );
-      expect(violations.join('\n')).toContain('db.transaction( を使っている');
-    });
-
-    it('規約を満たすファイルには違反を出さない', () => {
-      const violations = findConventionViolations(
-        join(import.meta.dirname, '__fixtures__', 'compliant-repo.ts.txt'),
-      );
-      expect(violations).toEqual([]);
-    });
-
-    it('export された関数が無いファイルを違反として検出する', () => {
-      const violations = findConventionViolations(
-        join(import.meta.dirname, '__fixtures__', 'empty-repo.ts.txt'),
-      );
-      expect(violations.join('\n')).toContain('export された関数が 1 つも無い');
-    });
+  it.each(files)('%s は規約を満たす', (fileName) => {
+    expect(violationsOfFile(fileName)).toEqual([]);
   });
 });
 ```
 
-> **拡張子を `.ts.txt` にする理由**: `__fixtures__` の中身は**わざと規約を破った**サンプル。
-> `.ts` のままだと `tsc --noEmit` と ESLint が本物のソースとして拾って落ちる。
-> `ts.createSourceFile` はファイル名を見ずに中身をパースするので、拡張子は何でもよい。
-
-- [ ] **Step 2: テストが失敗することを確認する**
+- [ ] **Step 2: テストが通ることを確認する**
 
 ```bash
 npm run test -w @meshimap/api -- repository-convention
 ```
 
-期待: `ENOENT: no such file or directory, open '.../__fixtures__/violating-repo.ts.txt'` で自己テストが失敗する。**このメッセージを目で見ること。**
+期待: 自己テスト 22 件 ＋ 対象数チェック 1 件 ＋ `it.each` が回す実ファイル 2 件
+（`shop-repository.ts` / `review-repository.ts`）、**合計 25 件**すべて PASS。
 
-- [ ] **Step 3: フィクスチャを作る**
+> **このタスクは最初から緑になる。** 検査を書くタスクなので赤を見るのは次の Step で、
+> 実ファイルをわざと壊して行う。フィクスチャファイル（`__fixtures__/*.ts.txt`）は作らない。
+> 検査器を `collectConventionViolations(sourceFile, label)` という純関数にしてあるので、
+> 自己テストはソースを**文字列リテラル**で渡して `ts.createSourceFile` すれば足り、
+> 「わざと壊したファイル」を `tsc` / ESLint / Prettier から隠す工夫そのものが要らなくなる。
 
-`apps/api/src/repositories/__fixtures__/violating-repo.ts.txt`:
-
-```ts
-// 検査ロジックの自己テスト用。わざと規約を破っている。本番ビルドには入らない
-export async function noActor(db: Database, shopId: ShopId): Promise<void> {}
-export async function wrongOrder(actor: OwnerActor, db: Database): Promise<void> {}
-export async function stringActor(db: Database, actor: string): Promise<void> {}
-export async function noParams(): Promise<void> {}
-export const arrowBad = async (db: Database, shopId: ShopId): Promise<void> => {};
-export async function usesTransaction(db: Database, actor: AdminActor): Promise<void> {
-  await db.transaction(async () => {});
-}
-```
-
-`apps/api/src/repositories/__fixtures__/compliant-repo.ts.txt`:
-
-```ts
-// 検査ロジックの自己テスト用。規約を満たしている側のサンプル
-import type { Database } from '../../db/client';
-export type ShopRow = { readonly id: string };
-export const SOME_CONSTANT = 1;
-function notExported(value: number): number {
-  return value;
-}
-export async function listThings(db: Database, viewer: Viewer, limit?: number): Promise<ShopRow[]> {
-  return [];
-}
-export async function updateThingAsOwner(
-  db: Database,
-  actor: OwnerActor,
-  id: ShopId,
-): Promise<ShopRow | null> {
-  return null;
-}
-export async function deleteThingAsAdmin(
-  db: Database,
-  _actor: AdminActor,
-  id: ShopId,
-): Promise<boolean> {
-  return false;
-}
-export const arrowGood = async (db: Database, viewer: Viewer): Promise<void> => {};
-```
-
-`apps/api/src/repositories/__fixtures__/empty-repo.ts.txt`:
-
-```ts
-// 検査ロジックの自己テスト用。export された関数が 1 つも無いファイル
-export type OnlyAType = { readonly id: string };
-export const ONLY_A_CONSTANT = 1;
-function notExported(): void {}
-```
-
-- [ ] **Step 4: `__fixtures__` が他のツールに拾われないことを確認する**
-
-**設定ファイルは変更しない。** 拡張子を `.ts.txt` にしてあるので、既存の設定のままどのツールにも拾われない。
-思い込みで `exclude` を足すのではなく、実際のグロブと突き合わせて確認する。
-
-| ツール         | 現状の設定                                                                          | `.ts.txt` が拾われるか            |
-| -------------- | ----------------------------------------------------------------------------------- | --------------------------------- |
-| `tsc --noEmit` | `apps/api/tsconfig.json` の `include: ["src/**/*.ts", "worker-configuration.d.ts"]` | 拾われない（`*.ts` に一致しない） |
-| Vitest         | `apps/api/vitest.config.ts` の `include: ['src/**/*.test.ts']`                      | 拾われない                        |
-| カバレッジ     | 同ファイルの `coverage.include: ['src/**/*.ts']`                                    | 拾われない                        |
-| Prettier       | ルートの `format` / `format:check` が `"**/*.{ts,tsx,js,json,md}"`                  | 拾われない                        |
-| ESLint         | ルートの `eslint.config.mjs` が `apps/api/src/**/*.ts` を対象にする                 | 拾われない（`*.ts` に一致しない） |
-
-```bash
-npm run typecheck -w @meshimap/api
-npm run format:check
-npx eslint .
-```
-
-期待: 3 つともエラー 0。`__fixtures__` の中身は**わざと壊してある**ので、
-ここでエラーが出たら「拾われてしまっている」ということ。その場合に限り
-`tsconfig.json` に `"exclude": ["src/**/__fixtures__/**"]` を足す。
-
-- [ ] **Step 5: テストが通ることを確認する**
-
-```bash
-npm run test -w @meshimap/api -- repository-convention
-```
-
-期待: 実ファイル 2 件（`shop-repository.ts` / `review-repository.ts`）＋ 自己テスト 8 件＋対象数チェック 1 件、
-合計 11 件すべて PASS。
-
-- [ ] **Step 6: 意図的にコードを壊してテストが検知することを確認する**
+- [ ] **Step 3: 意図的にコードを壊してテストが検知することを確認する**
 
 `apps/api/src/repositories/shop-repository.ts` の末尾に、Actor を取らない関数を足す:
 
@@ -5593,10 +6170,10 @@ export async function updateShopAsOwner(
 最後に `listRepositoryFiles` の `.filter((name) => name.endsWith('.ts'))` を `.endsWith('.nonexistent')` に変えて、
 `走査対象のリポジトリファイルが 1 つ以上ある` が FAIL することを確認する（**偽の緑を検出できる**ことの確認）。確認後に元へ戻す。
 
-- [ ] **Step 7: コミット**
+- [ ] **Step 4: コミット**
 
 ```bash
-git add apps/api/src/repositories/repository-convention.test.ts apps/api/src/repositories/__fixtures__
+git add apps/api/src/repositories/repository-convention.test.ts
 git commit -m "test(api): Actor を取らないリポジトリ関数を機械的に禁止する検査を追加"
 ```
 
@@ -5637,14 +6214,14 @@ git commit -m "test(api): Actor を取らないリポジトリ関数を機械的
   - `drizzle-orm` の `eq`、`../db/schema` の `profiles`
   - `../auth/auth`（Task 4-5）の `AUTH_BASE_PATH` / `createAuth`
   - `../auth/actor`（Task 4-2）の `isAdminActor`
-  - `../db/client`（Task 4-5）の `createDatabase`
+  - `../db/client`（**Phase 3**）の `createDatabase`
   - `../lib/app-env`（Task 4-1）の型 `AppBindings` / `AppEnv`
   - `../lib/http-error`（Task 4-1）の `ERROR_MESSAGE_INTERNAL` / `invalidInput` / `notFound`
   - `../middleware/auth`（Task 4-6）の `authMiddleware`
   - `../middleware/error-handler`（Task 4-4）の `errorHandler` / `notFoundHandler`
   - `../middleware/role-guard`（Task 4-7）の `roleGuard` / `requireActor` / `requireAdminActor` / `requireOwnerActor` / `requireUserActor`
   - `../repositories/shop-repository`（Task 4-8）の 6 関数、`../repositories/review-repository`（Task 4-9）の 4 関数
-  - （テストのみ）`../test/fixtures` の `createTestBindings` / `createTestWorld` / `readRow` / `seedMasters` / `seedReview` / `seedShop` / `signUpAs` / `TEST_AREA_ID` / `TEST_GENRE_ID` と型 `TestUser` / `TestWorld`
+  - （テストのみ）`../test/fixtures` の `corruptProfileRole` / `createTestBindings` / `createTestWorld` / `readRow` / `seedMasters` / `seedReview` / `seedShop` / `signUpAs` / `TEST_AREA_ID` / `TEST_GENRE_ID` と型 `TestUser` / `TestWorld`
 - Produces:
   - `parseShopId(value: string): ShopId` / `parseReviewId(value: string): ReviewId`
   - `generateShopId(): ShopId` / `generateReviewId(): ReviewId`
@@ -6376,9 +6953,26 @@ describe('routes', () => {
 
       expect(res.status).toBe(200);
     });
+
+    it('ロールが壊れた利用者でも /api/auth/* に到達できる（サインアウト経路を塞がない）', async () => {
+      const alice = await signUpAs(world, 'alice@example.com', ROLE_USER);
+      // authMiddleware は invalid-role を 403 にする。Better Auth のハンドラが
+      // authMiddleware より **先** に登録されていないと、壊れた利用者は
+      // サインアウトすらできず自力で復帰できなくなる
+      await corruptProfileRole(world, alice.userId, 'superuser');
+
+      const res = await getAs('/api/auth/get-session', alice);
+
+      expect(res.status).toBe(200);
+    });
   });
 });
 ```
+
+> **このテストが無いと Step 11 の破壊検証 (1) が成立しない。** サインアップは Cookie を
+> 持たないリクエストなので、`authMiddleware` を Better Auth ハンドラより前に置いても
+> ミドルウェアが匿名として素通りさせてしまい、上の 1 件は 200 のまま通ってしまう。
+> **Cookie を持ち、かつロールが壊れている**利用者を通して初めて順序の逆転が 403 として現れる。
 
 - [ ] **Step 5: テストが失敗することを確認する**
 
@@ -6386,7 +6980,7 @@ describe('routes', () => {
 npm run test -w @meshimap/api -- routes
 ```
 
-期待: `Failed to resolve import "../index"` で失敗する。**このメッセージを目で見ること。**
+期待: `Cannot find module '../index' imported from .../apps/api/src/routes/routes.test.ts` で失敗する。**このメッセージを目で見ること。**
 
 - [ ] **Step 6: `/me` ルートを書く**
 
@@ -6658,13 +7252,16 @@ export class ReservationLock implements DurableObject {
   // Phase 7 で state.storage.sql を使う。今は受け取るだけで保持しない
   constructor(_state: DurableObjectState, _env: AppBindings) {}
 
-  async fetch(_request: Request): Promise<Response> {
+  // await するものが無いので async にしない（@typescript-eslint/require-await）。
+  // DurableObject#fetch の戻りは Response | Promise<Response> なので同期で返してよい
+  fetch(_request: Request): Response {
     return new Response('Not Implemented', { status: 501 });
   }
 }
 
 // Workers のモジュールワーカーは default export を要求する。
-// CODING_GUIDELINES 88 行目のデフォルトエクスポート禁止に対する、プラットフォーム上の唯一の例外。
+// CODING_GUIDELINES 2 章のデフォルトエクスポート禁止に対する、プラットフォーム上の唯一の例外。
+// eslint-disable-next-line no-restricted-syntax -- Workers ランタイムが default export を必須とするため
 export default app;
 ```
 
@@ -6675,10 +7272,10 @@ npm run test -w @meshimap/api -- routes
 npm run typecheck -w @meshimap/api
 ```
 
-期待: テスト 35 件すべて PASS。`typecheck` はエラー 0。
+期待: テスト 36 件すべて PASS。`typecheck` はエラー 0。
 
 > **時間がかかる。** `signUpAs` は scrypt でハッシュを作るため 1 回 100ms 前後、
-> `createTestWorld` は miniflare を 1 つ起動する。35 件で数十秒かかるが、
+> `createTestWorld` は miniflare を 1 つ起動する。36 件で数十秒かかるが、
 > `vitest.config.ts` の `testTimeout: 30_000` / `hookTimeout: 60_000` の範囲に収まる。
 > 遅いからといって world を describe 間で共有しないこと（Task 4-0 Step 6 で
 > 共有が何を壊すか確認済み）。
@@ -6692,8 +7289,15 @@ npm run typecheck -w @meshimap/api
   .on(['GET', 'POST'], `${AUTH_BASE_PATH}/*`, (c) => { ... })
 ```
 
-期待: `/api/auth/* が Hono の 404 にも authMiddleware にも飲み込まれない` の挙動が変わる。
-実際の失敗内容を目で確認してから元へ戻す。
+期待: `ロールが壊れた利用者でも /api/auth/* に到達できる（サインアウト経路を塞がない）` が
+200 ではなく **403** で FAIL する。
+
+> **落ちるのはこの 1 件だけ**で、`/api/auth/* が Hono の 404 にも authMiddleware にも飲み込まれない`
+> は **PASS したままになる**。サインアップは Cookie 無しのリクエストで、`authMiddleware` は
+> セッションが無ければ匿名として素通りさせるため、順序を入れ替えても結果が変わらない。
+> 「Cookie があり、かつ Actor の生成に失敗する」利用者を通さないと順序の逆転は観測できない。
+
+確認後に元へ戻す。
 
 次に `.notFound(notFoundHandler)` の行を削除する。
 期待: `未定義のパスは 404 を同じ形の JSON で返す` と
@@ -7580,7 +8184,10 @@ describe('他人のデータへの到達不能性', () => {
 
 - [ ] **Step 2: 店舗侵害のテストを足す**
 
-`describe('他人のデータへの到達不能性', ...)` の中、レビューの describe の**前**に足す:
+Step 1 で書いた `describe('他人のデータへの到達不能性', ...)` の**内側**、
+`describe('user A は user B のレビューに触れない', ...)` の**前**に足す。
+`world` は外側の describe の `let world: TestWorld;` を共有するので、
+**トップレベルに置くと `world` を参照できない**。以下は 2 段インデント済みの形で示す:
 
 ```ts
 describe('owner A は owner B の店舗に触れない', () => {
@@ -7751,7 +8358,9 @@ describe('owner は自分の店舗でも変えてはいけない列がある', (
 
 - [ ] **Step 3: 停止アカウントとセッション取り違えのテストを足す**
 
-`describe('他人のデータへの到達不能性', ...)` の末尾（レビューの describe の後ろ）に足す:
+同じく `describe('他人のデータへの到達不能性', ...)` の**内側**、
+`describe('user A は user B のレビューに触れない', ...)` の**後ろ**（外側 describe を閉じる
+`});` の直前）に足す。以下も 2 段インデント済みの形で示す:
 
 ```ts
 describe('停止されたアカウント', () => {
@@ -7846,10 +8455,17 @@ npm run test -w @meshimap/api -- tenant-isolation
 
 期待: `PATCH は 404 を返し、B の店舗の全列が変わらない` と
 `緯度経度の更新でも B の座標と geohash が変わらない` が FAIL する。
-1 本目は `expected 404, received 200` の**あとに** `toEqual` でも落ち、
-`name` が `'B の店'` → `'乗っ取り'`、`updated_at` が `100` → 現在時刻へ変わったことが差分に出る。
-2 本目は `lat/lng` が大阪の座標へ、`geohash` が `xn76fgr` → `xn0m7m3` へ変わる。
-**「ステータスだけでなく DB の中身を見ている」ことがこの差分で確認できる。** 確認後に元へ戻す。
+
+> **出るのは `expected 404, received 200` だけ。** Vitest は**最初に失敗した `expect` で
+> その `it` を打ち切る**ので、その次の行にある `toEqual(before)` の差分は表示されない。
+> 「ステータスだけでなく DB の中身も見ている」ことを目で確かめたいなら、
+> 一時的に `expect(res.status).toBe(404);` を `toEqual` の**後ろ**へ移してもう 1 度流す。
+> そうすると `name` が `'B の店'` → `'乗っ取り'`、`updated_at` が `100` → 現在時刻、
+> 2 本目は `lat/lng` が大阪の座標へ、`geohash` が `xn76fgr` → `xn0m7m3` へ変わった差分が出る。
+> 確認したら**並び順も元に戻す**（本番の並びはステータス先で正しい。
+> 権限の失敗は「まず 404 であること」が主張の中心なので、そこから読ませたい）。
+
+確認後に元へ戻す。
 
 - [ ] **Step 5: テストが通ることを確認する**
 
@@ -7955,7 +8571,7 @@ Phase 4 の最後のタスク。ここまでで「動くこと」「他人のデ
 **Files:**
 
 - Create: `apps/api/src/routes/rpc-contract.test.ts`
-- Modify: `apps/api/src/routes/permission-matrix.test.ts`（Task 4-12 で作成済み。末尾に `describe` を 1 つ足す）
+- Modify: `apps/api/src/routes/permission-matrix.test.ts`（Task 4-12 で作成済み。末尾に **`describe` を 2 つ**と、突合用の純関数・定数をモジュール直下に足す）
 
 **Interfaces:**
 
@@ -8381,10 +8997,14 @@ async function typeOnlyValidCalls(): Promise<void> {
 
 /**
  * 間違った呼び出しが**必ず型エラーになる**ことの確認。実行しない。
- * `@ts-expect-error` は「次の行がエラーであること」を要求するディレクティブなので、
- * ここが素通りするようになったら tsc が TS2578（未使用の @ts-expect-error）で落ちる。
+ * 下のディレクティブは「次の行がエラーであること」を要求するので、
+ * ここが素通りするようになったら tsc が TS2578（未使用のディレクティブ）で落ちる。
  * つまりこの関数は「型が緩くなったら気付ける」仕掛けそのもの。
  */
+/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access --
+   `@ts-expect-error` で握り潰した式は型が解決できないまま残るので、型認識 ESLint ルールが
+   「安全でない呼び出し」として誤検知する。ここは tsc がエラーを出すこと自体が目的の
+   実行されないブロックなので、実行時の安全性とは無関係 */
 async function typeOnlyInvalidCalls(): Promise<void> {
   // @ts-expect-error param が必須なのに渡していない
   await rpcClient.shops[':shopId'].$get();
@@ -8407,6 +9027,7 @@ async function typeOnlyInvalidCalls(): Promise<void> {
   // @ts-expect-error DELETE は /shops/:shopId にしか無い。/shops 直下には無い
   await rpcClient.shops.$delete();
 }
+/* eslint-enable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 
 describe('型検査専用ブロック', () => {
   it('型検査専用の関数は定義されているが、テストからは呼ばれない', () => {
@@ -8426,22 +9047,91 @@ describe('型検査専用ブロック', () => {
 import { AUTH_BASE_PATH } from '../auth/auth';
 ```
 
-同じファイルの末尾に `describe` を 1 つ追加する:
+同じファイルの末尾に、突合用の純関数と `describe` を 2 つ追加する:
 
 ```ts
+// ───────────────── ルート表 ↔ 実装の突合（Task 4-14）─────────────────
+
+/** `app.routes` の 1 要素から、突合に必要な 2 つだけを抜き出した形 */
+type RegisteredRoute = { readonly method: string; readonly path: string };
+
+/** 走査対象が 0 本のときに返す違反。これが無いと「表も実装も空」で偽の緑になる */
+const VIOLATION_NO_SCAN_TARGET = '走査対象のエンドポイントが 1 本も無い';
+
+/**
+ * `.use()` で登録したミドルウェアか。
+ *
+ * Hono は `.use('*', mw)` も `app.all('/x', h)` も method を 'ALL' として記録するため、
+ * method だけでは区別できない。ワイルドカードで終わるパスだけをミドルウェアとみなす。
+ * こうしないと `app.all('/version', ...)` のような**本物のエンドポイントが
+ * 静かに突合から漏れる**。`.use('/admin', mw)` のようなワイルドカード無しの登録は
+ * エンドポイント扱いになって突合に失敗するが、**黙って見逃すより落ちる側に倒す**。
+ */
+function isMiddlewareRoute(route: RegisteredRoute): boolean {
+  return route.method === 'ALL' && route.path.endsWith('*');
+}
+
+/**
+ * Better Auth のハンドラ配下か。権限は Better Auth 側の責務なのでマトリクスの対象外にする。
+ *
+ * 単なる前方一致で判定してはいけない。`AUTH_BASE_PATH` が `/api/auth` のとき、
+ * `startsWith` だけだと `/api/authorize` のような**別のエンドポイントまで巻き込んで除外**する。
+ * パス境界（完全一致か、直後が `/`）まで見る。
+ */
+function isAuthHandlerRoute(route: RegisteredRoute, authBasePath: string): boolean {
+  return route.path === authBasePath || route.path.startsWith(`${authBasePath}/`);
+}
+
+/**
+ * 登録済みルートから「権限マトリクスが責任を持つエンドポイント」を取り出す。
+ * ミドルウェアとハンドラで同じ method + path が重複して現れるので Set で潰す。
+ */
+export function collectEndpointPatterns(
+  routes: readonly RegisteredRoute[],
+  authBasePath: string,
+): readonly string[] {
+  const patterns = routes
+    .filter((route) => !isMiddlewareRoute(route) && !isAuthHandlerRoute(route, authBasePath))
+    .map((route) => `${route.method} ${route.path}`);
+  return [...new Set(patterns)].sort();
+}
+
+/**
+ * ルート表（権限マトリクス）と実装を突き合わせ、食い違いを文字列で列挙する純関数。
+ * 空配列が返れば「表と実装が 1 本残らず一致している」。
+ */
+export function collectRouteCoverageViolations(
+  routes: readonly RegisteredRoute[],
+  coveredPatterns: readonly string[],
+  authBasePath: string,
+): readonly string[] {
+  const declared = collectEndpointPatterns(routes, authBasePath);
+  if (declared.length === 0) {
+    return [VIOLATION_NO_SCAN_TARGET];
+  }
+  const covered = [...new Set(coveredPatterns)].sort();
+  const violations: string[] = [];
+  for (const pattern of declared) {
+    if (!covered.includes(pattern)) {
+      violations.push(`権限マトリクスに無いエンドポイント: ${pattern}`);
+    }
+  }
+  for (const pattern of covered) {
+    if (!declared.includes(pattern)) {
+      violations.push(`実装に無いエンドポイント: ${pattern}`);
+    }
+  }
+  return violations;
+}
+
 /**
  * `app.routes` に実際に載っているルート。実測した内訳は次のとおり。
  * - 生の要素数 22（ミドルウェアとハンドラで同じ method + path が重複して現れる）
  * - 重複を潰すと 13
- * - そこから下の 2 種類を除くと 10
- *   - `ALL /*` … `.use('*', authMiddleware)` が登録するミドルウェア。エンドポイントではない
- *   - `GET|POST /api/auth/*` … Better Auth のハンドラ。権限は Better Auth 側の責務
+ * - そこから `ALL /*`（authMiddleware）と `GET|POST /api/auth/*`（Better Auth）を除くと 10
  */
 function declaredRoutePatterns(): readonly string[] {
-  const patterns = app.routes
-    .filter((route) => route.method !== 'ALL' && !route.path.startsWith(AUTH_BASE_PATH))
-    .map((route) => `${route.method} ${route.path}`);
-  return [...new Set(patterns)].sort();
+  return collectEndpointPatterns(app.routes, AUTH_BASE_PATH);
 }
 
 /** 権限マトリクスが責任を持つ 10 本。ここを増減させるときは必ず ENDPOINT_CASES も直す */
@@ -8458,15 +9148,117 @@ const EXPECTED_ROUTE_PATTERNS: readonly string[] = [
   'POST /shops/:shopId/reviews',
 ];
 
+describe('突合器そのものの取りこぼし', () => {
+  const AUTH_BASE = '/api/auth';
+  const SAMPLE_ROUTES: readonly RegisteredRoute[] = [
+    { method: 'ALL', path: '/*' },
+    { method: 'GET', path: '/api/auth/*' },
+    { method: 'POST', path: '/api/auth/*' },
+    { method: 'GET', path: '/health' },
+    { method: 'GET', path: '/health' },
+  ];
+
+  it('表と実装が一致していれば違反は無い', () => {
+    expect(collectRouteCoverageViolations(SAMPLE_ROUTES, ['GET /health'], AUTH_BASE)).toEqual([]);
+  });
+
+  it('ミドルウェア（ALL + ワイルドカード）はエンドポイントに数えない', () => {
+    expect(collectEndpointPatterns(SAMPLE_ROUTES, AUTH_BASE)).toEqual(['GET /health']);
+  });
+
+  it('ワイルドカードを持たない ALL は本物のエンドポイントとして数える', () => {
+    // app.all('/version', ...) を「ミドルウェアだから」と見逃すと突合が素通りする
+    const routes = [...SAMPLE_ROUTES, { method: 'ALL', path: '/version' }];
+    expect(collectRouteCoverageViolations(routes, ['GET /health'], AUTH_BASE)).toEqual([
+      '権限マトリクスに無いエンドポイント: ALL /version',
+    ]);
+  });
+
+  it('Better Auth 配下は除外するが、前方一致だけの別パスは除外しない', () => {
+    // '/api/authorize' は '/api/auth' で startsWith が真になる。境界を見ないと黙って消える
+    const routes = [...SAMPLE_ROUTES, { method: 'GET', path: '/api/authorize' }];
+    expect(collectRouteCoverageViolations(routes, ['GET /health'], AUTH_BASE)).toEqual([
+      '権限マトリクスに無いエンドポイント: GET /api/authorize',
+    ]);
+  });
+
+  it('AUTH_BASE_PATH と完全一致するパスも除外する', () => {
+    const routes = [...SAMPLE_ROUTES, { method: 'POST', path: '/api/auth' }];
+    expect(collectEndpointPatterns(routes, AUTH_BASE)).toEqual(['GET /health']);
+  });
+
+  it('実装に足されたエンドポイントを検出する', () => {
+    const routes = [...SAMPLE_ROUTES, { method: 'GET', path: '/version' }];
+    expect(collectRouteCoverageViolations(routes, ['GET /health'], AUTH_BASE)).toEqual([
+      '権限マトリクスに無いエンドポイント: GET /version',
+    ]);
+  });
+
+  it('表にだけあって実装に無いエンドポイントを検出する', () => {
+    expect(
+      collectRouteCoverageViolations(SAMPLE_ROUTES, ['GET /health', 'GET /healthz'], AUTH_BASE),
+    ).toEqual(['実装に無いエンドポイント: GET /healthz']);
+  });
+
+  it('パスが同じでもメソッドが違えば別のエンドポイントとして扱う', () => {
+    const routes = [...SAMPLE_ROUTES, { method: 'POST', path: '/health' }];
+    expect(collectRouteCoverageViolations(routes, ['GET /health'], AUTH_BASE)).toEqual([
+      '権限マトリクスに無いエンドポイント: POST /health',
+    ]);
+  });
+
+  it('同じ method + path が何度現れても 1 本に潰れる', () => {
+    // ミドルウェアとハンドラで同じ行が重複して載るため、潰さないと件数が合わない
+    const routes = [
+      { method: 'GET', path: '/health' },
+      { method: 'GET', path: '/health' },
+      { method: 'GET', path: '/health' },
+    ];
+    expect(collectEndpointPatterns(routes, AUTH_BASE)).toEqual(['GET /health']);
+  });
+
+  it('表の側に重複があっても違反にならない（#4 と #5 のように 1 本を複数ケースで検証する）', () => {
+    expect(
+      collectRouteCoverageViolations(SAMPLE_ROUTES, ['GET /health', 'GET /health'], AUTH_BASE),
+    ).toEqual([]);
+  });
+
+  it('入力の並び順が変わっても結果は変わらない', () => {
+    const shuffled = [...SAMPLE_ROUTES].reverse();
+    expect(collectEndpointPatterns(shuffled, AUTH_BASE)).toEqual(
+      collectEndpointPatterns(SAMPLE_ROUTES, AUTH_BASE),
+    );
+  });
+
+  it('走査対象が 0 本なら、表も空でも違反として報告する（偽の緑を防ぐ）', () => {
+    // ここが無いと「ルートが 1 本も取れていない」状態が「全部覆えている」に見える
+    expect(collectRouteCoverageViolations([], [], AUTH_BASE)).toEqual([VIOLATION_NO_SCAN_TARGET]);
+    expect(collectRouteCoverageViolations([{ method: 'ALL', path: '/*' }], [], AUTH_BASE)).toEqual([
+      VIOLATION_NO_SCAN_TARGET,
+    ]);
+  });
+
+  it('表が空なら実装の全エンドポイントが未検証として並ぶ', () => {
+    expect(collectRouteCoverageViolations(SAMPLE_ROUTES, [], AUTH_BASE)).toEqual([
+      '権限マトリクスに無いエンドポイント: GET /health',
+    ]);
+  });
+});
+
 describe('ルート表と実装の突合', () => {
+  it('走査対象のエンドポイントが 1 本以上ある', () => {
+    // 0 本なら以降の比較は「空 vs 空」で必ず通ってしまう。先に本数を押さえる
+    expect(declaredRoutePatterns().length).toBeGreaterThan(0);
+  });
+
   it('app に登録されたエンドポイントは 10 本で、想定どおりの並びである', () => {
     expect(declaredRoutePatterns()).toEqual(EXPECTED_ROUTE_PATTERNS);
   });
 
   it('権限マトリクスは app のエンドポイントを 1 本残らず覆っている', () => {
-    // #4 と #5 のように 1 本のルートを複数ケースで検証しているので、重複を潰してから比べる
-    const covered = [...new Set(ENDPOINT_CASES.map((endpoint) => endpoint.routePattern))].sort();
-    expect(covered).toEqual(declaredRoutePatterns());
+    // #4 と #5 のように 1 本のルートを複数ケースで検証しているので、重複は潰して比べる
+    const covered = ENDPOINT_CASES.map((endpoint) => endpoint.routePattern);
+    expect(collectRouteCoverageViolations(app.routes, covered, AUTH_BASE_PATH)).toEqual([]);
   });
 });
 ```
@@ -8506,12 +9298,12 @@ npm run typecheck -w @meshimap/api
 
 期待する FAIL は 3 つ。
 
-| 歪ませた場所                            | 落ちるもの                                                         | 実測した中身                                     |
-| --------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------ |
-| `/version` を足した                     | `app に登録されたエンドポイントは 10 本で、想定どおりの並びである` | 実際が 11 本になり `GET /version` が配列に混ざる |
-| `/version` を足した                     | `権限マトリクスは app のエンドポイントを 1 本残らず覆っている`     | 表側 10 本 vs 実装側 11 本                       |
-| `routePattern` を `GET /healthz` にした | `権限マトリクスは app のエンドポイントを 1 本残らず覆っている`     | 表側に `GET /healthz`、実装側に `GET /health`    |
-| `@ts-expect-error` を消した             | **vitest ではなく tsc**                                            | `TS2554: Expected 1 arguments, but got 0.`       |
+| 歪ませた場所                            | 落ちるもの                                                         | 実測した中身                                                                                                     |
+| --------------------------------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| `/version` を足した                     | `app に登録されたエンドポイントは 10 本で、想定どおりの並びである` | 実際が 11 本になり `GET /version` が配列に混ざる                                                                 |
+| `/version` を足した                     | `権限マトリクスは app のエンドポイントを 1 本残らず覆っている`     | 違反配列に `権限マトリクスに無いエンドポイント: GET /version`                                                    |
+| `routePattern` を `GET /healthz` にした | `権限マトリクスは app のエンドポイントを 1 本残らず覆っている`     | 違反配列に `実装に無いエンドポイント: GET /healthz` と `権限マトリクスに無いエンドポイント: GET /health` の 2 件 |
+| `@ts-expect-error` を消した             | **vitest ではなく tsc**                                            | `TS2554: Expected 1-2 arguments, but got 0.`（`$get` は第 2 引数 `options` を任意で取るため）                    |
 
 **`@ts-expect-error` を消した分は `npm run test` では絶対に落ちない。** ここで
 「型の検証者は tsc だけ」という事実を目で確認しておくこと。
@@ -8529,7 +9321,7 @@ npm run typecheck -w @meshimap/api
 期待:
 
 - `rpc-contract` は 14 件すべて PASS（匿名 6 + Cookie 5 + ズレ 2 + 型検査専用 1）。所要 20 秒前後
-- `permission-matrix` は 58 + 2 = **60 件すべて PASS**
+- `permission-matrix` は 58 + 16 = **74 件すべて PASS**（追記分は突合器の自己テスト 13 件 + 突合 3 件）
 - `typecheck` はエラー 0
 
 - [ ] **Step 8: Phase 4 全体をまとめて流す**
@@ -8556,11 +9348,24 @@ npm run format:check
 npm run test:mutation -w @meshimap/api
 ```
 
-期待: **スコア 85% 以上**（`stryker.base.mjs` の `thresholds.break: 85`）。所要 4 分前後。
+期待: **スコア 85% 以上**（`stryker.base.mjs` の `thresholds.break: 85`）。
 
-この計画を書いた時点では `apps/api` に Stryker の設定ファイルが無く「流さない」と書いていたが、
-**2026-09-15 に `apps/api/stryker.config.mjs` を追加した**ので前提が変わっている。
-Phase 4 の直前の実測は 98 変異 / Killed 98 / Survived 0 / Timeout 0 の **100%**（所要 3m32s）。
+Phase 4 完了時点の実測（`apps/api/reports/mutation/mutation.json`）:
+
+| 項目     | 値                                                       |
+| -------- | -------------------------------------------------------- |
+| 変異総数 | 659                                                      |
+| Killed   | 560                                                      |
+| Survived | 86                                                       |
+| Timeout  | 13（Killed 扱い）                                        |
+| スコア   | **86.95%**（(560 + 13) / 659）                           |
+| 閾値     | 85（`break`）→ exit 0                                    |
+| 所要     | 約 148 分（`concurrency: 12`。マシン依存で大きく振れる） |
+
+> **所要時間を 4 分前後だと思って待たないこと。** この計画の初稿は Phase 3 時点の
+> 98 変異 / 3m32s を基準に書いていた。Phase 4 が足したコードで変異が **6.7 倍**になり、
+> 1 変異あたり回すスイートも 414 件 / 18 秒 → 774 件 / 133 秒（`--no-file-parallelism` 時）に
+> 伸びたため、掛け算で 2 時間超になる。**Phase を追うごとに伸びる**前提で見積もること。
 
 `mutate` は `src/**/*.ts` から `*.test.ts` / `src/db/schema/**` / `src/db/testing/**` を除いたもの
 なので、**Phase 4 が足すルート・ミドルウェア・リポジトリはそのまま変異の対象に入る**。
@@ -8570,6 +9375,41 @@ Phase 4 の直前の実測は 98 変異 / Killed 98 / Survived 0 / Timeout 0 の
 Survived として報告された変異を読み、それを殺すテストを足すこと。
 除外を足してよいのは「Stryker のサンドボックス外のファイルを読むテスト」だけで、
 実例と理由は `apps/api/stryker.config.mjs` の `vitestArgs` のコメントにある。
+
+> **生存が 1 箇所に固まっていたら、まず assert が弱くないかを疑う。** Phase 4 の初回は
+> **81.34%**（生存 123 件）で break に引っかかった。最大の塊は `toShopUpdateValues` の
+> 項目別 `if` で **48 件**。原因は「指定していない項目は変わらない」しか見ておらず、
+> **任意項目を 1 つも書き換えないまま**更新テストを組んでいたこと。
+> 閾値も `mutate` の除外も触らず、`shop-repository.test.ts` に
+> `任意項目をすべて指定すると、対応する列へ 1 つずつ書き込む` と
+> `経度だけの指定では経度も geohash も変えない` を足して 86.95% になった
+> （この 2 件は上の Task 4-8 の Step に取り込み済み）。
+> 生存の一覧は `reports/mutation/index.html` をブラウザで開くとファイル別に読める。
+
+> **変異対象に入っていて、スコアを構造的に押し下げるファイルが 2 つある。**
+> `mutate` の除外条件は `!src/**/*.test.ts` なので、
+> `src/auth/actor.type-test.ts`（**4 変異すべて生存**。tsc でしか検証しないファイルなので
+> vitest では 1 つも殺せない）と `src/test/fixtures.ts`（119 変異中 **33 件生存**）は対象に残る。
+> 見かけのスコアはこの分だけ下がるが、**ここに除外を足さない**。
+> 「閾値も除外も触らない」方針の例外を 1 つ作ると、次から本物の生存も除外で消せてしまう。
+> 驚かないために書いてあるだけで、対応は不要。
+
+> **Timeout 13 件のうち 12 件は `src/middleware/role-guard.ts` に出る。** Stryker は
+> Timeout を Killed 側に数えるのでスコアは 86.95% になるが、同じ変異は初回の実行では
+> 素直に Killed だった。CPU 競合によるものと**推測**している（断定できる材料は無い）。
+> かりに 13 件すべてを生存扱いに落とすと **560 / 659 = 84.98%** となり、
+> **閾値 85 をわずかに割る**。つまりこのスコアは Timeout の数え方に依存している。
+> 余力があるなら他の作業を止めて流し直すこと。
+
+> **バックグラウンド実行はハーネス管理下だと約 1 時間で kill される。** 2 時間かかるので、
+> 素直に流すと完走しない。ハーネス管理外へ逃がすと最後まで走る。
+>
+> ```bash
+> nohup sh -c 'npm run test:mutation -w @meshimap/api > /tmp/mutation.log 2>&1' &
+> disown
+> ```
+>
+> 進捗は `tail -f /tmp/mutation.log` で見る。
 
 - [ ] **Step 9: 本物の wrangler で起動して手で叩く**
 
@@ -8628,23 +9468,28 @@ git commit -m "test(api): hc<AppType> の RPC 契約と、ルート表と実装�
 | タスク | 内容                                 | 主なテストファイル                                                         | 期待 PASS |
 | ------ | ------------------------------------ | -------------------------------------------------------------------------- | --------- |
 | 4-0    | テスト基盤（Phase 3 の D1 を借りる） | `src/test/fixtures.test.ts`                                                | 13        |
-| 4-1    | 定数・ロガー・環境型・HTTP エラー    | `src/db/constants-parity.test.ts`（31）/ `src/lib/http-error.test.ts`（6） | 37        |
-| 4-2    | ブランド型 Actor                     | `src/auth/actor.test.ts` ＋ `src/auth/actor.type-test.ts`（tsc のみ）      | 12        |
-| 4-3    | Actor ファクトリの閉じ込め検査       | `src/auth/actor-encapsulation.test.ts`                                     | 2         |
+| 4-1    | 定数・ロガー・環境型・HTTP エラー    | `src/db/constants-parity.test.ts`（30）/ `src/lib/http-error.test.ts`（7） | 37        |
+| 4-2    | ブランド型 Actor                     | `src/auth/actor.test.ts` ＋ `src/auth/actor.type-test.ts`（tsc のみ）      | 11        |
+| 4-3    | Actor ファクトリの閉じ込め検査       | `src/auth/actor-encapsulation.test.ts`                                     | 8         |
 | 4-4    | error-handler ミドルウェア           | `src/middleware/error-handler.test.ts`                                     | 10        |
 | 4-5    | DB クライアントと Better Auth 初期化 | `src/auth/auth.test.ts`                                                    | 11        |
 | 4-6    | auth ミドルウェア                    | `src/auth/load-actor.test.ts`（14）/ `src/middleware/auth.test.ts`（11）   | 25        |
 | 4-7    | role-guard ミドルウェア              | `src/middleware/role-guard.test.ts`                                        | 17        |
-| 4-8    | 店舗リポジトリ                       | `src/repositories/shop-repository.test.ts`                                 | 37        |
+| 4-8    | 店舗リポジトリ                       | `src/repositories/shop-repository.test.ts`                                 | 39        |
 | 4-9    | レビューリポジトリ                   | `src/repositories/review-repository.test.ts`                               | 25        |
-| 4-10   | リポジトリ規約の機械検査             | `src/repositories/repository-convention.test.ts`                           | 11        |
-| 4-11   | ルートとアプリ本体                   | `src/routes/routes.test.ts`                                                | 35        |
+| 4-10   | リポジトリ規約の機械検査             | `src/repositories/repository-convention.test.ts`                           | 25        |
+| 4-11   | ルートとアプリ本体                   | `src/routes/routes.test.ts`                                                | 36        |
 | 4-12   | ロール × エンドポイント網羅          | `src/routes/permission-matrix.test.ts`                                     | 58        |
 | 4-13   | 他人のデータに触れない証明           | `src/routes/tenant-isolation.test.ts`                                      | 15        |
-| 4-14   | RPC 契約とルート表の突合             | `src/routes/rpc-contract.test.ts` ＋ 4-12 に追記                           | 16        |
-|        |                                      | **合計**                                                                   | **324**   |
+| 4-14   | RPC 契約とルート表の突合             | `src/routes/rpc-contract.test.ts`（14）＋ 4-12 への追記（16）              | 30        |
+|        |                                      | **合計**                                                                   | **360**   |
 
 **タスク数 15（4-0 〜 4-14）。**
+
+> **件数は「実行されるテスト数」で数えている。** `it.each` は配列の要素ごとに 1 件、
+> `for` で回して `it` を作っている箇所（4-12 の 13 エンドポイント × 4 閲覧者）は 52 件と数える。
+> `src/auth/actor.type-test.ts` は vitest では 0 件（tsc が `@ts-expect-error` 7 件を検証する）なので
+> 4-2 の 11 件には含めていない。`src/db/client.test.ts`（7 件）は Phase 3 の成果物なので表に無い。
 
 ### 全部通ったことの確認
 
@@ -8697,15 +9542,15 @@ npm run format:check
 
 ### C. リポジトリの現状に起因する未整備
 
-| #   | 事項                                                                                     | 状況                                                                                                                                                                                                                                                                                                                                                                                          |
-| --- | ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| C-1 | **解消済み（2026-09-15）。** `apps/api/stryker.config.mjs` を追加した                    | 設定は `stryker.base.mjs` に集約し、api 固有なのは `mutate` の除外・`vitestArgs`・`timeoutMS: 20_000` の 3 つだけ。Phase 4 直前の実測は 98 変異 / 100% / Survived 0。**Task 4-14 Step 8-b で流すのが Phase 4 の完了条件に入った**（`thresholds.break: 85`）                                                                                                                                   |
-| C-2 | **解消済み（2026-09-15）。** ルートに `eslint.config.mjs` と `lint` スクリプトを追加した | `packages/*` と `apps/api` が対象（`apps/mobile` は自前の設定があるので `ignores` で除外）。`no-console` を `error` で有効にしてあるので、**Task 4-1 に書いた `// eslint-disable-next-line no-console` は実際に抑制として働く**（同じ関数の別行に素の `console.log` を置くと `no-console` で落ちることを実測して確認済み）。CI の `lint` ジョブもルートと `apps/mobile` の 2 ステップに広げた |
-| C-3 | `apps/api/worker-configuration.d.ts` が存在しない                                        | `tsconfig.json` の `include` に書かれているが未生成。`npm run cf-typegen -w @meshimap/api` で作れるが、存在しなくても `tsc` は通る（実測 `EXIT=0`）。Phase 4 では生成しない                                                                                                                                                                                                                   |
-| C-4 | `apps/api/tsconfig.json` の `types` に `"node"` が無い                                   | 現状は `["@cloudflare/workers-types", "vitest/globals"]`。Task 4-3 で `"node"` を足す（`node:fs` を使うソース走査テストのため）。この変更が `@cloudflare/workers-types` のグローバル型と衝突しないことは未検証                                                                                                                                                                                |
-| C-5 | `apps/api` に `vitest` / `typescript` / `@types/node` の devDependency が無い            | ルートから hoist されている。`npm run test -w @meshimap/api` は動くが、`apps/api` 単体で切り出すと壊れる                                                                                                                                                                                                                                                                                      |
-| C-6 | `apps/mobile/package.json` に `expo-network` が無い                                      | `@better-auth/expo@1.7.5` の peerDependencies は `expo-network >= 8.0.7` を要求している。Phase 5 でモバイル認証を組むときに追加が要る可能性が高い。**Phase 4 では `npm install` を実行しないため未対応**                                                                                                                                                                                      |
-| C-7 | `apps/mobile` は `@meshimap/api` に依存していない                                        | `hc<AppType>` を書くには `AppType` を import する必要がある。Phase 5 で依存追加か型の置き場所の決定が要る                                                                                                                                                                                                                                                                                     |
+| #   | 事項                                                                                     | 状況                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| --- | ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| C-1 | **解消済み（2026-09-15）。** `apps/api/stryker.config.mjs` を追加した                    | 設定は `stryker.base.mjs` に集約し、api 固有なのは `mutate` の除外と `vitestArgs` の 2 つだけ（`timeoutMS` は既定の 10 秒のまま。`src/db/testing/local-d1.ts` を 1 往復にまとめてスイートが 18 秒まで縮んだので上乗せが要らなくなった）。Phase 4 **直前**の実測は 98 変異 / 100% / Survived 0 だが、Phase 4 **完了時**は 659 変異 / 86.95% になる。**Task 4-14 Step 8-b で流すのが Phase 4 の完了条件に入った**（`thresholds.break: 85`） |
+| C-2 | **解消済み（2026-09-15）。** ルートに `eslint.config.mjs` と `lint` スクリプトを追加した | `packages/*` と `apps/api` が対象（`apps/mobile` は自前の設定があるので `ignores` で除外）。`no-console` を `error` で有効にしてあるので、**Task 4-1 に書いた `// eslint-disable-next-line no-console` は実際に抑制として働く**（同じ関数の別行に素の `console.log` を置くと `no-console` で落ちることを実測して確認済み）。CI の `lint` ジョブもルートと `apps/mobile` の 2 ステップに広げた                                             |
+| C-3 | `apps/api/worker-configuration.d.ts` が存在しない                                        | `tsconfig.json` の `include` に書かれているが未生成。`npm run cf-typegen -w @meshimap/api` で作れるが、存在しなくても `tsc` は通る（実測 `EXIT=0`）。Phase 4 では生成しない                                                                                                                                                                                                                                                               |
+| C-4 | `apps/api/tsconfig.json` の `types` に `"node"` が無い                                   | 現状は `["@cloudflare/workers-types", "vitest/globals"]`。Task 4-3 で `"node"` を足す（`node:fs` を使うソース走査テストのため）。この変更が `@cloudflare/workers-types` のグローバル型と衝突しないことは未検証                                                                                                                                                                                                                            |
+| C-5 | `apps/api` に `vitest` / `typescript` / `@types/node` の devDependency が無い            | ルートから hoist されている。`npm run test -w @meshimap/api` は動くが、`apps/api` 単体で切り出すと壊れる                                                                                                                                                                                                                                                                                                                                  |
+| C-6 | `apps/mobile/package.json` に `expo-network` が無い                                      | `@better-auth/expo@1.7.5` の peerDependencies は `expo-network >= 8.0.7` を要求している。Phase 5 でモバイル認証を組むときに追加が要る可能性が高い。**Phase 4 では `npm install` を実行しないため未対応**                                                                                                                                                                                                                                  |
+| C-7 | `apps/mobile` は `@meshimap/api` に依存していない                                        | `hc<AppType>` を書くには `AppType` を import する必要がある。Phase 5 で依存追加か型の置き場所の決定が要る                                                                                                                                                                                                                                                                                                                                 |
 
 ### D. Phase 3 との並行作業に起因する不安定さ
 

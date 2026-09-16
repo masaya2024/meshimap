@@ -74,10 +74,8 @@ apps/mobile/src/app/
 │   ├── sign-in.test.tsx                     ★新規
 │   ├── sign-up.tsx                          ☆新規
 │   ├── sign-up.test.tsx                     ★新規
-│   ├── verify-email.tsx                     ☆新規
-│   ├── verify-email.test.tsx                ★新規
-│   ├── forgot-password.tsx                  ☆新規
-│   └── forgot-password.test.tsx             ★新規
+│   ├── verify-email.tsx                     ▽新規（Task 5-7 のプレースホルダのみ。中身は Task 5-15 のとおりスコープ外）
+│   └── forgot-password.tsx                  ▽新規（Task 5-7 のプレースホルダのみ。中身は Task 5-16 のとおりスコープ外）
 │
 ├── (user)/                                  ── 利用者 ──────────────────────
 │   ├── _layout.tsx                          ★新規
@@ -90,8 +88,7 @@ apps/mobile/src/app/
 │       ├── index.test.tsx                   ★新規
 │       ├── account.tsx                      ☆新規（ログアウト）
 │       ├── account.test.tsx                 ★新規
-│       ├── shop-application.tsx             ☆新規（owner 昇格の申請入口）
-│       └── shop-application.test.tsx        ★新規
+│       └── shop-application.tsx             ▽新規（Task 5-7 のプレースホルダのみ。中身は Task 5-19 のとおりスコープ外）
 │   （shop/ review/ reservations/ lists/ notifications.tsx / report/ は Phase 6 以降）
 │   （settings/profile-edit.tsx / settings/notifications.tsx は Phase 6 以降）
 │
@@ -103,8 +100,7 @@ apps/mobile/src/app/
 │   │   ├── account.tsx                      ☆新規（ログアウト）
 │   │   └── account.test.tsx                 ★新規
 │   └── onboarding/
-│       ├── status.tsx                       ☆新規（審査ステータス）
-│       └── status.test.tsx                  ★新規
+│       └── status.tsx                       ▽新規（Task 5-7 のプレースホルダのみ。中身は Task 5-19 のとおりスコープ外）
 │   （shop/ reservations/ reviews/ campaigns/ onboarding/apply.tsx は Phase 8）
 │
 └── (admin)/                                 ── システム管理者 ──────────────
@@ -142,7 +138,6 @@ apps/mobile/src/（app 以外）
 │   ├── auth.test.ts                         ★新規
 │   ├── api.ts                               ★新規
 │   ├── http.ts                              ★新規
-│   ├── shop-application.ts                  ★新規
 │   └── （theme.ts / fonts.ts は既存・変更なし）
 ├── features/auth/
 │   ├── types.ts                             ★新規（AuthState 判別共用体）
@@ -157,9 +152,6 @@ apps/mobile/src/（app 以外）
 │   ├── use-sign-out.ts                      ★新規（サインアウト + Query キャッシュ全消去）
 │   ├── use-sign-out.test.tsx                ★新規
 │   └── sign-out-storage.test.ts             ★新規（Better Auth を素通しして SecureStore の実挙動を検証）
-├── features/shop-application/
-│   ├── api.ts                               ★新規（申請の送信 / 自分の申請状況の取得）
-│   └── api.test.ts                          ★新規
 ├── hooks/
 │   ├── use-app-fonts.ts                     ★変更（読込失敗でも決着したことを表す hasFontLoadingSettled を追加）
 │   └── use-app-fonts.test.ts                ★変更（hasFontLoadingSettled の 3 件を追記）
@@ -168,7 +160,7 @@ apps/mobile/src/（app 以外）
     ├── auth-client.test.ts                  ★新規
     ├── api-client.ts                        ★新規
     ├── api-client.test.ts                   ★新規
-    ├── api-types.ts                         ★新規（Phase 4 完了時に削除する暫定型）
+    ├── api-types.ts                         ★新規（AppType の再 export と MeResponseBody。Task 5-3 Step 3）
     ├── query-client.ts                      ★新規
     └── （logger.ts は既存・変更なし）
 ```
@@ -176,7 +168,9 @@ apps/mobile/src/（app 以外）
 その他の変更ファイル:
 
 ```
-apps/mobile/jest.config.js                   ★変更（better-auth 系の変換追加 + global.css のスタブ差し替え）
+apps/mobile/app.json                         ★変更（expo.scheme を meshimap に統一。Task 5-1b）
+apps/mobile/package.json                     ★変更（@meshimap/api を workspace 依存に追加。Task 5-3）
+apps/mobile/jest.config.js                   ★変更（better-auth 系の変換追加 + global.css のスタブ差し替え / collectCoverageFrom の除外差し替え）
 apps/mobile/jest-css-stub.js                 ★新規（Jest で global.css を無害化する空モジュール）
 docs/superpowers/specs/2026-09-15-meshimap-design.md  ★変更（§5.1 の (user)/(tabs)/index.tsx → home.tsx）
 ```
@@ -340,7 +334,7 @@ describe('HTTP_STATUS', () => {
 /**
  * 開発時の既定 API ベース URL。
  * iOS シミュレータ / Android エミュレータの差異は EXPO_PUBLIC_API_URL で吸収する前提で、
- * ここは wrangler dev の既定ポートに合わせる（apps/api/wrangler.toml と対応）。
+ * ここは wrangler dev の既定ポートに合わせる（apps/api/wrangler.jsonc と対応）。
  */
 const DEFAULT_API_BASE_URL = 'http://localhost:8787';
 
@@ -520,6 +514,88 @@ Expected: statements / branches / functions / lines すべて 100%。
 git add apps/mobile/src/constants/auth.ts apps/mobile/src/constants/auth.test.ts apps/mobile/src/constants/api.ts apps/mobile/src/constants/api.test.ts apps/mobile/src/constants/http.ts apps/mobile/src/constants/http.test.ts apps/mobile/src/features/auth/types.ts
 git commit -m "feat(mobile): 認証まわりの定数と認証状態の型を追加する"
 ```
+
+---
+
+### Task 5-1b: カスタムスキームを `meshimap` に統一する（Task 5-2 より前に必ず行う）
+
+**なぜ Task 5-2 より前か。** Task 5-2 が作る `authClient` は `expoClient({ scheme: APP_SCHEME })` を渡す。`@better-auth/expo` のクライアントは全リクエストに `"expo-origin": getOrigin(scheme)`（= `Linking.createURL('', { scheme })`）を載せ（`node_modules/@better-auth/expo/dist/client.js:510-512` と `:702`）、サーバ側プラグインが `request.headers.get("expo-origin")` を読んで `request.headers.set("origin", expoOrigin)` と **Origin ヘッダに載せ替える**（同 `dist/index.js:46` / `:51` / `:54`）。Better Auth はその Origin を `trustedOrigins` と突き合わせ、外れると `Invalid origin` で弾く（`node_modules/better-auth/dist/api/middlewares/origin-check.mjs:112-115`）。
+
+**実測（2026-09-16 に現物を確認）:**
+
+| 場所                                   | 現在の値                                            |
+| -------------------------------------- | --------------------------------------------------- |
+| `apps/mobile/app.json:8`               | `"scheme": "alee"`                                  |
+| `apps/mobile/src/constants/auth.ts:13` | `export const APP_SCHEME = 'alee';`                 |
+| `apps/api/wrangler.jsonc:11`           | `"MOBILE_APP_SCHEME": "meshimap"`                   |
+| `apps/api/src/auth/auth.ts:49`         | ``trustedOrigins: [`${env.MOBILE_APP_SCHEME}://`]`` |
+| `apps/api/src/test/fixtures.ts:199`    | `export const TEST_MOBILE_APP_SCHEME = 'meshimap';` |
+
+`alee` は `create-expo-app` の初期値（作業ディレクトリ名 `Downloads/alee` 由来）がそのまま残ったもの。**モバイル側を `meshimap` に寄せる**（サーバ・D1・R2・リポジトリ名がすべて `meshimap` 系で、直す箇所がモバイルの 2 ファイルで済むため）。
+
+**この誤りは自動テストでは絶対に落ちない。** Phase 5 のテストは `@better-auth/expo` をモックするか `expoClient` に渡した引数だけを見るので、実機（development build）で初めて `Invalid origin` になる。Phase 10 まで放置すると Phase 5〜9 の 5 フェーズ分が「実機では認証が通らない」状態で積み上がる。だから**認証クライアントを作る前**にここで直す。
+
+> もともと Phase 10 Task 10-1 が持っていた手順のうち、**カスタムスキームの部分だけ**をここへ移した。`expo.name` / `expo.slug` / `ios.bundleIdentifier` / `android.package` / `extra.eas.projectId` は development build と `getExpoPushTokenAsync` にしか要らないので Phase 10 Task 10-1 に残してある。
+
+**Files:**
+
+- Modify: `apps/mobile/app.json`（`expo.scheme` のみ）
+- Modify: `apps/mobile/src/constants/auth.ts`（`APP_SCHEME` の値）
+- Modify: `apps/mobile/src/constants/auth.test.ts`（スキーム一致のテストを具体値まで縛る）
+
+**Interfaces:**
+
+- Consumes: なし
+- Produces: `APP_SCHEME === 'meshimap'` / `app.json` の `expo.scheme === 'meshimap'`
+
+- [ ] **Step 1: 既存テストを具体値まで縛る（先に失敗させる）**
+
+`apps/mobile/src/constants/auth.test.ts:25` の `it('scheme は app.json の scheme と一致する')` を次に差し替える。**`it` は増やさない**（このファイルは 6 件のまま）。
+
+```ts
+it('scheme は app.json の scheme と一致し、値は meshimap である', () => {
+  // app.json とズレると expoClient が起点 URL を作れない。
+  // さらに apps/api の wrangler.jsonc の vars.MOBILE_APP_SCHEME と同じ値でないと
+  // trustedOrigins に載らず、実機のリクエストが Invalid origin で弾かれる
+  expect(APP_SCHEME).toBe(appConfig.expo.scheme);
+  expect(APP_SCHEME).toBe('meshimap');
+});
+```
+
+Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- constants/auth`
+Expected: FAIL（`APP_SCHEME` も `app.json` もまだ `'alee'` なので 2 つ目の `expect` が落ちる）
+
+- [ ] **Step 2: `app.json` の `expo.scheme` を書き換える**
+
+`apps/mobile/app.json` の 8 行目 `"scheme": "alee",` を `"scheme": "meshimap",` にする。
+**`name` / `slug` / `plugins` / `experiments` は触らない**（Phase 10 Task 10-1 の担当）。
+
+- [ ] **Step 3: `APP_SCHEME` を書き換える**
+
+```ts
+// apps/mobile/src/constants/auth.ts
+/** app.json の expo.scheme と一致させる。ズレると expoClient が起点 URL を作れない。
+ *  apps/api の wrangler.jsonc の vars.MOBILE_APP_SCHEME とも同じ値でなければならない */
+export const APP_SCHEME = 'meshimap';
+```
+
+- [ ] **Step 4: テストが通ることを確認する**
+
+Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- constants/auth`
+Expected: PASS（6 件。**件数が減っていないこと**が回帰の合格条件）
+
+- [ ] **Step 5: わざと壊してテストが落ちることを確認する**
+
+`app.json` の `"scheme"` だけを `"alee"` に戻し、`scheme は app.json の scheme と一致し、値は meshimap である` が **FAIL** することを確認してから戻す。`APP_SCHEME` 側だけを戻しても落ちるが、**2 つのファイルのどちらを戻しても落ちる**ことを確かめたいので app.json 側で試す。
+
+- [ ] **Step 6: コミットする**
+
+```bash
+git add apps/mobile/app.json apps/mobile/src/constants/auth.ts apps/mobile/src/constants/auth.test.ts
+git commit -m "fix(mobile): カスタムスキームを meshimap に統一する"
+```
+
+> **ネイティブの再ビルドについて。** 公式ドキュメント https://docs.expo.dev/linking/into-your-app/ に "After adding a custom scheme to your app, you need to create a new development build." とある。Phase 5 の自動テストは Jest だけで完結するのでここでは再ビルド不要だが、**Task 5-21 Step 6 の実機確認より前に development build を作り直すこと**。手順は Phase 10 Task 10-1 Step 9 と同じ。
 
 ---
 
@@ -707,12 +783,32 @@ git commit -m "feat(mobile): SecureStore 永続化つきの Better Auth クラ�
 
 ---
 
-### Task 5-3: Hono RPC の API クライアントを作る（Phase 4 と切り離して進める）
+### Task 5-3: Hono RPC の API クライアントを作る
 
-Phase 4（API 基盤）は並行作業中で `@meshimap/api` はまだ `AppType` を export していない（`apps/api/src/routes` は空）。待たずに進めるため、**モバイル側が必要とする最小のスキーマを Hono の `Schema` 形として手書きし、それを `AppType` の暫定実体にする**。Phase 4 が `AppType` を出したら `lib/api-types.ts` を削除して import を差し替えるだけで済む（型の形は Hono が生成するものと同じ `Hono<Env, Schema, BasePath>`）。
+Phase 4（API 基盤）は**完了している**。`AppType` も業務ルートも実在するので、「Phase 4 待ちの暫定型」は要らない。ただし **`@meshimap/api` をモバイル側からそのまま `import type` できるかは別問題**なので、Step 2 で実際に確かめてから型の入手経路を決める。
+
+**実測（2026-09-16 に現物を確認）:**
+
+| 確認したこと               | 実測値                                                                                                                                                                                                       |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `AppType` の export        | `apps/api/src/index.ts:34` `export type AppType = typeof app;`                                                                                                                                               |
+| 業務ルート                 | `apps/api/src/index.ts:28-31` `.get('/health', …)` `.route('/me', meRoutes)` `.route('/shops', shopRoutes)` `.route('/reviews', reviewRoutes)`                                                               |
+| `/api` 接頭辞              | **Better Auth にしか付かない**。`apps/api/src/auth/auth.ts:11` `AUTH_BASE_PATH = '/api/auth'` を `index.ts:23` の `` `${AUTH_BASE_PATH}/*` `` にだけマウントしている。業務ルートは `/me` `/shops` `/reviews` |
+| `GET /me` の実レスポンス   | `apps/api/src/routes/me.ts:14-25` が `profiles` から `userId` / `role` / `displayName` の **3 列だけ**を select し `c.json({ profile })` を返す                                                              |
+| その形を固定しているテスト | `apps/api/src/routes/routes.test.ts:113-117` が `toEqual({ profile: { userId, role, displayName } })` で完全一致                                                                                             |
+| モバイルの workspace 依存  | `apps/mobile/package.json` は `@meshimap/core` と `@meshimap/geo` だけ。**`@meshimap/api` が無い**                                                                                                           |
+| シンボリックリンク         | `node_modules/@meshimap/api -> ../../apps/api` は**既に存在する**（npm workspaces が張ったもの。`npm install` の再実行は要らない）                                                                           |
+| `@meshimap/api` の実体     | `apps/api/package.json:7` `"main": "./src/index.ts"` — `.d.ts` を持たず、TS は**生の `.ts` をプログラムに取り込む**                                                                                          |
+| api 側の型環境             | `apps/api/tsconfig.json:4` `"types": ["@cloudflare/workers-types", "vitest/globals", "node"]`                                                                                                                |
+| モバイル側の型環境         | `apps/mobile/tsconfig.json:9` `"types": ["jest", "node"]` / `expo/tsconfig.base` の `"lib": ["DOM", "ESNext"]`                                                                                               |
+
+**懸念（未確認）。** `apps/api/src/index.ts:49-51` は `DurableObject` / `DurableObjectState`、`apps/api/src/lib/app-env.ts:5-13` は `D1Database` / `R2Bucket` / `KVNamespace` / `DurableObjectNamespace` という `@cloudflare/workers-types` のグローバル型に依存している。モバイル側の `types` にはこれが入らず、`expo/tsconfig.base` の `skipLibCheck: true` は `.d.ts` にしか効かないため、**`tsc --noEmit` が「Cannot find name 'D1Database'」で落ちる可能性がある**。`tsc` を実行していないので落ちること自体は**未確認**。だから Step 2 を「やってみて結果で分岐する判断ステップ」にしてある。
+
+**分岐は `lib/api-types.ts` の中身 1 ファイルに閉じ込める。** `api-client.ts` も Task 5-4 以降も、どちらの結果でも同じコードになる。
 
 **Files:**
 
+- Modify: `apps/mobile/package.json`（`@meshimap/api` を workspace 依存に足す）
 - Create: `apps/mobile/src/lib/api-types.ts`
 - Create: `apps/mobile/src/lib/api-client.ts`
 - Create: `apps/mobile/src/lib/api-client.test.ts`
@@ -728,11 +824,12 @@ Phase 4（API 基盤）は並行作業中で `@meshimap/api` はまだ `AppType`
   - `ClientRequestOptions` の `headers?: Record<string, string> | (() => Record<string, string> | Promise<Record<string, string>>)`（`node_modules/hono/dist/types/client/types.d.ts`）
   - `type Schema = { [Path: string]: { [Method: \`$${Lowercase<string>}\`]: Endpoint } }`/`type Endpoint = { input: any; output: any; outputFormat: ResponseFormat; status: StatusCode }`/`type BlankEnv = {}`（`node_modules/hono/dist/types/types.d.ts:477-488, :12`）
   - `authClient.getCookie(): Promise<string>`（Task 5-2）
-  - `type Role`, `type UserId` from `@meshimap/core`
+  - `type Role` from `@meshimap/core`
+  - `type AppType` from `@meshimap/api`（`apps/api/src/index.ts:34`。Step 2 の結果次第で手書きに切り替える）
 - Produces:
-  - `type MeResponseBody = { user: { id: string; email: string; name: string; isEmailVerified: boolean }; profile: { userId: string; role: Role; displayName: string; avatarKey: string | null; status: 'active' | 'suspended' } }`
-  - `type AppType = Hono<BlankEnv, MobileApiSchema, '/'>`（暫定。Phase 4 完了後は `@meshimap/api` から import）
-  - `const apiClient` — `apiClient.api.me.$get()` が `Response` を返す
+  - `type MeResponseBody = { profile: { userId: string; role: Role; displayName: string } }` — `apps/api/src/routes/me.ts:14-25` の実レスポンスと同形
+  - `type AppType`（`@meshimap/api` の再 export、または同形の手書き）
+  - `const apiClient` — `apiClient.me.$get()` が `Response` を返す（**`apiClient.api.me` ではない**。`/api` は Better Auth 専用）
 
 - [ ] **Step 1: 失敗するテストを書く**
 
@@ -782,7 +879,69 @@ describe('apiClient のヘッダ供給', () => {
 Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- api-client`
 Expected: FAIL（`Cannot find module './api-client'`）
 
-- [ ] **Step 2: `lib/api-types.ts` を作る**
+- [ ] **Step 2: `@meshimap/api` を直接 import できるか確かめる（判断ステップ）**
+
+まず依存を足す。`node_modules/@meshimap/api -> ../../apps/api` のシンボリックリンクは既にあるので、`npm install` を流し直さなくても解決する（実測で確認済み）。
+
+```jsonc
+// apps/mobile/package.json の dependencies（@meshimap/geo の隣）
+"@meshimap/api": "*",
+```
+
+次に、**捨てるための試験ファイル**を置いて型チェックだけ走らせる。
+
+```ts
+// apps/mobile/src/lib/api-type-probe.ts （この Step の最後に必ず削除する）
+import type { AppType } from '@meshimap/api';
+
+export type ProbeAppType = AppType;
+```
+
+Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm run typecheck -w @meshimap/mobile`
+
+結果で次の Step の書き方が決まる。**どちらを選んだかを Task 5-21 の総点検で報告できるよう、コミットメッセージに残すこと。**
+
+| 結果                                                                    | 選ぶ道           | 理由                                                                                                                                                                                                                                                                                                                    |
+| ----------------------------------------------------------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| エラーなし                                                              | **道 A（本命）** | サーバの実型がそのまま使える。パス・レスポンスのズレが型エラーとして出る                                                                                                                                                                                                                                                |
+| `Cannot find name 'D1Database'` などの Workers グローバル未解決で落ちる | **道 B**         | モバイルの `lib` は `["DOM", "ESNext"]` で、`@cloudflare/workers-types` を混ぜると `Response` / `Request` / `WebSocket` の二重宣言になりうる（`node_modules/@cloudflare/workers-types/index.d.ts:2046` / `:2125` / `:3765` に `declare var` がある。衝突するかは**未確認**）。モバイルの型環境を触らずに済む道 B を採る |
+
+**道 B を選んでも `@meshimap/api` の依存追加は残すこと。** Phase 6 以降でサーバ型に寄せ直すときの入口になるうえ、依存が無いと `import type` を試すことすらできない。
+
+確認が終わったら `apps/mobile/src/lib/api-type-probe.ts` を**必ず削除する**（`noUnusedLocals` には引っかからないが、消し忘れるとカバレッジ対象ファイルが 1 つ増える）。
+
+- [ ] **Step 3: `lib/api-types.ts` を作る**
+
+道 A と道 B で違うのは**このファイルの上半分だけ**。`MeResponseBody` は両方で同じものを手書きする（`hc` の `InferResponseType` で導出すると `api-client.ts` と循環参照になるため）。
+
+**道 A（`@meshimap/api` が import できた場合）:**
+
+```ts
+// apps/mobile/src/lib/api-types.ts
+import type { Role } from '@meshimap/core';
+
+/**
+ * サーバ実装の型をそのまま使う。
+ * パスやレスポンスがサーバ側で変わると、モバイルの typecheck が落ちて気づける。
+ */
+export type { AppType } from '@meshimap/api';
+
+/**
+ * `GET /me` のレスポンス。apps/api/src/routes/me.ts:14-25 が
+ * profiles から userId / role / displayName の 3 列だけを select して
+ * `c.json({ profile })` を返す形と一致させる。
+ * この形は apps/api/src/routes/routes.test.ts:113-117 の toEqual が固定している。
+ */
+export interface MeResponseBody {
+  profile: {
+    userId: string;
+    role: Role;
+    displayName: string;
+  };
+}
+```
+
+**道 B（Workers のグローバル型が解決できなかった場合）:**
 
 ```ts
 // apps/mobile/src/lib/api-types.ts
@@ -791,40 +950,32 @@ import type { Hono } from 'hono';
 import type { BlankEnv } from 'hono/types';
 
 /**
- * Phase 4（API 基盤）が `@meshimap/api` から `AppType` を export するまでの暫定宣言。
+ * `@meshimap/api` の AppType を直接読むと、apps/api が依存する
+ * @cloudflare/workers-types のグローバル型（D1Database ほか）が
+ * apps/mobile の tsconfig では解決できずに typecheck が落ちる（Step 2 で確認した）。
+ * そのため、モバイルが実際に叩くエンドポイントだけを Hono の Schema 形で手書きする。
  *
- * Hono の RPC は `Hono<Env, Schema, BasePath>` の Schema 部分だけを見るので、
- * モバイルが実際に叩くエンドポイントを手書きしておけば、実サーバの型が出たときに
- * 「このファイルを消して import を差し替える」だけで移行できる。
- * 形がズレていれば差し替えた瞬間に型エラーで気づける（黙って壊れない）。
- *
- * TODO(Phase 4): apps/api が AppType を export したらこのファイルを削除し、
- * api-client.ts の import を `import type { AppType } from '@meshimap/api'` に差し替える。
+ * 手書きなので「サーバが変わってもモバイルは気づけない」。
+ * ズレを検知する責任は apps/api/src/routes/routes.test.ts:113-117 の toEqual と、
+ * ここに書いた行番号コメントが負う。サーバの me.ts を変えたらこのファイルも直すこと。
  */
 
-/** `GET /api/me` のレスポンス。設計書 §6 の profiles テーブルと Better Auth の user テーブルの合成 */
+/** `GET /me` のレスポンス。apps/api/src/routes/me.ts:14-25 と同形 */
 export interface MeResponseBody {
-  user: {
-    id: string;
-    email: string;
-    name: string;
-    isEmailVerified: boolean;
-  };
   profile: {
     userId: string;
     role: Role;
     displayName: string;
-    avatarKey: string | null;
-    status: 'active' | 'suspended';
   };
 }
 
 /**
  * Hono の Schema 形。interface ではなく type alias にすること。
  * interface は暗黙のインデックスシグネチャを持たないため `S extends Schema` を満たせない。
+ * パスに `/api` は付かない（apps/api/src/index.ts:29 は `.route('/me', meRoutes)`）。
  */
 type MobileApiSchema = {
-  '/api/me': {
+  '/me': {
     $get: {
       input: Record<string, never>;
       output: MeResponseBody;
@@ -837,7 +988,7 @@ type MobileApiSchema = {
 export type AppType = Hono<BlankEnv, MobileApiSchema, '/'>;
 ```
 
-- [ ] **Step 3: `lib/api-client.ts` を作る**
+- [ ] **Step 4: `lib/api-client.ts` を作る**
 
 ```ts
 // apps/mobile/src/lib/api-client.ts
@@ -871,26 +1022,27 @@ export async function buildAuthHeaders(): Promise<Record<string, string>> {
 export const apiClient = hc<AppType>(API_BASE_URL, { headers: buildAuthHeaders });
 ```
 
-- [ ] **Step 4: テストが通ることを確認する**
+- [ ] **Step 5: テストが通ることを確認する**
 
 Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- api-client`
 Expected: PASS（3 件）
 
-- [ ] **Step 5: わざと壊してテストが落ちることを確認する**
+- [ ] **Step 6: わざと壊してテストが落ちることを確認する**
 
 `buildAuthHeaders` の `try` / `catch` を外し、「Cookie の取得に失敗してもヘッダ生成は落ちない」が**失敗すること**を確認する。
 続けて `if (cookie === '')` の分岐を削除し、「Cookie が空文字なら cookie ヘッダを載せない」が**失敗すること**を確認してから元に戻す。
 
-- [ ] **Step 6: 型チェックが通ることを確認する**
+- [ ] **Step 7: 型チェックが通ることを確認する**
 
 Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm run typecheck -w @meshimap/mobile`
-Expected: エラーなし（`apiClient.api.me.$get` が補完できる状態）
+Expected: エラーなし（`apiClient.me.$get` が補完できる状態。**`apiClient.api.me` にはならない**）
+併せて `apps/mobile/src/lib/api-type-probe.ts` が残っていないことを確認する。
 
-- [ ] **Step 7: コミットする**
+- [ ] **Step 8: コミットする**
 
 ```bash
-git add apps/mobile/src/lib/api-types.ts apps/mobile/src/lib/api-client.ts apps/mobile/src/lib/api-client.test.ts
-git commit -m "feat(mobile): Hono RPC の API クライアントを追加する"
+git add apps/mobile/package.json apps/mobile/src/lib/api-types.ts apps/mobile/src/lib/api-client.ts apps/mobile/src/lib/api-client.test.ts
+git commit -m "feat(mobile): Hono RPC の API クライアントを追加する（型の入手経路: 道 A / 道 B のどちらを選んだかを書く）"
 ```
 
 ---
@@ -899,6 +1051,8 @@ git commit -m "feat(mobile): Hono RPC の API クライアントを追加する"
 
 **Files:**
 
+- Modify: `apps/mobile/src/constants/http.ts`（`unprocessableEntity: 422` を足す。`conflict: 409` は残す）
+- Modify: `apps/mobile/src/constants/http.test.ts`（`toEqual` がキー完全一致なので同時に直す）
 - Create: `apps/mobile/src/features/auth/auth-error.ts`
 - Create: `apps/mobile/src/features/auth/auth-error.test.ts`
 - Create: `apps/mobile/src/features/auth/schema.ts`
@@ -914,21 +1068,68 @@ git commit -m "feat(mobile): Hono RPC の API クライアントを追加する"
   - `authClient.requestPasswordReset(body)` — body: `{ email: string; redirectTo?: string }`（同 :1269）
   - `authClient.signOut()`（同 :294）
   - レスポンスは `{ data: T; error: null } | { data: null; error: { message?: string } & { status: number; statusText: string } }`
-  - `apiClient.api.me.$get()`（Task 5-3）
+  - `apiClient.me.$get()`（Task 5-3。`/api` は Better Auth 専用なので `apiClient.api.me` にはならない）
+  - `HTTP_STATUS.unprocessableEntity`（Step 1 で足す）
 - Produces:
   - `const signInSchema` / `const signUpSchema` / `const passwordResetRequestSchema`（**モバイル側で定義する**。`@meshimap/core` に認証系スキーマは存在しない）
   - `type SignInInput = { email: string; password: string }`、`type SignUpInput = { displayName: string; email: string; password: string }`、`type PasswordResetRequestInput = { email: string }`
   - `const PASSWORD_MIN_LENGTH: 8`、`const PASSWORD_MAX_LENGTH: 128`、`const DISPLAY_NAME_MAX_LENGTH: 50`
   - `class AuthError extends Error { readonly kind: AuthErrorKind }`
-  - `type AuthErrorKind = 'invalid-credentials' | 'email-already-used' | 'rate-limited' | 'network' | 'unknown'`
+  - `type AuthErrorKind = 'invalid-credentials' | 'account-suspended' | 'email-already-used' | 'rate-limited' | 'network' | 'unknown'`
   - `function toAuthError(error: { status: number; message?: string | undefined } | null): AuthError`
   - `async function signInWithEmail(input: SignInInput): Promise<void>`
   - `async function signUpWithEmail(input: SignUpInput): Promise<void>`
   - `async function requestPasswordReset(input: PasswordResetRequestInput): Promise<void>`
   - `async function signOutFromApp(): Promise<void>`
-  - `async function fetchMyProfile(): Promise<MeResponseBody>`
+  - `async function fetchMyProfile(): Promise<MeResponseBody>`（`MeResponseBody` は `{ profile: { userId, role, displayName } }`。Task 5-3 Step 3）
 
-- [ ] **Step 1: 失敗するテストを書く（auth-error）**
+- [ ] **Step 1: `constants/http.ts` に 422 を足す（既存テストも同時に直す）**
+
+Better Auth はサインアップのメール重複に **422（`UNPROCESSABLE_ENTITY`）** を返す。**409 ではない。**
+
+**実測（2026-09-16 に現物を確認）:**
+
+| 確認したこと       | 実測値                                                                                                                                                                                                                                                                                               |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 重複時に投げるもの | `node_modules/better-auth/dist/api/routes/sign-up.mjs:211` `throw APIError.from("UNPROCESSABLE_ENTITY", BASE_ERROR_CODES.USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL);`                                                                                                                                    |
+| その数値           | `node_modules/better-call/dist/error.mjs:76` `UNPROCESSABLE_ENTITY: 422,`                                                                                                                                                                                                                            |
+| 409 が返る経路     | **無い。** `sign-up.mjs:202` の「重複を隠す generic レスポンス（200）」は同 `:162` の `requireEmailVerification \|\| autoSignIn === false` のときだけ通るが、`apps/api/src/auth/auth.ts:45` は `emailAndPassword: { enabled: true },` だけで**どちらも設定していない**（Task 5-14 の判断と同じ前提） |
+
+**`conflict: 409` は消さない。** Phase 9 Task 9-0 が 409 を使う。足すだけにする。
+
+```ts
+// apps/mobile/src/constants/http.ts
+/** 認証・認可まわりで分岐に使う HTTP ステータス。数値の直書きを避けるために名前を付ける */
+export const HTTP_STATUS = {
+  unauthorized: 401,
+  forbidden: 403,
+  conflict: 409,
+  /** Better Auth のサインアップがメール重複で返す（sign-up.mjs:211 の UNPROCESSABLE_ENTITY） */
+  unprocessableEntity: 422,
+  tooManyRequests: 429,
+} as const;
+```
+
+`apps/mobile/src/constants/http.test.ts:8-15` は `toEqual` でキーを**完全一致**で固定しているので、同時に直さないとこの既存テストが落ちる。`it` の数は **2 件のまま**（名前と期待値を変えるだけ）。
+
+```ts
+it('認証・認可の分岐で使う 5 つのステータスを持つ', () => {
+  expect(HTTP_STATUS).toEqual({
+    unauthorized: 401,
+    forbidden: 403,
+    conflict: 409,
+    unprocessableEntity: 422,
+    tooManyRequests: 429,
+  });
+});
+```
+
+`すべてクライアントエラー（4xx）の範囲に収まる` のテストは 422 でもそのまま通る（`CLIENT_ERROR_STATUS_MIN = 400` / `MAX = 499`）。
+
+Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- constants/http`
+Expected: PASS（2 件）
+
+- [ ] **Step 2: 失敗するテストを書く（auth-error）**
 
 ```ts
 // apps/mobile/src/features/auth/auth-error.test.ts
@@ -944,8 +1145,21 @@ describe('toAuthError', () => {
     expect(error.message).toBe(AUTH_ERROR_MESSAGES['invalid-credentials']);
   });
 
-  it('409 はメールアドレスの重複として扱う', () => {
-    expect(toAuthError({ status: HTTP_STATUS.conflict }).kind).toBe('email-already-used');
+  it('422 はメールアドレスの重複として扱う', () => {
+    // Better Auth の sign-up は重複メールに 422 を返す（sign-up.mjs:211）。409 ではない
+    expect(toAuthError({ status: HTTP_STATUS.unprocessableEntity }).kind).toBe(
+      'email-already-used',
+    );
+  });
+
+  it('403 は利用停止として扱い、資格情報エラーと混ぜない', () => {
+    // apps/api/src/middleware/auth.ts:42-45 は suspended / invalid-role のとき全エンドポイントで
+    // 403 を投げる。これを invalid-credentials に丸めると、停止中の利用者が
+    // パスワードを何度入れ直しても直らない案内を読み続けることになる
+    const error = toAuthError({ status: HTTP_STATUS.forbidden });
+
+    expect(error.kind).toBe('account-suspended');
+    expect(error.message).toBe(AUTH_ERROR_MESSAGES['account-suspended']);
   });
 
   it('429 はレート制限として扱う', () => {
@@ -979,20 +1193,26 @@ describe('toAuthError', () => {
 Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- auth-error`
 Expected: FAIL（`Cannot find module './auth-error'`）
 
-- [ ] **Step 2: `features/auth/auth-error.ts` を作る**
+- [ ] **Step 3: `features/auth/auth-error.ts` を作る**
 
 ```ts
 // apps/mobile/src/features/auth/auth-error.ts
 import { HTTP_STATUS } from '@/constants/http';
 
 export type AuthErrorKind =
-  'invalid-credentials' | 'email-already-used' | 'rate-limited' | 'network' | 'unknown';
+  | 'invalid-credentials'
+  | 'account-suspended'
+  | 'email-already-used'
+  | 'rate-limited'
+  | 'network'
+  | 'unknown';
 
 /** ネットワーク到達不能時に better-fetch が返すステータス */
 const NETWORK_UNREACHABLE_STATUS = 0;
 
 export const AUTH_ERROR_MESSAGES: Record<AuthErrorKind, string> = {
   'invalid-credentials': 'メールアドレスまたはパスワードが正しくありません。',
+  'account-suspended': 'このアカウントは現在ご利用いただけません。お問い合わせください。',
   'email-already-used': 'このメールアドレスは既に登録されています。',
   'rate-limited': '試行回数が上限に達しました。しばらく待ってからお試しください。',
   network: '通信に失敗しました。電波状況を確認してもう一度お試しください。',
@@ -1023,9 +1243,13 @@ export function toAuthError(
 
   switch (error.status) {
     case HTTP_STATUS.unauthorized:
-    case HTTP_STATUS.forbidden:
       return new AuthError('invalid-credentials');
-    case HTTP_STATUS.conflict:
+    case HTTP_STATUS.forbidden:
+      // apps/api/src/middleware/auth.ts:42-45 が suspended / invalid-role で返す 403。
+      // 資格情報の誤りではないので文言を分ける
+      return new AuthError('account-suspended');
+    case HTTP_STATUS.unprocessableEntity:
+      // Better Auth の sign-up がメール重複で返す（sign-up.mjs:211）
       return new AuthError('email-already-used');
     case HTTP_STATUS.tooManyRequests:
       return new AuthError('rate-limited');
@@ -1037,16 +1261,16 @@ export function toAuthError(
 }
 ```
 
-- [ ] **Step 3: テストが通ることを確認する**
+- [ ] **Step 4: テストが通ることを確認する**
 
 Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- auth-error`
-Expected: PASS（7 件）
+Expected: PASS（8 件）
 
-- [ ] **Step 4: わざと壊してテストが落ちることを確認する**
+- [ ] **Step 5: わざと壊してテストが落ちることを確認する**
 
 `default:` の `new AuthError('unknown')` を `new AuthError(error.message === undefined ? 'unknown' : 'invalid-credentials')` に書き換え、「未知の status は unknown になり、サーバ文言をそのまま画面に出さない」が**失敗すること**を確認してから元に戻す。
 
-- [ ] **Step 5: 入力スキーマ `features/auth/schema.ts` と `schema.test.ts` を作る**
+- [ ] **Step 6: 入力スキーマ `features/auth/schema.ts` と `schema.test.ts` を作る**
 
 `@meshimap/core` に認証系のスキーマは**無い**。`packages/core/src/index.ts` が export するスキーマは
 `roleSchema` / `identifierSchema` / `shopCreateSchema` / `shopUpdateSchema` / `reviewCreateSchema` /
@@ -1208,7 +1432,7 @@ describe('passwordResetRequestSchema', () => {
 Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- features/auth/schema`
 Expected: PASS（12 件）
 
-- [ ] **Step 6: 失敗するテストを書く（api）**
+- [ ] **Step 7: 失敗するテストを書く（api）**
 
 ```ts
 // apps/mobile/src/features/auth/api.test.ts
@@ -1228,7 +1452,7 @@ jest.mock('@/lib/auth-client', () => ({
     signOut: mockSignOut,
   },
 }));
-jest.mock('@/lib/api-client', () => ({ apiClient: { api: { me: { $get: mockMeGet } } } }));
+jest.mock('@/lib/api-client', () => ({ apiClient: { me: { $get: mockMeGet } } }));
 
 import { AUTH_ERROR_MESSAGES } from './auth-error';
 import { fetchMyProfile, signInWithEmail, signOutFromApp, signUpWithEmail } from './api';
@@ -1301,10 +1525,11 @@ describe('signUpWithEmail', () => {
     });
   });
 
-  it('409 のときは重複エラーになる', async () => {
+  it('422 のときは重複エラーになる', async () => {
+    // Better Auth の sign-up は重複メールに 422 を返す（sign-up.mjs:211）
     mockSignUpEmail.mockResolvedValue({
       data: null,
-      error: { status: HTTP_STATUS.conflict, statusText: 'Conflict' },
+      error: { status: HTTP_STATUS.unprocessableEntity, statusText: 'Unprocessable Entity' },
     });
 
     await expect(
@@ -1347,15 +1572,10 @@ describe('fetchMyProfile', () => {
   });
 
   it('200 ならレスポンス本文を返す', async () => {
+    // apps/api/src/routes/me.ts:14-25 が返すのは profile の 3 列だけ。
+    // user も avatarKey も status も返さない（routes.test.ts:113-117 の toEqual が固定している）
     const body = {
-      user: { id: 'usr_1', email: 'taro@example.com', name: '山田太郎', isEmailVerified: true },
-      profile: {
-        userId: 'usr_1',
-        role: 'owner',
-        displayName: '山田太郎',
-        avatarKey: null,
-        status: 'active',
-      },
+      profile: { userId: 'usr_1', role: 'owner', displayName: '山田太郎' },
     };
     mockMeGet.mockResolvedValue({ ok: true, status: 200, json: async () => body });
 
@@ -1371,13 +1591,25 @@ describe('fetchMyProfile', () => {
 
     await expect(fetchMyProfile()).rejects.toThrow(AUTH_ERROR_MESSAGES['invalid-credentials']);
   });
+
+  it('403 なら利用停止の文言で投げる', async () => {
+    // 停止アカウントは apps/api/src/middleware/auth.ts:42-45 が全エンドポイントで 403 を返す。
+    // ここを資格情報エラーに丸めると利用者が延々パスワードを直そうとする
+    mockMeGet.mockResolvedValue({
+      ok: false,
+      status: HTTP_STATUS.forbidden,
+      json: async () => ({}),
+    });
+
+    await expect(fetchMyProfile()).rejects.toThrow(AUTH_ERROR_MESSAGES['account-suspended']);
+  });
 });
 ```
 
 Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- features/auth/api`
 Expected: FAIL（`Cannot find module './api'`）
 
-- [ ] **Step 7: `features/auth/api.ts` を作る**
+- [ ] **Step 8: `features/auth/api.ts` を作る**
 
 ```ts
 // apps/mobile/src/features/auth/api.ts
@@ -1444,7 +1676,7 @@ export async function signOutFromApp(): Promise<void> {
 }
 
 export async function fetchMyProfile(): Promise<MeResponseBody> {
-  const response = await apiClient.api.me.$get();
+  const response = await apiClient.me.$get();
 
   if (!response.ok) {
     logger.warn('プロフィールの取得に失敗した', { status: response.status });
@@ -1455,20 +1687,20 @@ export async function fetchMyProfile(): Promise<MeResponseBody> {
 }
 ```
 
-- [ ] **Step 8: テストが通ることを確認する**
+- [ ] **Step 9: テストが通ることを確認する**
 
 Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- features/auth/api`
-Expected: PASS（9 件）
+Expected: PASS（10 件）
 
-- [ ] **Step 9: わざと壊してテストが落ちることを確認する**
+- [ ] **Step 10: わざと壊してテストが落ちることを確認する**
 
 `signOutFromApp` の `if (result.error !== null) { logger.warn(...) }` を `throwIfFailed(result, 'signOut')` に書き換え、「サーバがエラーを返しても例外にしない」が**失敗すること**を確認してから元に戻す。
 続けて `signUpWithEmail` の `name: input.displayName` を `name: input.email` に書き換え、「displayName を Better Auth の name として送る」が**失敗すること**を確認してから元に戻す。
 
-- [ ] **Step 10: コミットする**
+- [ ] **Step 11: コミットする**
 
 ```bash
-git add apps/mobile/src/features/auth/auth-error.ts apps/mobile/src/features/auth/auth-error.test.ts apps/mobile/src/features/auth/schema.ts apps/mobile/src/features/auth/schema.test.ts apps/mobile/src/features/auth/api.ts apps/mobile/src/features/auth/api.test.ts
+git add apps/mobile/src/constants/http.ts apps/mobile/src/constants/http.test.ts apps/mobile/src/features/auth/auth-error.ts apps/mobile/src/features/auth/auth-error.test.ts apps/mobile/src/features/auth/schema.ts apps/mobile/src/features/auth/schema.test.ts apps/mobile/src/features/auth/api.ts apps/mobile/src/features/auth/api.test.ts
 git commit -m "feat(mobile): 認証 API ラッパーとエラーの日本語化を追加する"
 ```
 
@@ -1527,15 +1759,10 @@ jest.mock('./api', () => ({ fetchMyProfile: mockFetchMyProfile }));
 
 import { AuthProvider, useAuth } from './auth-context';
 
+// apps/api/src/routes/me.ts:14-25 が返すのは profile の 3 列だけ。
+// 形は apps/api/src/routes/routes.test.ts:113-117 の toEqual が固定している
 const PROFILE_OF_OWNER = {
-  user: { id: 'usr_1', email: 'taro@example.com', name: '山田太郎', isEmailVerified: true },
-  profile: {
-    userId: 'usr_1',
-    role: 'owner',
-    displayName: '山田太郎',
-    avatarKey: null,
-    status: 'active',
-  },
+  profile: { userId: 'usr_1', role: 'owner', displayName: '山田太郎' },
 };
 
 function AuthStateProbe() {
@@ -2126,7 +2353,7 @@ export default function VerifyEmailScreen() {
   return (
     <PlaceholderScreen
       title="メールを確認してください"
-      description="Task 5-15 で案内文と再送導線を実装する"
+      description="メール確認はサーバ側に送信口が無いため Phase 5 では実装しない（Task 5-15 参照）"
       testID="verify-email-screen"
     />
   );
@@ -2141,7 +2368,7 @@ export default function ForgotPasswordScreen() {
   return (
     <PlaceholderScreen
       title="パスワードの再設定"
-      description="Task 5-16 で再設定メールの送信を実装する"
+      description="パスワード再設定はサーバ側に送信口が無いため Phase 5 では実装しない（Task 5-16 参照）"
       testID="forgot-password-screen"
     />
   );
@@ -2292,7 +2519,7 @@ export default function ShopApplicationScreen() {
   return (
     <PlaceholderScreen
       title="店舗の登録申請"
-      description="Task 5-19 で申請フォームを実装する"
+      description="店舗申請は API が未実装のため Phase 5 では実装しない（Task 5-19 参照）"
       testID="shop-application-screen"
     />
   );
@@ -2407,7 +2634,7 @@ export default function OwnerOnboardingStatusScreen() {
   return (
     <PlaceholderScreen
       title="審査状況"
-      description="Task 5-19 で申請ステータスの表示を実装する"
+      description="店舗申請は API が未実装のため Phase 5 では実装しない（Task 5-19 参照）"
       testID="owner-onboarding-status-screen"
     />
   );
@@ -3792,7 +4019,9 @@ git commit -m "feat(mobile): 伏せ字を切り替えられる PasswordInput を
 
 ### Task 5-12: 認証フォームの共通部品を作る（文言変換 / エラーバナー / 画面の外枠）
 
-**追加する理由:** sign-in / sign-up / forgot-password の 3 画面が「キーボードを避ける外枠」「送信失敗の理由を出すバナー」「例外 → 表示文言の変換」を同じように必要とする。先に共通部品を出しておかないと 3 画面でコピーが増える（規約 3.4）。
+**追加する理由:** sign-in（Task 5-13）と sign-up（Task 5-14）の 2 画面が「キーボードを避ける外枠」「送信失敗の理由を出すバナー」「例外 → 表示文言の変換」を同じように必要とする。先に共通部品を出しておかないと 2 画面でコピーが増える（規約 3.4）。
+
+> **2 画面なのに共通部品を作る理由。** 旧版は「sign-in / sign-up / forgot-password の 3 画面」と書いていたが、Task 5-16（パスワード再設定の申請画面）を Phase 5 のスコープ外にしたため 2 画面になった。それでも部品として切り出すのは、**`toAuthError` による「例外 → 日本語文言」の変換をここ 1 か所に閉じ込めるため**である（Task 5-4 で 401 / 403 / 422 / 429 を作り分けている）。画面ごとに `catch` を書くと、増えた分岐がどれか 1 画面に反映されない事故が起きる。スコープ外にした 3 画面を後から足すときも、この部品にぶら下げるだけで済む。
 
 **Files:**
 
@@ -4096,7 +4325,7 @@ export function AuthFormScreen({
 - [ ] **Step 7: テストが通ることを確認する**
 
 Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- auth-error form-error-banner auth-form-screen`
-Expected: PASS（`auth-error` は既存 7 件 + 追加 4 件、`form-error-banner` 5 件、`auth-form-screen` 5 件）
+Expected: PASS（`auth-error` は既存 8 件 + 追加 4 件、`form-error-banner` 5 件、`auth-form-screen` 5 件）
 
 - [ ] **Step 8: わざと壊してテストが落ちることを確認する**
 
@@ -4647,14 +4876,25 @@ git commit -m "feat(mobile): サインイン画面と認証ミューテーショ
 
 ### Task 5-14: 新規登録画面を実装する
 
-**設計上の要点（ここだけ成功時に遷移する）:** サインインと違い、新規登録の成功後は**確認メール待機画面へ `router.replace` する**。設計書 §5.1 が `verify-email.tsx` を「確認メール送信後の待機」と定めており、登録直後はまだセッションが無い＝グループが切り替わらないため、画面側で動かす必要がある。`push` ではなく `replace` を使うのは、戻る操作で登録フォームに戻れると二重登録を招くため。
+**設計上の要点（サインインと同じく、成功後の遷移を画面に書かない）:** 新規登録に成功すると**その場でセッションが張られる**。セッションが張られると `AuthProvider` が `authenticated` になり、ルート `_layout.tsx` の `<Stack.Protected guard={status === 'unauthenticated'}>` が false になって `(auth)` グループごとアンマウントされる（Task 5-8）。あとはアンカーの `index.tsx` がロールごとの着地先へ飛ばす（Task 5-9）。画面側で `router.replace` を書くと遷移が二重になるうえ、`(auth)` の中にある画面へは**そもそも到達できない**。
 
-**前提（apps/api / Phase 4 側の設定）:** Better Auth の `emailAndPassword` を `autoSignIn: false` / `requireEmailVerification: true` で設定すること。`autoSignIn: true` のままだと登録直後にセッションが張られ、`Stack.Protected` が `(auth)` を閉じてしまい、`verify-email` に到達できない。**この前提は本計画では検証できないため「未確認事項」にも記載する。**
+**実測（2026-09-16 に現物を確認）:**
+
+| 確認したこと             | 実測値                                                                                                                                                                                |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/api` の設定        | `apps/api/src/auth/auth.ts:45` `emailAndPassword: { enabled: true },` のみ。`autoSignIn` も `requireEmailVerification` も**未設定**                                                   |
+| 自動サインインの条件     | `node_modules/better-auth/dist/api/routes/sign-up.mjs:163` `shouldSkipAutoSignIn = autoSignIn === false \|\| shouldReturnGenericDuplicateResponse` — 既定（未設定）では**飛ばさない** |
+| 実際にセッションを作る行 | 同 `:262` `createSession(createdUser.id, …)` / `:264` `setSessionCookie(...)`                                                                                                         |
+
+> **旧版からの変更（2026-09-16）。** 以前の本文は「`apps/api` 側を `autoSignIn: false` / `requireEmailVerification: true` にする」ことを前提に、成功後 `verify-email` へ `router.replace` していた。**この前提は採らない。** 理由は 2 つ。
+>
+> 1. **実装されていない。** `apps/api/src/auth/auth.ts:45` にどちらの設定も無く、設定を足す手順は Phase 4 の計画書にも Phase 5 にも存在しなかった
+> 2. **足すと Task 5-4 Step 1 の 422 判定と両立しない。** `sign-up.mjs:162` は `requireEmailVerification || autoSignIn === false` のとき、重複メールに対して 422 ではなく**「登録できたように見える 200」**（`buildGenericDuplicateResponse`。同 `:166-198` と `:209`）を返す。片方を立てるともう片方が倒れる
+>
+> メール確認の導線そのもの（Task 5-15）は Phase 5 のスコープ外にした。理由は Task 5-15 の節に書いてある。
 
 **Files:**
 
-- Modify: `apps/mobile/src/constants/auth.ts`
-- Modify: `apps/mobile/src/constants/auth.test.ts`
 - Modify: `apps/mobile/src/app/(auth)/sign-up.tsx`（Task 5-7 のプレースホルダを差し替える）
 - Create: `apps/mobile/src/app/(auth)/sign-up.test.tsx`
 
@@ -4664,67 +4904,18 @@ git commit -m "feat(mobile): サインイン画面と認証ミューテーショ
   - `signUpWithEmail(input: SignUpInput): Promise<void>`（Task 5-4）
   - `useAuthMutation`（Task 5-13）、`AuthFormScreen` / `FormErrorBanner`（Task 5-12）、`Input` / `INPUT_TEXT_BEHAVIORS`（Task 5-10）、`PasswordInput`（Task 5-11）、`Button`（既存）
   - `signUpSchema` / `DISPLAY_NAME_MAX_LENGTH` と `type SignUpInput = { displayName: string; email: string; password: string }`（Task 5-4 の `@/features/auth/schema`。`z.input` と `z.output` が一致すること）
-  - `HrefObject = { pathname: string; params?: UnknownInputParams }`（`node_modules/expo-router/build/typed-routes/types.d.ts:11`）
+  - `SIGN_IN_ROUTE`（Task 5-1）
 - Produces:
-  - `function buildVerifyEmailRoute(email: string): Href`
   - `export default function SignUpScreen(): ReactElement`
 
-- [ ] **Step 1: ルート生成関数の失敗するテストを書く（既存ファイルに追記）**
-
-```ts
-// apps/mobile/src/constants/auth.test.ts の describe('認証まわりの定数') の中に追記する
-// ファイル先頭の import に buildVerifyEmailRoute と VERIFY_EMAIL_ROUTE を足す
-
-it('メール確認待機画面へのリンクに宛先アドレスを載せる', () => {
-  // どのアドレス宛に送ったかを待機画面で表示するため、パラメータで運ぶ
-  expect(buildVerifyEmailRoute('taro@example.com')).toEqual({
-    pathname: VERIFY_EMAIL_ROUTE,
-    params: { email: 'taro@example.com' },
-  });
-});
-```
-
-Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- constants/auth`
-Expected: FAIL（`buildVerifyEmailRoute` が export されていない）
-
-- [ ] **Step 2: `constants/auth.ts` にルート生成関数を足す**
-
-`export const VERIFY_EMAIL_ROUTE: Href = '/verify-email';` の行を次に置き換える。
-
-```ts
-/**
- * verify-email のパス。
- * Href のオブジェクト形式は pathname にリテラル型を要求する
- * （typedRoutes が有効だと .expo/types でルート名の union になる）ため、
- * Href に代入した定数とは別にリテラルのまま持つ。
- */
-const VERIFY_EMAIL_PATHNAME = '/verify-email' as const;
-
-export const VERIFY_EMAIL_ROUTE: Href = VERIFY_EMAIL_PATHNAME;
-
-/**
- * メール確認待機画面へのリンク。
- * 「どのアドレス宛に送ったか」を待機画面で表示し、再送もそのアドレスに対して行うため、
- * メールアドレスをパラメータに載せる。
- */
-export function buildVerifyEmailRoute(email: string): Href {
-  return { pathname: VERIFY_EMAIL_PATHNAME, params: { email } };
-}
-```
-
-- [ ] **Step 3: 定数テストが通ることを確認する**
-
-Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- constants/auth`
-Expected: PASS（既存 6 件 + 追加 1 件 = 7 件。**既存 6 件が落ちないこと**が回帰の合格条件）
-
-- [ ] **Step 4: 新規登録画面の失敗するテストを書く**
+- [ ] **Step 1: 新規登録画面の失敗するテストを書く**
 
 ```tsx
 // apps/mobile/src/app/(auth)/sign-up.test.tsx
 import { QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
-import { SIGN_IN_ROUTE, buildVerifyEmailRoute } from '@/constants/auth';
+import { SIGN_IN_ROUTE } from '@/constants/auth';
 import { AUTH_ERROR_MESSAGES, AuthError } from '@/features/auth/auth-error';
 import { createQueryClient } from '@/lib/query-client';
 
@@ -4805,7 +4996,7 @@ describe('SignUpScreen', () => {
     });
   });
 
-  it('成功したらメール確認待機画面へ宛先つきで置き換え遷移する', async () => {
+  it('成功しても画面側では遷移しない（セッション確立でグループが切り替わる）', async () => {
     mockSignUpWithEmail.mockResolvedValue(undefined);
     await renderSignUpScreen();
 
@@ -4813,10 +5004,13 @@ describe('SignUpScreen', () => {
     await fireEvent.press(screen.getByTestId(SUBMIT_BUTTON_TEST_ID));
 
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith(buildVerifyEmailRoute(VALID_EMAIL));
+      expect(mockSignUpWithEmail).toHaveBeenCalledTimes(1);
     });
-    // push だと戻る操作でフォームに戻れてしまい、二重登録を招く
-    expect(mockPush).not.toHaveBeenCalledWith(buildVerifyEmailRoute(VALID_EMAIL));
+    // autoSignIn は既定で有効（sign-up.mjs:163）なので、登録成功 = セッション確立。
+    // ルート _layout.tsx の Stack.Protected が (auth) を外し、index.tsx が着地先へ飛ばす。
+    // ここで router を触ると遷移が二重になり、戻る操作でフォームに戻れてしまう
+    expect(mockReplace).not.toHaveBeenCalled();
+    expect(mockPush).not.toHaveBeenCalled();
   });
 
   it('失敗したら理由をバナーに出す', async () => {
@@ -4833,7 +5027,7 @@ describe('SignUpScreen', () => {
     });
   });
 
-  it('失敗したらメール確認待機画面へ進まない', async () => {
+  it('失敗したら遷移しない', async () => {
     mockSignUpWithEmail.mockRejectedValue(new AuthError('email-already-used'));
     await renderSignUpScreen();
 
@@ -4874,7 +5068,7 @@ describe('SignUpScreen', () => {
 Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- "app/(auth)/sign-up"`
 Expected: FAIL（プレースホルダのままなので入力欄が見つからない）
 
-- [ ] **Step 5: `app/(auth)/sign-up.tsx` を実装に差し替える**
+- [ ] **Step 2: `app/(auth)/sign-up.tsx` を実装に差し替える**
 
 ```tsx
 // apps/mobile/src/app/(auth)/sign-up.tsx
@@ -4887,7 +5081,7 @@ import { FormErrorBanner } from '@/components/auth/form-error-banner';
 import { Button } from '@/components/ui/button';
 import { INPUT_TEXT_BEHAVIORS, Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
-import { SIGN_IN_ROUTE, buildVerifyEmailRoute } from '@/constants/auth';
+import { SIGN_IN_ROUTE } from '@/constants/auth';
 import { signUpWithEmail } from '@/features/auth/api';
 // 上限はスキーマと画面で二重管理しない。DISPLAY_NAME_MAX_LENGTH は schema.ts が唯一の出所
 import { DISPLAY_NAME_MAX_LENGTH, signUpSchema, type SignUpInput } from '@/features/auth/schema';
@@ -4915,9 +5109,8 @@ export default function SignUpScreen() {
       return;
     }
 
-    // 登録直後はまだセッションが無く、グループは切り替わらない。
-    // replace にするのは、戻る操作でフォームに戻れると二重登録になるため
-    router.replace(buildVerifyEmailRoute(values.email));
+    // 成功時に router を触らない。autoSignIn が既定で有効なのでここでセッションが張られ、
+    // ルート _layout.tsx の Stack.Protected が (auth) を外して index.tsx が着地先へ飛ばす
   });
 
   return (
@@ -5008,623 +5201,105 @@ export default function SignUpScreen() {
 }
 ```
 
-- [ ] **Step 6: テストが通ることを確認する**
+- [ ] **Step 3: テストが通ることを確認する**
 
 Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- "app/(auth)/sign-up" constants/auth`
-Expected: PASS（`sign-up` 画面 8 件 + `constants/auth` 7 件）
+Expected: PASS（`sign-up` 画面 8 件 + `constants/auth` 6 件）。**`constants/auth` は Task 5-1b 以降 6 件のまま**で、この Task では 1 件も増やさない
 
-- [ ] **Step 7: わざと壊してテストが落ちることを確認する**
+- [ ] **Step 4: わざと壊してテストが落ちることを確認する**
 
-`router.replace(buildVerifyEmailRoute(values.email))` を `router.replace(VERIFY_EMAIL_ROUTE)` に書き換え、「成功したらメール確認待機画面へ宛先つきで置き換え遷移する」が**失敗すること**を確認する。
-続けて `if (!didSignUp) { ...; return; }` の `return` を消し、「失敗したらメール確認待機画面へ進まない」が**失敗すること**を確認してから両方を元に戻す。
+`submitSignUp` の末尾に `router.replace(ROOT_ROUTE)` を足し（`ROOT_ROUTE` の import も足す）、「成功しても画面側では遷移しない（セッション確立でグループが切り替わる）」が**失敗すること**を確認する。
+続けて `if (!didSignUp) { resetField('password'); return; }` を丸ごと消し、「失敗したらパスワードを画面に残さない」が**失敗すること**を確認してから両方を元に戻す。
 
-- [ ] **Step 8: コミットする**
+- [ ] **Step 5: コミットする**
 
 ```bash
-git add apps/mobile/src/constants/auth.ts apps/mobile/src/constants/auth.test.ts "apps/mobile/src/app/(auth)/sign-up.tsx" "apps/mobile/src/app/(auth)/sign-up.test.tsx"
+git add "apps/mobile/src/app/(auth)/sign-up.tsx" "apps/mobile/src/app/(auth)/sign-up.test.tsx"
 git commit -m "feat(mobile): 新規登録画面を実装する"
 ```
 
 ---
 
-### Task 5-15: メール確認待機画面を実装する
+### Task 5-15: メール確認待機画面 — **Phase 5 のスコープ外**（Task 5-7 のプレースホルダのまま残す）
 
-**Files:**
+**結論: この画面は Phase 5 では実装しない。** Task 5-7 が置く `PlaceholderScreen` に一切手を触れず、次のタスクへ進む。
 
-- Modify: `apps/mobile/src/features/auth/api.ts`
-- Modify: `apps/mobile/src/features/auth/api.test.ts`
-- Modify: `apps/mobile/src/app/(auth)/verify-email.tsx`（Task 5-7 のプレースホルダを差し替える）
-- Create: `apps/mobile/src/app/(auth)/verify-email.test.tsx`
+**止まる理由は 2 つあり、どちらも単独で実装を不可能にする。**
 
-**Interfaces:**
+| #   | 止まる理由                                                                                                             | 実測の根拠（2026-09-16 に現物を読んで確認）                                                                                                                                                                                                                                                                                                                                                                                             |
+| --- | ---------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **再送ボタンは 100% 失敗する。** `authClient.sendVerificationEmail()` はサーバ側に送信関数が無いと必ず 400 を返す      | `node_modules/better-auth/dist/api/routes/email-verification.mjs:92-94` がハンドラ本体の先頭で `if (!ctx.context.options.emailVerification?.sendVerificationEmail) { ctx.context.logger.error(...); throw APIError.from("BAD_REQUEST", BASE_ERROR_CODES.VERIFICATION_EMAIL_NOT_ENABLED); }` とガードしている。`apps/api/src/auth/auth.ts` に `emailVerification` ブロックは無い（`:45` は `emailAndPassword: { enabled: true },` だけ） |
+| 2   | **そもそもこの画面に到達しない。** サインアップ成功と同時にセッションが張られ、`(auth)` グループごとアンマウントされる | `apps/api/src/auth/auth.ts:45` は `autoSignIn` を設定していない。`node_modules/better-auth/dist/api/routes/sign-up.mjs:163` は `autoSignIn === false` のときだけ自動サインインを飛ばす。よって既定では登録直後にセッションが発行され、Task 5-8 の `<Stack.Protected>` が `(auth)` を外す（Task 5-14 の「成功後の遷移を画面に書かない」と同じ根拠）                                                                                      |
 
-- Consumes:
-  - `authClient.sendVerificationEmail(body)` — body: `{ email: string; callbackURL?: string }`（`node_modules/better-auth/dist/api/index.d.mts:747` の `sendVerificationEmail` エンドポイント定義で確認）
-  - `useLocalSearchParams<TParams extends UnknownOutputParams>(): TParams` と `UnknownOutputParams = Record<string, string | string[]>`（`node_modules/expo-router/build/hooks/useLocalSearchParams.d.ts` / `build/typed-routes/types.d.ts:89`）
-  - `useAuthMutation`（Task 5-13）、`AuthFormScreen` / `FormErrorBanner`（Task 5-12）、`Button`（既存）
-- Produces:
-  - `interface VerificationEmailInput { email: string }`
-  - `async function resendVerificationEmail(input: VerificationEmailInput): Promise<void>`
-  - `export default function VerifyEmailScreen(): ReactElement`
-
-- [ ] **Step 1: 再送 API の失敗するテストを書く（既存ファイルに追記）**
-
-```ts
-// apps/mobile/src/features/auth/api.test.ts を次のように変える
-// 1) mock 定義に 1 行足す
-const mockSendVerificationEmail = jest.fn();
-// 2) jest.mock('@/lib/auth-client', ...) の authClient に 1 行足す
-//      sendVerificationEmail: mockSendVerificationEmail,
-// 3) import に resendVerificationEmail を足す
-// 4) 末尾に次の describe を足す
-
-describe('resendVerificationEmail', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it('宛先アドレスをそのまま送る', async () => {
-    mockSendVerificationEmail.mockResolvedValue({ data: { status: true }, error: null });
-
-    await expect(resendVerificationEmail({ email: 'taro@example.com' })).resolves.toBeUndefined();
-    expect(mockSendVerificationEmail).toHaveBeenCalledWith({ email: 'taro@example.com' });
-  });
-
-  it('429 のときは回数制限の日本語メッセージで投げる', async () => {
-    mockSendVerificationEmail.mockResolvedValue({
-      data: null,
-      error: { status: HTTP_STATUS.tooManyRequests, statusText: 'Too Many Requests' },
-    });
-
-    await expect(resendVerificationEmail({ email: 'taro@example.com' })).rejects.toThrow(
-      AUTH_ERROR_MESSAGES['rate-limited'],
-    );
-  });
-});
-```
-
-Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- features/auth/api`
-Expected: FAIL（`resendVerificationEmail` が export されていない）
-
-- [ ] **Step 2: `features/auth/api.ts` に再送関数を足す**
-
-```ts
-/**
- * 確認メールの再送に渡す値。
- * 画面入力ではなくルートパラメータから来るので検証スキーマは要らず、
- * packages/core ではなくここで型だけ定義する。
- */
-export interface VerificationEmailInput {
-  email: string;
-}
-
-export async function resendVerificationEmail(input: VerificationEmailInput): Promise<void> {
-  // callbackURL は省略する。サーバ側（Better Auth の emailVerification 設定）が
-  // アプリのスキームへ戻すリンクを組み立てる責務を持つ
-  const result = await authClient.sendVerificationEmail({ email: input.email });
-  throwIfFailed(result, 'sendVerificationEmail');
-}
-```
-
-- [ ] **Step 3: api のテストが通ることを確認する**
-
-Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- features/auth/api`
-Expected: PASS（既存 9 件 + 追加 2 件 = 11 件。**既存 9 件が落ちないこと**が回帰の合格条件）
-
-- [ ] **Step 4: メール確認待機画面の失敗するテストを書く**
-
-```tsx
-// apps/mobile/src/app/(auth)/verify-email.test.tsx
-import { QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
-
-import { SIGN_IN_ROUTE } from '@/constants/auth';
-import { AUTH_ERROR_MESSAGES, AuthError } from '@/features/auth/auth-error';
-import { createQueryClient } from '@/lib/query-client';
-
-const mockResendVerificationEmail = jest.fn();
-const mockReplace = jest.fn();
-const mockUseLocalSearchParams = jest.fn();
-
-jest.mock('@/features/auth/api', () => ({
-  resendVerificationEmail: mockResendVerificationEmail,
-}));
-jest.mock('expo-router', () => ({
-  router: { replace: mockReplace },
-  useLocalSearchParams: mockUseLocalSearchParams,
-}));
-
-import VerifyEmailScreen from './verify-email';
-
-const RESEND_BUTTON_TEST_ID = 'verify-email-resend-button';
-const RESENT_NOTICE_TEST_ID = 'verify-email-resent-notice';
-const ERROR_BANNER_TEST_ID = 'verify-email-error';
-
-const REGISTERED_EMAIL = 'taro@example.com';
-
-function renderVerifyEmailScreen() {
-  return render(
-    <QueryClientProvider client={createQueryClient()}>
-      <VerifyEmailScreen />
-    </QueryClientProvider>,
-  );
-}
-
-describe('VerifyEmailScreen', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    mockUseLocalSearchParams.mockReturnValue({ email: REGISTERED_EMAIL });
-  });
-
-  it('どのアドレスに送ったかを表示する', async () => {
-    await renderVerifyEmailScreen();
-
-    expect(screen.getByText(new RegExp(REGISTERED_EMAIL))).toBeOnTheScreen();
-  });
-
-  it('初期表示では再送完了もエラーも出さない', async () => {
-    await renderVerifyEmailScreen();
-
-    expect(screen.queryByTestId(RESENT_NOTICE_TEST_ID)).toBeNull();
-    expect(screen.queryByTestId(ERROR_BANNER_TEST_ID)).toBeNull();
-  });
-
-  it('再送ボタンで宛先アドレス宛に再送する', async () => {
-    mockResendVerificationEmail.mockResolvedValue(undefined);
-    await renderVerifyEmailScreen();
-
-    await fireEvent.press(screen.getByTestId(RESEND_BUTTON_TEST_ID));
-
-    await waitFor(() => {
-      expect(mockResendVerificationEmail).toHaveBeenCalledWith({ email: REGISTERED_EMAIL });
-    });
-  });
-
-  it('再送に成功したらその旨を伝える', async () => {
-    mockResendVerificationEmail.mockResolvedValue(undefined);
-    await renderVerifyEmailScreen();
-
-    await fireEvent.press(screen.getByTestId(RESEND_BUTTON_TEST_ID));
-
-    await waitFor(() => {
-      expect(screen.getByTestId(RESENT_NOTICE_TEST_ID)).toBeOnTheScreen();
-    });
-  });
-
-  it('再送に失敗したら理由をバナーに出す', async () => {
-    mockResendVerificationEmail.mockRejectedValue(new AuthError('rate-limited'));
-    await renderVerifyEmailScreen();
-
-    await fireEvent.press(screen.getByTestId(RESEND_BUTTON_TEST_ID));
-
-    await waitFor(() => {
-      expect(screen.getByTestId(ERROR_BANNER_TEST_ID)).toHaveTextContent(
-        AUTH_ERROR_MESSAGES['rate-limited'],
-      );
-    });
-    expect(screen.queryByTestId(RESENT_NOTICE_TEST_ID)).toBeNull();
-  });
-
-  it('アドレスが渡ってこないときは再送ボタンを押せない', async () => {
-    // リンクを直接開かれた場合など。宛先が分からないまま送信して失敗させない
-    mockUseLocalSearchParams.mockReturnValue({});
-    await renderVerifyEmailScreen();
-
-    await fireEvent.press(screen.getByTestId(RESEND_BUTTON_TEST_ID));
-
-    expect(mockResendVerificationEmail).not.toHaveBeenCalled();
-    expect(screen.getByTestId(RESEND_BUTTON_TEST_ID)).toHaveProp('accessibilityState', {
-      disabled: true,
-      busy: false,
-    });
-  });
-
-  it('同じ名前のパラメータが複数来ても送信しない', async () => {
-    // useLocalSearchParams は string | string[] を返す（build/typed-routes/types.d.ts:89）
-    mockUseLocalSearchParams.mockReturnValue({ email: ['a@example.com', 'b@example.com'] });
-    await renderVerifyEmailScreen();
-
-    await fireEvent.press(screen.getByTestId(RESEND_BUTTON_TEST_ID));
-
-    expect(mockResendVerificationEmail).not.toHaveBeenCalled();
-  });
-
-  it('ログイン画面へ置き換え遷移できる', async () => {
-    await renderVerifyEmailScreen();
-
-    await fireEvent.press(screen.getByTestId('verify-email-sign-in-link'));
-
-    // 戻る操作で待機画面に戻れても意味がないので replace
-    expect(mockReplace).toHaveBeenCalledWith(SIGN_IN_ROUTE);
-  });
-});
-```
-
-Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- verify-email`
-Expected: FAIL（プレースホルダのままなので再送ボタンが見つからない）
-
-- [ ] **Step 5: `app/(auth)/verify-email.tsx` を実装に差し替える**
-
-```tsx
-// apps/mobile/src/app/(auth)/verify-email.tsx
-import { router, useLocalSearchParams } from 'expo-router';
-import { Text, View } from 'react-native';
-
-import { AuthFormScreen } from '@/components/auth/auth-form-screen';
-import { FormErrorBanner } from '@/components/auth/form-error-banner';
-import { Button } from '@/components/ui/button';
-import { SIGN_IN_ROUTE } from '@/constants/auth';
-import { resendVerificationEmail } from '@/features/auth/api';
-import { useAuthMutation } from '@/features/auth/use-auth-mutation';
-
-const SCREEN_TITLE = '確認メールを送りました';
-const DESCRIPTION_SUFFIX =
-  ' 宛に確認メールを送りました。メール内のリンクを開くと登録が完了します。';
-const DESCRIPTION_WITHOUT_EMAIL =
-  '登録したメールアドレス宛に確認メールを送りました。メール内のリンクを開くと登録が完了します。';
-const RESENT_MESSAGE =
-  '確認メールを再送しました。数分待っても届かない場合は迷惑メールをご確認ください。';
-
-/**
- * ルートパラメータは `string | string[]` で返る
- * （expo-router build/typed-routes/types.d.ts:89 の UnknownOutputParams）。
- * 同じ名前が複数来た場合は宛先を決められないので、単一の非空文字列のときだけ採用する。
- */
-function readEmailParam(value: string | string[] | undefined): string | undefined {
-  return typeof value === 'string' && value !== '' ? value : undefined;
-}
-
-function buildDescription(email: string | undefined): string {
-  return email === undefined ? DESCRIPTION_WITHOUT_EMAIL : `${email}${DESCRIPTION_SUFFIX}`;
-}
-
-export default function VerifyEmailScreen() {
-  const params = useLocalSearchParams();
-  const email = readEmailParam(params.email);
-
-  const {
-    submit: resend,
-    isSubmitting: isResending,
-    errorMessage,
-    hasSucceeded: hasResent,
-  } = useAuthMutation(resendVerificationEmail);
-
-  return (
-    <AuthFormScreen
-      description={buildDescription(email)}
-      testID="verify-email-screen"
-      title={SCREEN_TITLE}
-    >
-      <FormErrorBanner message={errorMessage} testID="verify-email-error" />
-
-      {hasResent ? (
-        <View
-          accessibilityLiveRegion="polite"
-          accessibilityRole="alert"
-          className="rounded-card border border-green-500 bg-green-50 px-md py-sm"
-          testID="verify-email-resent-notice"
-        >
-          <Text className="font-body text-sm text-green-700">{RESENT_MESSAGE}</Text>
-        </View>
-      ) : null}
-
-      <Button
-        // 宛先が分からないまま送って必ず失敗させるより、押せなくして理由を示す
-        isDisabled={email === undefined}
-        isLoading={isResending}
-        label="確認メールを再送する"
-        onPress={() => {
-          if (email === undefined) {
-            return;
-          }
-          void resend({ email });
-        }}
-        testID="verify-email-resend-button"
-        variant="secondary"
-      />
-
-      <Button
-        label="ログイン画面へ"
-        onPress={() => {
-          // 戻る操作で待機画面へ戻れても意味がないので replace
-          router.replace(SIGN_IN_ROUTE);
-        }}
-        testID="verify-email-sign-in-link"
-        variant="ghost"
-      />
-    </AuthFormScreen>
-  );
-}
-```
-
-- [ ] **Step 6: テストが通ることを確認する**
-
-Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- verify-email features/auth/api`
-Expected: PASS（`verify-email` 8 件 + `api` 11 件）
-
-- [ ] **Step 7: わざと壊してテストが落ちることを確認する**
-
-`readEmailParam` の `typeof value === 'string'` を `value !== undefined` に書き換え、「同じ名前のパラメータが複数来ても送信しない」が**失敗すること**を確認する。
-続けて `isDisabled={email === undefined}` を削除し、「アドレスが渡ってこないときは再送ボタンを押せない」が**失敗すること**を確認してから両方を元に戻す。
-
-- [ ] **Step 8: コミットする**
+**メール配信の口はリポジトリのどこにも無い（実測・2026-09-16）。**
 
 ```bash
-git add apps/mobile/src/features/auth/api.ts apps/mobile/src/features/auth/api.test.ts "apps/mobile/src/app/(auth)/verify-email.tsx" "apps/mobile/src/app/(auth)/verify-email.test.tsx"
-git commit -m "feat(mobile): メール確認待機画面と確認メール再送を実装する"
+# apps/ と packages/ の実装側（node_modules を除く）
+grep -rn 'sendResetPassword\|sendVerificationEmail\|requireEmailVerification\|emailVerification' apps packages | grep -v node_modules | wc -l
+# => 0
+grep -rniE 'resend|sendgrid|mailchannels|smtp|nodemailer|postmark|mailgun' apps packages | grep -v node_modules | wc -l
+# => 0
+
+# 計画書 11 本と設計書
+grep -rln 'sendResetPassword\|sendVerificationEmail\|requireEmailVerification\|Resend\|SendGrid\|MailChannels\|SMTP\|メール送信\|メール配信' \
+  docs/superpowers/plans/ docs/superpowers/specs/
+# => docs/superpowers/plans/2026-09-15-phase-5-auth-routing.md（この節自身）
+# => docs/superpowers/specs/2026-09-15-meshimap-design.md（:140 のルートツリーのコメント 1 行のみ）
 ```
+
+つまり **送信手段（プロバイダ・API キー・送信元ドメイン）を決めた設計が、仕様書にも 11 本の計画書にも 1 行も無い。** ここで勝手に 1 つ選ぶと、その選択が以降のフェーズの前提として固定されてしまう。加えて `apps/api/src/auth/auth.ts:50-51` はコメント付きで `telemetry: { enabled: false }` を置き、**Worker から外部への送信を発生させない**方針を明示している。外部送信を初めて入れる判断は、認証画面を作るタスクの中に紛れ込ませてよい大きさではない。
+
+**実装できる条件（すべて満たされた時点で、別タスク／別フェーズとして起こす）**
+
+- [ ] 送信手段を決める（Cloudflare Workers から呼べる HTTP API を持つプロバイダか、Email Workers か）。決定は設計書に書く
+- [ ] 送信元ドメインと SPF / DKIM / DMARC の用意。`wrangler.jsonc` の `vars` / secret に何を置くかを決める
+- [ ] `apps/api/src/auth/auth.ts` の `emailVerification.sendVerificationEmail` を実装する。同時に `requireEmailVerification` を入れるかを決める
+- [ ] **`requireEmailVerification: true` にするなら、Task 5-4 の 422 分岐を作り直すこと。** `node_modules/better-auth/dist/api/routes/sign-up.mjs:162` の `shouldReturnGenericDuplicateResponse = requireEmailVerification || autoSignIn === false` が真になると、重複メールは 422 ではなく `:202`-`:209` の汎用 200 応答に変わり、「このメールアドレスは既に使われています」の分岐が死ぬ
+- [ ] 上記でサインアップ直後にセッションが張られなくなるなら、Task 5-14 に遷移処理を戻す（現在の Task 5-14 は「遷移しない」ことをテストで固定している）
+
+**Phase 5 で代わりに満たすこと**
+
+- `(auth)/verify-email.tsx` は Task 5-7 の `PlaceholderScreen` のまま残す。ルートとしては存在し、Task 5-20 の `routing.test.tsx` からは到達可能なままにする
+- `features/auth/api.ts` に `resendVerificationEmail` は**追加しない**。呼んだ瞬間に 400 になる関数を、テストだけ緑にして置いておくのは Phase 4 で潰した「偽の緑」そのものになる
 
 ---
 
-### Task 5-16: パスワード再設定の申請画面を実装する
+### Task 5-16: パスワード再設定の申請画面 — **Phase 5 のスコープ外**（Task 5-7 のプレースホルダのまま残す）
 
-**設計上の要点（アカウントの存在を漏らさない）:** 送信結果に関わらず同じ完了文言を出す。「そのアドレスは登録されていません」と返すと、総当たりでアカウントの存在を調べられてしまう。Better Auth の `requestPasswordReset` も未登録アドレスで成功を返す作りなので、画面側でも分岐を作らない。
+**結論: この画面は Phase 5 では実装しない。** Task 5-7 が置く `PlaceholderScreen` に一切手を触れず、次のタスクへ進む。
 
-**Files:**
+**止まる理由（実測・2026-09-16）**
 
-- Modify: `apps/mobile/src/app/(auth)/forgot-password.tsx`（Task 5-7 のプレースホルダを差し替える）
-- Create: `apps/mobile/src/app/(auth)/forgot-password.test.tsx`
+`node_modules/better-auth/dist/api/routes/password.mjs:51-57` は `request-password-reset` のハンドラ本体の先頭で
 
-**Interfaces:**
-
-- Consumes:
-  - `requestPasswordReset(input: PasswordResetRequestInput): Promise<void>`（Task 5-4）
-  - `passwordResetRequestSchema` と `type PasswordResetRequestInput = { email: string }`（Task 5-4 の `@/features/auth/schema`）
-  - `useAuthMutation`（Task 5-13）、`AuthFormScreen` / `FormErrorBanner`（Task 5-12）、`Input` / `INPUT_TEXT_BEHAVIORS`（Task 5-10）、`Button`（既存）
-- Produces: `export default function ForgotPasswordScreen(): ReactElement`
-
-- [ ] **Step 1: 失敗するテストを書く**
-
-```tsx
-// apps/mobile/src/app/(auth)/forgot-password.test.tsx
-import { QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
-
-import { SIGN_IN_ROUTE } from '@/constants/auth';
-import { AUTH_ERROR_MESSAGES, AuthError } from '@/features/auth/auth-error';
-import { createQueryClient } from '@/lib/query-client';
-
-const mockRequestPasswordReset = jest.fn();
-const mockPush = jest.fn();
-
-jest.mock('@/features/auth/api', () => ({ requestPasswordReset: mockRequestPasswordReset }));
-jest.mock('expo-router', () => ({ router: { push: mockPush } }));
-
-import ForgotPasswordScreen from './forgot-password';
-
-const EMAIL_INPUT_TEST_ID = 'forgot-password-email-input';
-const SUBMIT_BUTTON_TEST_ID = 'forgot-password-submit-button';
-const SENT_NOTICE_TEST_ID = 'forgot-password-sent-notice';
-const ERROR_BANNER_TEST_ID = 'forgot-password-error';
-
-const REGISTERED_EMAIL = 'taro@example.com';
-
-function renderForgotPasswordScreen() {
-  return render(
-    <QueryClientProvider client={createQueryClient()}>
-      <ForgotPasswordScreen />
-    </QueryClientProvider>,
+```js
+if (!ctx.context.options.emailAndPassword?.sendResetPassword) {
+  ctx.context.logger.error(
+    "Reset password isn't enabled.Please pass an emailAndPassword.sendResetPassword function in your auth config!",
   );
-}
-
-describe('ForgotPasswordScreen', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
+  throw APIError.from('BAD_REQUEST', {
+    message: "Reset password isn't enabled",
+    code: 'RESET_PASSWORD_DISABLED',
   });
-
-  it('メールアドレス欄と送信ボタンを表示する', async () => {
-    await renderForgotPasswordScreen();
-
-    expect(screen.getByTestId(EMAIL_INPUT_TEST_ID)).toBeOnTheScreen();
-    expect(screen.getByTestId(SUBMIT_BUTTON_TEST_ID)).toBeOnTheScreen();
-  });
-
-  it('未入力のまま送信すると API を呼ばない', async () => {
-    await renderForgotPasswordScreen();
-
-    await fireEvent.press(screen.getByTestId(SUBMIT_BUTTON_TEST_ID));
-
-    await waitFor(() => {
-      expect(screen.getByTestId(EMAIL_INPUT_TEST_ID)).toHaveProp(
-        'accessibilityLabel',
-        expect.stringContaining('エラー: '),
-      );
-    });
-    expect(mockRequestPasswordReset).not.toHaveBeenCalled();
-  });
-
-  it('入力したアドレス宛に再設定メールを申請する', async () => {
-    mockRequestPasswordReset.mockResolvedValue(undefined);
-    await renderForgotPasswordScreen();
-
-    await fireEvent.changeText(screen.getByTestId(EMAIL_INPUT_TEST_ID), REGISTERED_EMAIL);
-    await fireEvent.press(screen.getByTestId(SUBMIT_BUTTON_TEST_ID));
-
-    await waitFor(() => {
-      expect(mockRequestPasswordReset).toHaveBeenCalledWith({ email: REGISTERED_EMAIL });
-    });
-  });
-
-  it('送信に成功したら完了案内に差し替え、フォームを隠す', async () => {
-    mockRequestPasswordReset.mockResolvedValue(undefined);
-    await renderForgotPasswordScreen();
-
-    await fireEvent.changeText(screen.getByTestId(EMAIL_INPUT_TEST_ID), REGISTERED_EMAIL);
-    await fireEvent.press(screen.getByTestId(SUBMIT_BUTTON_TEST_ID));
-
-    await waitFor(() => {
-      expect(screen.getByTestId(SENT_NOTICE_TEST_ID)).toBeOnTheScreen();
-    });
-    // 連打で回数制限に当たらないよう、送信後はフォームごと隠す
-    expect(screen.queryByTestId(SUBMIT_BUTTON_TEST_ID)).toBeNull();
-  });
-
-  it('完了案内はアカウントの有無を明かさない', async () => {
-    mockRequestPasswordReset.mockResolvedValue(undefined);
-    await renderForgotPasswordScreen();
-
-    await fireEvent.changeText(screen.getByTestId(EMAIL_INPUT_TEST_ID), REGISTERED_EMAIL);
-    await fireEvent.press(screen.getByTestId(SUBMIT_BUTTON_TEST_ID));
-
-    await waitFor(() => {
-      expect(screen.getByTestId(SENT_NOTICE_TEST_ID)).toBeOnTheScreen();
-    });
-    // 「登録されています」と読める文言を出すと、総当たりで存在確認ができてしまう
-    expect(screen.getByTestId(SENT_NOTICE_TEST_ID)).toHaveTextContent('登録されている場合');
-  });
-
-  it('失敗したら理由をバナーに出し、完了案内は出さない', async () => {
-    mockRequestPasswordReset.mockRejectedValue(new AuthError('rate-limited'));
-    await renderForgotPasswordScreen();
-
-    await fireEvent.changeText(screen.getByTestId(EMAIL_INPUT_TEST_ID), REGISTERED_EMAIL);
-    await fireEvent.press(screen.getByTestId(SUBMIT_BUTTON_TEST_ID));
-
-    await waitFor(() => {
-      expect(screen.getByTestId(ERROR_BANNER_TEST_ID)).toHaveTextContent(
-        AUTH_ERROR_MESSAGES['rate-limited'],
-      );
-    });
-    expect(screen.queryByTestId(SENT_NOTICE_TEST_ID)).toBeNull();
-  });
-
-  it('ログイン画面へ戻る導線がある', async () => {
-    await renderForgotPasswordScreen();
-
-    await fireEvent.press(screen.getByTestId('forgot-password-sign-in-link'));
-
-    expect(mockPush).toHaveBeenCalledWith(SIGN_IN_ROUTE);
-  });
-});
-```
-
-Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- forgot-password`
-Expected: FAIL（プレースホルダのままなので入力欄が見つからない）
-
-- [ ] **Step 2: `app/(auth)/forgot-password.tsx` を実装に差し替える**
-
-```tsx
-// apps/mobile/src/app/(auth)/forgot-password.tsx
-import { zodResolver } from '@hookform/resolvers/zod';
-import { router } from 'expo-router';
-import { Controller, useForm } from 'react-hook-form';
-import { Text, View } from 'react-native';
-
-import { AuthFormScreen } from '@/components/auth/auth-form-screen';
-import { FormErrorBanner } from '@/components/auth/form-error-banner';
-import { Button } from '@/components/ui/button';
-import { INPUT_TEXT_BEHAVIORS, Input } from '@/components/ui/input';
-import { SIGN_IN_ROUTE } from '@/constants/auth';
-import { requestPasswordReset } from '@/features/auth/api';
-import { passwordResetRequestSchema, type PasswordResetRequestInput } from '@/features/auth/schema';
-import { useAuthMutation } from '@/features/auth/use-auth-mutation';
-
-const EMPTY_REQUEST_INPUT: PasswordResetRequestInput = { email: '' };
-
-/**
- * 「登録されている場合」と条件付きで書くのが要点。
- * 「送りました」と断定するとアドレスの登録有無が分かり、総当たりで会員を特定できてしまう。
- */
-const SENT_MESSAGE =
-  'ご入力のメールアドレスが登録されている場合、パスワード再設定用のリンクをお送りしました。';
-
-export default function ForgotPasswordScreen() {
-  const { control, handleSubmit } = useForm<PasswordResetRequestInput>({
-    resolver: zodResolver(passwordResetRequestSchema),
-    defaultValues: EMPTY_REQUEST_INPUT,
-    mode: 'onTouched',
-  });
-  const {
-    submit: sendResetRequest,
-    isSubmitting: isSending,
-    errorMessage,
-    hasSucceeded: hasSent,
-  } = useAuthMutation(requestPasswordReset);
-
-  const submitRequest = handleSubmit(async (values) => {
-    await sendResetRequest(values);
-    // 成否で文言を変えない。変えるとアカウントの存在が漏れる
-  });
-
-  return (
-    <AuthFormScreen
-      description="登録済みのメールアドレスに再設定用のリンクを送ります"
-      testID="forgot-password-screen"
-      title="パスワードの再設定"
-    >
-      <FormErrorBanner message={errorMessage} testID="forgot-password-error" />
-
-      {hasSent ? (
-        <View
-          accessibilityLiveRegion="polite"
-          accessibilityRole="alert"
-          className="rounded-card border border-green-500 bg-green-50 px-md py-sm"
-          testID="forgot-password-sent-notice"
-        >
-          <Text className="font-body text-sm text-green-700">{SENT_MESSAGE}</Text>
-        </View>
-      ) : (
-        <>
-          <Controller
-            control={control}
-            name="email"
-            render={({ field, fieldState }) => (
-              <Input
-                errorMessage={fieldState.error?.message}
-                isDisabled={isSending}
-                isRequired
-                label="メールアドレス"
-                onBlur={field.onBlur}
-                onChangeText={field.onChange}
-                placeholder="taro@example.com"
-                testID="forgot-password-email-input"
-                textBehavior={INPUT_TEXT_BEHAVIORS.email}
-                value={field.value}
-              />
-            )}
-          />
-
-          <Button
-            isLoading={isSending}
-            label="再設定メールを送る"
-            onPress={() => {
-              void submitRequest();
-            }}
-            testID="forgot-password-submit-button"
-          />
-        </>
-      )}
-
-      <Button
-        isDisabled={isSending}
-        label="ログイン画面へ戻る"
-        onPress={() => {
-          router.push(SIGN_IN_ROUTE);
-        }}
-        testID="forgot-password-sign-in-link"
-        variant="ghost"
-      />
-    </AuthFormScreen>
-  );
 }
 ```
 
-- [ ] **Step 3: テストが通ることを確認する**
+とガードしている。`apps/api/src/auth/auth.ts:45` は `emailAndPassword: { enabled: true },` だけで `sendResetPassword` を持たないため、**どのメールアドレスを入れても 400 になり、完了文言には決して到達しない。**
 
-Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- forgot-password`
-Expected: PASS（7 件）
+なお「未登録アドレスでも成功を返すのでアカウントの存在が漏れない」という旧版の設計上の要点**自体は正しい**（同ファイル `:60`-`:71` が `findUserByEmail` の結果に関わらず成功を返す）。ただしそれは上記のガードを通過した後の話で、現状は通過できない。
 
-- [ ] **Step 4: わざと壊してテストが落ちることを確認する**
+**メール配信の口が無いことの根拠は Task 5-15 の節にまとめてある**（`apps` / `packages` に 0 件、計画書 11 本と設計書にも設計が無い）。送信手段を決める判断は Task 5-15 と完全に共通なので、**2 つの画面は同じタイミングで一緒に起こすこと。**
 
-`SENT_MESSAGE` を `'再設定用のリンクをお送りしました。'` に書き換え、「完了案内はアカウントの有無を明かさない」が**失敗すること**を確認する。
-続けて `hasSent ? ... : <>...</>` の三項を外して常にフォームを出すようにし、「送信に成功したら完了案内に差し替え、フォームを隠す」が**失敗すること**を確認してから両方を元に戻す。
+**実装できる条件**
 
-- [ ] **Step 5: コミットする**
+- [ ] Task 5-15 の「実装できる条件」の 1 つ目・2 つ目（送信手段とドメインの決定）が済んでいる
+- [ ] `apps/api/src/auth/auth.ts` の `emailAndPassword` に `sendResetPassword` を足す。`redirectTo` に渡すのは `meshimap://`（Task 5-1b で統一したスキーム）で始まるリンクにすること。`password.mjs:49` の `use: [originCheck((ctx) => ctx.body.redirectTo)]` がここを検査する
+- [ ] `(auth)/reset-password` 相当の「新しいパスワードを入力する」画面も併せて設計する（本計画には申請側しか無い）
 
-```bash
-git add "apps/mobile/src/app/(auth)/forgot-password.tsx" "apps/mobile/src/app/(auth)/forgot-password.test.tsx"
-git commit -m "feat(mobile): パスワード再設定の申請画面を実装する"
-```
+**Phase 5 で代わりに満たすこと**
+
+- `(auth)/forgot-password.tsx` は Task 5-7 の `PlaceholderScreen` のまま残す。Task 5-13 のサインイン画面からの導線も、プレースホルダへ着地するだけで壊れない
+- **Task 5-4 が作る `requestPasswordReset`（`features/auth/api.ts`）と `passwordResetRequestSchema`（`features/auth/schema.ts`）は残す。** どちらも「Better Auth を呼ぶ／入力を検証する」だけの部品で、サーバ側に送信口が入った時点で画面を足すだけで済む状態にしておくため。モジュールの公開 API なので `noUnusedLocals` にも eslint の `no-unused-vars` にも掛からない（**未検証**: lint / typecheck は本作業では実行していない）
 
 ---
 
@@ -6854,1045 +6529,88 @@ git commit -m "feat(mobile): 3 ロール共通のサインアウトと設定画�
 
 ---
 
-### Task 5-19: 店舗申請（user → owner 昇格）の導線を実装する
+### Task 5-19: 店舗申請（user → owner 昇格）の導線 — **Phase 5 のスコープ外**（Task 5-7 のプレースホルダのまま残す）
 
-**ロール選択画面を作らない理由**
+> **移管先（2026-09-16 決定）: Phase 9 Task 9-25 / 9-26 / 9-27。** 下に挙げる「実装できる条件」は Phase 9 計画書の「追補: 初回店舗申請（`user` → `owner`）を Phase 9 が引き取る」節ですべて決着している（申請時にサーバが下書き店舗と申請行を `db.batch()` で同時に作る = 下の (a)、ステータスは 4 値、ルートは 4 本で `EXPECTED_ROUTE_PATTERNS` は 83 → 87）。**Phase 5 の判断（ここで実装しない・ルートを 1 本も足さない）はそのまま有効である。**
+
+**ロール選択画面を作らない理由（この判断は Phase 5 で確定させる。画面の実装だけが先送りになる）**
 
 新規登録時に「利用者 / 店舗管理者 / システム管理者」を選ばせる画面は**作らない**。設計書 §4 は「1 アカウント 1 ロール。ただし `user` から店舗申請を出し、審査通過で `owner` へ昇格する」と定めており、ロールは**サーバの `profiles.role` が唯一の出所**（Task 5-5）。登録時に自己申告で選ばせると、
 
 - `owner` を自称した利用者が店舗管理画面へ入れてしまう（`admin` なら更に致命的）
 - クライアントの選択とサーバの `profiles.role` の 2 か所に真実ができる
 
-の 2 点が起きる。よって Phase 5 のロール決定は「登録直後は必ず `user`、`owner` へは審査つきの申請だけが道」とし、この Task がその申請導線にあたる。`admin` はアプリから昇格させない（運用側で直接付与する）。
+の 2 点が起きる。よって Phase 5 のロール決定は「登録直後は必ず `user`、`owner` へは審査つきの申請だけが道」とする。`admin` はアプリから昇格させない（運用側で直接付与する）。
 
-**Files:**
+**結論: 申請フォーム（`(user)/settings/shop-application.tsx`）と審査ステータス画面（`(owner)/onboarding/status.tsx`）は Phase 5 では実装しない。** どちらも Task 5-7 が置く `PlaceholderScreen` のまま残す。
 
-- Modify: `apps/mobile/src/lib/api-types.ts`
-- Create: `apps/mobile/src/constants/shop-application.ts`
-- Create: `apps/mobile/src/constants/shop-application.test.ts`
-- Create: `apps/mobile/src/features/shop-application/schema.ts`
-- Create: `apps/mobile/src/features/shop-application/schema.test.ts`
-- Create: `apps/mobile/src/features/shop-application/api.ts`
-- Create: `apps/mobile/src/features/shop-application/api.test.ts`
-- Modify: `apps/mobile/src/app/(user)/settings/shop-application.tsx`
-- Create: `apps/mobile/src/app/(user)/settings/shop-application.test.tsx`
-- Modify: `apps/mobile/src/app/(owner)/onboarding/status.tsx`
-- Create: `apps/mobile/src/app/(owner)/onboarding/status.test.tsx`
+**止まる理由は 3 つあり、どれも単独で実装を不可能にする（すべて 2026-09-16 に現物で確認）。**
 
-**Interfaces:**
+| #   | 止まる理由                                                                                      | 実測の根拠                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| --- | ----------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **叩く先の API が存在しない。** `POST /shop-applications` も `GET /shop-applications/me` も無い | `apps/api/src/routes/` にあるのは `me.ts` / `shops.ts` / `reviews.ts` と 4 本のテストだけ。`apps/api/src/routes/permission-matrix.test.ts:503-513` の `EXPECTED_ROUTE_PATTERNS` は 10 本で、申請系は 1 本も入っていない                                                                                                                                                                                                                |
+| 2   | **リクエストボディも要約も `shop_applications` と噛み合わない。** 申請の前に店舗行が要る        | `apps/api/src/db/schema/admin.ts:105-128` の列は `id` / `applicant_id` / **`shop_id`（`:112-114` で `shops` への NOT NULL 外部キー）** / `documents`（json, NOT NULL, 既定 `[]`）/ `status` / `reviewed_by` / `review_note` / `created_at`。旧版が送ろうとしていた `shopName` / `contactName` / `phoneNumber` に対応する列は 1 つも無く、`submittedAt` / `rejectionReason` も無い（`created_at` / `review_note` に読み替えるしかない） |
+| 3   | **ルートを 2 本足すと、他フェーズの計画書が同時に壊れる**（横断判断 3 の決着）                  | 下の節に詳述                                                                                                                                                                                                                                                                                                                                                                                                                           |
 
-- Consumes:
-  - `@meshimap/core` の `SHOP_NAME_MAX_LENGTH`（= 100）
-  - `apiClient.api['shop-applications'].$post` / `apiClient.api['shop-applications'].me.$get`（Task 5-3 の暫定 `AppType` を拡張して生やす）
-  - `useAuthMutation`（Task 5-13）、`useQuery`（TanStack Query v5）、`Input` / `INPUT_TEXT_BEHAVIORS`（Task 5-10）、`AuthFormScreen` / `FormErrorBanner`（Task 5-12）、`ErrorState`（既存）
-- Produces:
-  - `const shopApplicationSchema` と `type ShopApplicationInput = { shopName: string; contactName: string; phoneNumber: string }`（**モバイル側で定義する**。`@meshimap/core` に申請スキーマは存在しない）
-  - `const CONTACT_NAME_MAX_LENGTH: 50`
-  - `type ShopApplicationStatus = 'pending' | 'approved' | 'rejected'`
-  - `interface ShopApplicationSummary { id: string; shopName: string; status: ShopApplicationStatus; submittedAt: string; rejectionReason: string | null }`
-  - `const SHOP_APPLICATION_QUERY_KEY: readonly ['shop-application', 'me']`
-  - `const SHOP_APPLICATION_STATUS_LABELS: Record<ShopApplicationStatus, string>`
-  - `async function submitShopApplication(input: ShopApplicationInput): Promise<void>`
-  - `async function fetchMyShopApplication(): Promise<ShopApplicationSummary | null>`
+**理由 2 の追い打ち:** `shop_id` を埋めるには先に `shops` 行が要るが、`apps/api/src/db/schema/shop.ts` の `shops` は `name`（`:69`）/ `genre_id`（`:73-75`）/ `area_id`（`:76-78`）/ `address`（`:81`）/ `lat`（`:83`）/ `lng`（`:84`）/ `geohash`（`:86`）がすべて NOT NULL である。店舗名・担当者名・電話番号の 3 項目しか集めないフォームでは、**ジャンル・エリア・住所・緯度経度・geohash のどれも埋められない。** つまり「入力フォームの項目を決め直す」ところからやり直しになる。ここで勝手に項目を足すと、Phase 8 / Phase 9 の審査画面が読む形まで巻き込んで決めてしまう。
 
-- [ ] **Step 1: 暫定 `AppType` に申請エンドポイントを足す**
+#### 理由 3 の詳細: `EXPECTED_ROUTE_PATTERNS` の積み上げ（横断判断 3 / Phase 7 方式）
 
-`apps/mobile/src/lib/api-types.ts` に次を追記し、`MobileApiSchema` にエントリを 2 つ足す。
+`apps/api/src/routes/permission-matrix.test.ts:620` は
 
 ```ts
-export type ShopApplicationStatus = 'pending' | 'approved' | 'rejected';
-
-/** 申請 1 件の要約。審査に必要な書類や写真は Phase 9 の管理画面側で扱う */
-export interface ShopApplicationSummary {
-  id: string;
-  shopName: string;
-  status: ShopApplicationStatus;
-  /** ISO 8601 の文字列。JSON をまたぐので Date にはしない */
-  submittedAt: string;
-  rejectionReason: string | null;
-}
-
-/** 申請の送信内容。features/shop-application/schema.ts の ShopApplicationInput と同じ形 */
-interface ShopApplicationRequestBody {
-  shopName: string;
-  contactName: string;
-  phoneNumber: string;
-}
+expect(declaredRoutePatterns()).toEqual(EXPECTED_ROUTE_PATTERNS);
 ```
 
-```ts
-// MobileApiSchema に足す 2 エントリ
-  '/api/shop-applications': {
-    $post: {
-      input: { json: ShopApplicationRequestBody };
-      output: { applicationId: string };
-      outputFormat: 'json';
-      status: 201;
-    };
-  };
-  '/api/shop-applications/me': {
-    $get: {
-      input: Record<string, never>;
-      // 未申請を null で表す。204 にすると RPC 側の型が空になって扱いにくい
-      output: { application: ShopApplicationSummary | null };
-      outputFormat: 'json';
-      status: 200;
-    };
-  };
-```
+と**厳密比較**している。`app` にルートを 1 本足すと必ずこのファイルを直すことになる。Phase 7 計画書 2470-2530 行が、その直しかたを 4 か所の手順として確立している。**Phase 5 も新しいフェーズも、ルートを足すならこの方式に従う。**
 
-- [ ] **Step 2: 入力スキーマ `features/shop-application/schema.ts` と `schema.test.ts` を作る**
+1. `EXPECTED_ROUTE_PATTERNS` に**ソート順を保って**行を足す（`collectEndpointPatterns` が `.sort()` して返すため）
+2. `it('app に登録されたエンドポイントは 10 本で、想定どおりの並びである')` の**テスト名の数字も直す**。名前と中身がずれたテストは次に読む人を必ず騙す
+3. 主体ごとの期待ステータスを別ファイルへ委ねるなら `DELEGATED_ROUTE_PATTERNS` と `DELEGATABLE_PATH_PATTERN` を置く（Phase 7 計画書 2494-2530 行に定義の実物がある）
+4. 突合の `covered` に `...DELEGATED_ROUTE_PATTERNS` を混ぜ、「委譲しているのは〇〇系だけで、〇〇系は 1 本残らず委譲されている」というテストを足す
 
-Task 5-4 と同じ理由で `@meshimap/core` には申請スキーマが無いので、モバイル側に置く。
-店舗名の上限だけは core が `SHOP_NAME_MAX_LENGTH`（= 100）を export しているのでそれを使う
-（申請で通った店舗名が `shopCreateSchema` で弾かれないようにするため）。
+**そのうえで Phase 5 は「1 本も足さない」を選ぶ。** 理由は次の積み上げが既に他フェーズで固定されているからである。
 
-```ts
-// apps/mobile/src/features/shop-application/schema.ts
-import { SHOP_NAME_MAX_LENGTH } from '@meshimap/core';
-import { z } from 'zod';
+| 固定されている記述   | 場所                                                    | 値                                                                 |
+| -------------------- | ------------------------------------------------------- | ------------------------------------------------------------------ |
+| コミット済みの実物   | `apps/api/src/routes/permission-matrix.test.ts:503-513` | **10 本**                                                          |
+| Phase 7 完了時の本数 | Phase 7 計画書 316 行                                   | 「10 + 9 = 19 本になる」                                           |
+| Phase 9 の積み上げ表 | Phase 9 計画書 11448-11450 行                           | Phase 4 = 10 → Phase 7 後 = 19 → Phase 8 後 = 51 → Phase 9 後 = 83 |
 
-/** ご担当者名の上限。profiles.display_name と同じ 50 文字に揃える（設計書 §6） */
-export const CONTACT_NAME_MAX_LENGTH = 50;
+Phase 5 がここに 2 本割り込むと、**土台が 10 ではなく 12 になり、19 / 51 / 83 の 3 つの数字と、それぞれのテスト名に書かれた数字がすべてずれる。** 直す先は Phase 7・Phase 8・Phase 9 の 3 本の計画書に散っており、1 フェーズの中で閉じない。Phase 5 は認証とルーティングのフェーズであって、API のエンドポイントを増やすフェーズではない。**増やさないことで積み上げ表は無傷のまま通る。**
 
-/**
- * 国内の市外局番形式（ハイフン必須）。`packages/core/src/schema.ts` の PHONE_PATTERN と同じ式。
- * core 側は module private で export されていないため、ここで持つしかない。
- * ここを緩めると、申請時に通った番号が店舗登録（`shopCreateSchema.phone`）で弾かれて
- * 「申請は通ったのに店舗が作れない」という直しにくい不整合になる。
- * TODO(Phase 2): packages/core が PHONE_PATTERN を export したら、この定義を捨てて import に差し替える。
- */
-const PHONE_PATTERN = /^0[0-9]{1,4}-[0-9]{1,4}-[0-9]{3,4}$/;
+> Phase 9 計画書 11454 行には「数が違っていたら『実物の本数 + 32』に読み替える」という逃げ道が書いてあるが、これは**増分だけを固定した記述**であって、Phase 7 計画書 316 行の「19 本」や各テスト名のリテラルまでは救わない。逃げ道があることを理由にルートを足してよい、とは読まないこと。
 
-const SHOP_NAME_REQUIRED_MESSAGE = '店舗名を入力してください。';
-const SHOP_NAME_MAX_MESSAGE = `店舗名は ${SHOP_NAME_MAX_LENGTH} 文字以内で入力してください。`;
-const CONTACT_NAME_REQUIRED_MESSAGE = 'ご担当者名を入力してください。';
-const CONTACT_NAME_MAX_MESSAGE = `ご担当者名は ${CONTACT_NAME_MAX_LENGTH} 文字以内で入力してください。`;
-const PHONE_NUMBER_MESSAGE = '電話番号はハイフン区切りで入力してください（例: 03-1234-5678）。';
+**実装できる条件（満たされた時点で、API 側とセットの 1 タスクとして別フェーズに起こす）**
 
-/** transform / default を入れない。z.input と z.output を一致させないと zodResolver に渡せない */
-export const shopApplicationSchema = z.object({
-  shopName: z
-    .string()
-    .trim()
-    .min(1, { error: SHOP_NAME_REQUIRED_MESSAGE })
-    .max(SHOP_NAME_MAX_LENGTH, { error: SHOP_NAME_MAX_MESSAGE }),
-  contactName: z
-    .string()
-    .trim()
-    .min(1, { error: CONTACT_NAME_REQUIRED_MESSAGE })
-    .max(CONTACT_NAME_MAX_LENGTH, { error: CONTACT_NAME_MAX_MESSAGE }),
-  phoneNumber: z.string().regex(PHONE_PATTERN, { error: PHONE_NUMBER_MESSAGE }),
-});
+- [ ] 申請フォームで何を集めるかを決め直す。`shops` の NOT NULL 列（ジャンル・エリア・住所・緯度経度・geohash）をどこで埋めるかまで含めて決める
+- [x] `shop_applications` の扱いを決める。(a) 申請時に `shops` 行を先に作って `shop_id` を埋める、(b) `shop_id` を NULL 許容にするマイグレーションを切る、のどちらか。**(b) を選ぶ場合は `uq_shop_applications_shop_pending`（`admin.ts:135-137` の部分ユニーク索引）の効き方が変わる**ことに注意する → **(a) に決着（Phase 9 の追補節）。**`shops.owner_id` が NULL 可（`schema/shop.ts` のコメント「申請前やオーナー付け替え中は NULL」）なので、承認まで owner 未定の下書き店舗を置ける。マイグレーションが不要で、Phase 1〜3 の完了済み成果物（`0000_init.sql` と `check-constraints.test.ts` / `design-doc-sync.test.ts`）に一切触らない
+- [ ] **`ShopApplicationStatus` は 3 値ではなく 4 値にする。** `apps/api/src/db/constants.ts:146-159` は `pending` / `approved` / `rejected` に加えて **`APPLICATION_STATUS_RETURNED = 'returned'`（`:152`、差し戻し）** を持ち、`APPLICATION_STATUSES` にも 4 つとも入っている。`shop_applications.status` の enum はこの 4 値。ラベル・説明文・表示分岐・件数を宣言しているテストのすべてを 4 ケースで作ること
+- [ ] `POST /shop-applications` と `GET /shop-applications/me`（名前は再検討してよい）を `apps/api` に実装し、**同じコミットで** `permission-matrix.test.ts` を上記 4 手順どおりに直す
+- [ ] Phase 7 / Phase 8 / Phase 9 の計画書に書かれた本数（19 / 51 / 83）と、各テスト名のリテラルを、足した本数ぶん繰り上げる
 
-export type ShopApplicationInput = z.infer<typeof shopApplicationSchema>;
-```
+**Phase 5 で代わりに満たすこと**
 
-```ts
-// apps/mobile/src/features/shop-application/schema.test.ts
-import { SHOP_NAME_MAX_LENGTH } from '@meshimap/core';
+- `(user)/settings/shop-application.tsx` と `(owner)/onboarding/status.tsx` は Task 5-7 の `PlaceholderScreen` のまま。`settings/index.tsx` からの導線（Task 5-18）も `(owner)/(tabs)/account.tsx` からの導線も、プレースホルダへ着地するだけで壊れない
+- `constants/shop-application.ts` / `features/shop-application/` は**作らない**。`lib/api-types.ts` に申請のエントリも**足さない**
+- 上の「ロール選択画面を作らない理由」は Phase 5 の決定として残す。Task 5-14 の新規登録画面はロールを一切受け取らない
 
-import { CONTACT_NAME_MAX_LENGTH, shopApplicationSchema } from './schema';
+**引き継ぎの穴（Phase 8 計画書との突き合わせで判明。Phase 5 では直さない）**
 
-const VALID_APPLICATION = {
-  shopName: '定食や まる',
-  contactName: '山田太郎',
-  phoneNumber: '03-1234-5678',
-};
+Phase 8 計画書 247 行は「`(owner)/onboarding/apply.tsx` と `status.tsx` は**既にオーナーになっている人が、差し戻された申請を再提出する**画面である。`user` から `owner` への初回申請（まだ `(owner)` グループに入れない人）は **Phase 5 の担当**で、ルートグループが違う」と書いている。Phase 8 が API 側に作るのも `GET /owner/application` / `POST /owner/application/documents` / `POST /owner/application/resubmit` の 3 本（同 426-428 行）で、いずれも `owner` 以外は 403 である。
 
-describe('shopApplicationSchema', () => {
-  it('3 項目が揃っていれば通る', () => {
-    expect(shopApplicationSchema.safeParse(VALID_APPLICATION).success).toBe(true);
-  });
+**Phase 5 が初回申請を持たないと決めた時点で、初回申請のエンドポイントを担当するフェーズが 1 つも無くなっていた。**
 
-  it('未入力は弾く（送信ボタンから API を呼ばせないため）', () => {
-    expect(
-      shopApplicationSchema.safeParse({ shopName: '', contactName: '', phoneNumber: '' }).success,
-    ).toBe(false);
-  });
+**2026-09-16 に決着した。初回申請は Phase 9 が引き取る。**
 
-  it('店舗名は上限ちょうどなら通り、1 文字超過は弾く（境界値）', () => {
-    const atMax = 'あ'.repeat(SHOP_NAME_MAX_LENGTH);
+| 何を                                                                                                                                     | どこが持つか                                            |
+| ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| 初回申請の API 4 本（`GET /masters` / `POST /shop-applications` / `GET /shop-applications/me` / `POST /shop-applications/me/documents`） | **Phase 9 Task 9-25 / 9-26**                            |
+| 初回申請の画面（`(user)/settings/shop-application.tsx` の中身）                                                                          | **Phase 9 Task 9-27**（このプレースホルダを置き換える） |
+| 審査（承認 / 差し戻し / 却下）とロール昇格                                                                                               | Phase 9 Task 9-5（もともと Phase 9 が持っていた）       |
+| 既にオーナーになっている人の再提出（`/owner/application*` の 3 本）                                                                      | Phase 8（変更なし）                                     |
 
-    expect(shopApplicationSchema.safeParse({ ...VALID_APPLICATION, shopName: atMax }).success).toBe(
-      true,
-    );
-    expect(
-      shopApplicationSchema.safeParse({ ...VALID_APPLICATION, shopName: `${atMax}あ` }).success,
-    ).toBe(false);
-  });
-
-  it('ご担当者名は上限ちょうどなら通り、1 文字超過は弾く（境界値）', () => {
-    const atMax = 'あ'.repeat(CONTACT_NAME_MAX_LENGTH);
-
-    expect(
-      shopApplicationSchema.safeParse({ ...VALID_APPLICATION, contactName: atMax }).success,
-    ).toBe(true);
-    expect(
-      shopApplicationSchema.safeParse({ ...VALID_APPLICATION, contactName: `${atMax}あ` }).success,
-    ).toBe(false);
-  });
-
-  it('電話番号はハイフン無しを弾く（core の PHONE_PATTERN と同じ規則）', () => {
-    expect(
-      shopApplicationSchema.safeParse({ ...VALID_APPLICATION, phoneNumber: '0312345678' }).success,
-    ).toBe(false);
-  });
-
-  it('0 始まりでない電話番号を弾く', () => {
-    expect(
-      shopApplicationSchema.safeParse({ ...VALID_APPLICATION, phoneNumber: '13-1234-5678' })
-        .success,
-    ).toBe(false);
-  });
-
-  it('フリーダイヤル形式も通る', () => {
-    expect(
-      shopApplicationSchema.safeParse({ ...VALID_APPLICATION, phoneNumber: '0120-123-456' })
-        .success,
-    ).toBe(true);
-  });
-});
-```
-
-Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- shop-application/schema`
-Expected: PASS（7 件）
-
-- [ ] **Step 3: `constants/shop-application.ts` を作る**
-
-```ts
-// apps/mobile/src/constants/shop-application.ts
-import type { ShopApplicationStatus } from '@/lib/api-types';
-
-/** 申請状況を TanStack Query で保持するときのキー */
-export const SHOP_APPLICATION_QUERY_KEY = ['shop-application', 'me'] as const;
-
-/** 申請状況の再取得間隔。審査は人手なので短く見に行っても意味がない（5 分） */
-export const SHOP_APPLICATION_STALE_TIME_MS = 5 * 60 * 1000;
-
-export const SHOP_APPLICATION_STATUS_LABELS: Record<ShopApplicationStatus, string> = {
-  pending: '審査中',
-  approved: '承認済み',
-  rejected: '否認',
-};
-
-export const SHOP_APPLICATION_STATUS_DESCRIPTIONS: Record<ShopApplicationStatus, string> = {
-  pending: '運営が内容を確認しています。結果はメールでお知らせします。',
-  approved: '店舗管理者としてご利用いただけます。店舗情報の登録へお進みください。',
-  rejected: '内容を確認のうえ、修正して再度お申し込みください。',
-};
-```
-
-`constants/shop-application.ts` は `src/app/**` の外にある実装ファイルなので、テストが無いと
-カバレッジ 0% で集計されて 100% 閾値に引っかかる。同じステップでテストも作る。
-
-```ts
-// apps/mobile/src/constants/shop-application.test.ts
-import {
-  SHOP_APPLICATION_QUERY_KEY,
-  SHOP_APPLICATION_STALE_TIME_MS,
-  SHOP_APPLICATION_STATUS_DESCRIPTIONS,
-  SHOP_APPLICATION_STATUS_LABELS,
-} from './shop-application';
-
-/** api-types.ts の ShopApplicationStatus と対になる値。状態が増減したらここで落ちる */
-const ALL_STATUSES = ['pending', 'approved', 'rejected'] as const;
-
-describe('店舗申請の定数', () => {
-  it('クエリキーは他機能と衝突しない名前空間から始まる', () => {
-    expect(SHOP_APPLICATION_QUERY_KEY[0]).toBe('shop-application');
-  });
-
-  it('状況ラベルは 3 状態すべてを埋めている', () => {
-    expect(Object.keys(SHOP_APPLICATION_STATUS_LABELS).sort()).toEqual([...ALL_STATUSES].sort());
-  });
-
-  it('状況の説明文も 3 状態すべてを埋めている', () => {
-    expect(Object.keys(SHOP_APPLICATION_STATUS_DESCRIPTIONS).sort()).toEqual(
-      [...ALL_STATUSES].sort(),
-    );
-  });
-
-  it('ラベルと説明文はどちらも空文字にしない', () => {
-    for (const status of ALL_STATUSES) {
-      expect(SHOP_APPLICATION_STATUS_LABELS[status].length).toBeGreaterThan(0);
-      expect(SHOP_APPLICATION_STATUS_DESCRIPTIONS[status].length).toBeGreaterThan(0);
-    }
-  });
-
-  it('再取得間隔は正の値', () => {
-    expect(SHOP_APPLICATION_STALE_TIME_MS).toBeGreaterThan(0);
-  });
-});
-```
-
-Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- constants/shop-application`
-Expected: PASS（5 件）
-
-- [ ] **Step 4: 申請 API の失敗するテストを書く**
-
-```ts
-// apps/mobile/src/features/shop-application/api.test.ts
-import { HTTP_STATUS } from '@/constants/http';
-import { AUTH_ERROR_MESSAGES } from '@/features/auth/auth-error';
-
-const mockApplicationPost = jest.fn();
-const mockApplicationMeGet = jest.fn();
-
-jest.mock('@/lib/api-client', () => ({
-  apiClient: {
-    api: {
-      'shop-applications': {
-        $post: mockApplicationPost,
-        me: { $get: mockApplicationMeGet },
-      },
-    },
-  },
-}));
-
-import { fetchMyShopApplication, submitShopApplication } from './api';
-
-const VALID_APPLICATION = {
-  shopName: '定食や まる',
-  contactName: '山田太郎',
-  phoneNumber: '03-1234-5678',
-};
-
-const PENDING_APPLICATION = {
-  id: 'sap_1',
-  shopName: '定食や まる',
-  status: 'pending' as const,
-  submittedAt: '2026-09-15T02:00:00.000Z',
-  rejectionReason: null,
-};
-
-describe('submitShopApplication', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it('入力を json ボディとして送る', async () => {
-    mockApplicationPost.mockResolvedValue({
-      ok: true,
-      status: 201,
-      json: async () => ({ applicationId: 'sap_1' }),
-    });
-
-    await expect(submitShopApplication(VALID_APPLICATION)).resolves.toBeUndefined();
-    expect(mockApplicationPost).toHaveBeenCalledWith({ json: VALID_APPLICATION });
-  });
-
-  it('409 のときは重複として日本語で投げる', async () => {
-    // 申請済みの利用者が二重送信したときに届く
-    mockApplicationPost.mockResolvedValue({
-      ok: false,
-      status: HTTP_STATUS.conflict,
-      json: async () => ({}),
-    });
-
-    await expect(submitShopApplication(VALID_APPLICATION)).rejects.toThrow(
-      AUTH_ERROR_MESSAGES['email-already-used'],
-    );
-  });
-});
-
-describe('fetchMyShopApplication', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it('申請があればその要約を返す', async () => {
-    mockApplicationMeGet.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({ application: PENDING_APPLICATION }),
-    });
-
-    await expect(fetchMyShopApplication()).resolves.toEqual(PENDING_APPLICATION);
-  });
-
-  it('未申請なら null を返す（境界値）', async () => {
-    mockApplicationMeGet.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({ application: null }),
-    });
-
-    await expect(fetchMyShopApplication()).resolves.toBeNull();
-  });
-
-  it('401 なら例外を投げる', async () => {
-    mockApplicationMeGet.mockResolvedValue({
-      ok: false,
-      status: HTTP_STATUS.unauthorized,
-      json: async () => ({}),
-    });
-
-    await expect(fetchMyShopApplication()).rejects.toThrow(
-      AUTH_ERROR_MESSAGES['invalid-credentials'],
-    );
-  });
-});
-```
-
-Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- shop-application/api`
-Expected: FAIL（`Cannot find module './api'`）
-
-- [ ] **Step 5: `features/shop-application/api.ts` を作る**
-
-```ts
-// apps/mobile/src/features/shop-application/api.ts
-import { toAuthError } from '@/features/auth/auth-error';
-import type { ShopApplicationInput } from '@/features/shop-application/schema';
-import { apiClient } from '@/lib/api-client';
-import type { ShopApplicationSummary } from '@/lib/api-types';
-import { logger } from '@/lib/logger';
-
-export async function submitShopApplication(input: ShopApplicationInput): Promise<void> {
-  const response = await apiClient.api['shop-applications'].$post({ json: input });
-
-  if (!response.ok) {
-    logger.warn('店舗申請の送信に失敗した', { status: response.status });
-    // 409 は toAuthError が 'email-already-used'（= 既に登録済み）へ寄せる。
-    // 文言は「このメールアドレスは〜」ではなく汎用にしたいが、画面側で
-    // 状況（申請済み）を先に出すので、ここでは種別の一貫性を優先する
-    throw toAuthError({ status: response.status });
-  }
-}
-
-export async function fetchMyShopApplication(): Promise<ShopApplicationSummary | null> {
-  const response = await apiClient.api['shop-applications'].me.$get();
-
-  if (!response.ok) {
-    logger.warn('店舗申請の状況取得に失敗した', { status: response.status });
-    throw toAuthError({ status: response.status });
-  }
-
-  const body = await response.json();
-  return body.application;
-}
-```
-
-Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- shop-application/api`
-Expected: PASS（5 件）
-
-- [ ] **Step 6: 利用者側の申請画面の失敗するテストを書く**
-
-```tsx
-// apps/mobile/src/app/(user)/settings/shop-application.test.tsx
-import { QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
-
-import { SHOP_APPLICATION_STATUS_LABELS } from '@/constants/shop-application';
-import { AUTH_ERROR_MESSAGES, AuthError } from '@/features/auth/auth-error';
-import { createQueryClient } from '@/lib/query-client';
-
-const mockSubmitShopApplication = jest.fn();
-const mockFetchMyShopApplication = jest.fn();
-
-jest.mock('@/features/shop-application/api', () => ({
-  submitShopApplication: mockSubmitShopApplication,
-  fetchMyShopApplication: mockFetchMyShopApplication,
-}));
-
-import ShopApplicationScreen from './shop-application';
-
-const SHOP_NAME_TEST_ID = 'shop-application-shop-name-input';
-const CONTACT_NAME_TEST_ID = 'shop-application-contact-name-input';
-const PHONE_TEST_ID = 'shop-application-phone-number-input';
-const SUBMIT_TEST_ID = 'shop-application-submit-button';
-const STATUS_TEST_ID = 'shop-application-status';
-const LOADING_TEST_ID = 'shop-application-loading';
-const ERROR_TEST_ID = 'shop-application-error';
-
-const VALID_APPLICATION = {
-  shopName: '定食や まる',
-  contactName: '山田太郎',
-  phoneNumber: '03-1234-5678',
-};
-
-const PENDING_APPLICATION = {
-  id: 'sap_1',
-  shopName: VALID_APPLICATION.shopName,
-  status: 'pending' as const,
-  submittedAt: '2026-09-15T02:00:00.000Z',
-  rejectionReason: null,
-};
-
-function renderShopApplicationScreen() {
-  return render(
-    <QueryClientProvider client={createQueryClient()}>
-      <ShopApplicationScreen />
-    </QueryClientProvider>,
-  );
-}
-
-async function fillApplicationForm(): Promise<void> {
-  await fireEvent.changeText(screen.getByTestId(SHOP_NAME_TEST_ID), VALID_APPLICATION.shopName);
-  await fireEvent.changeText(
-    screen.getByTestId(CONTACT_NAME_TEST_ID),
-    VALID_APPLICATION.contactName,
-  );
-  await fireEvent.changeText(screen.getByTestId(PHONE_TEST_ID), VALID_APPLICATION.phoneNumber);
-}
-
-describe('ShopApplicationScreen', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    mockFetchMyShopApplication.mockResolvedValue(null);
-  });
-
-  it('申請状況の取得中は入力欄を出さない', async () => {
-    // 取得前にフォームを出すと、申請済みの人が二重に書いてしまう
-    mockFetchMyShopApplication.mockReturnValue(new Promise(() => undefined));
-
-    await renderShopApplicationScreen();
-
-    expect(screen.getByTestId(LOADING_TEST_ID)).toBeOnTheScreen();
-    expect(screen.queryByTestId(SHOP_NAME_TEST_ID)).toBeNull();
-  });
-
-  it('未申請なら入力欄を出す', async () => {
-    await renderShopApplicationScreen();
-
-    await waitFor(() => {
-      expect(screen.getByTestId(SHOP_NAME_TEST_ID)).toBeOnTheScreen();
-    });
-    expect(screen.getByTestId(CONTACT_NAME_TEST_ID)).toBeOnTheScreen();
-    expect(screen.getByTestId(PHONE_TEST_ID)).toBeOnTheScreen();
-  });
-
-  it('申請済みなら状況だけを出し、入力欄は出さない', async () => {
-    mockFetchMyShopApplication.mockResolvedValue(PENDING_APPLICATION);
-
-    await renderShopApplicationScreen();
-
-    await waitFor(() => {
-      expect(screen.getByTestId(STATUS_TEST_ID)).toHaveTextContent(
-        SHOP_APPLICATION_STATUS_LABELS.pending,
-      );
-    });
-    expect(screen.queryByTestId(SHOP_NAME_TEST_ID)).toBeNull();
-  });
-
-  it('未入力のまま送信すると API を呼ばない', async () => {
-    await renderShopApplicationScreen();
-    await waitFor(() => {
-      expect(screen.getByTestId(SUBMIT_TEST_ID)).toBeOnTheScreen();
-    });
-
-    await fireEvent.press(screen.getByTestId(SUBMIT_TEST_ID));
-
-    await waitFor(() => {
-      expect(screen.getByTestId(SHOP_NAME_TEST_ID)).toHaveProp(
-        'accessibilityLabel',
-        expect.stringContaining('エラー: '),
-      );
-    });
-    expect(mockSubmitShopApplication).not.toHaveBeenCalled();
-  });
-
-  it('入力を揃えて送信すると申請を送る', async () => {
-    mockSubmitShopApplication.mockResolvedValue(undefined);
-    await renderShopApplicationScreen();
-    await waitFor(() => {
-      expect(screen.getByTestId(SHOP_NAME_TEST_ID)).toBeOnTheScreen();
-    });
-
-    await fillApplicationForm();
-    await fireEvent.press(screen.getByTestId(SUBMIT_TEST_ID));
-
-    await waitFor(() => {
-      expect(mockSubmitShopApplication).toHaveBeenCalledWith(VALID_APPLICATION);
-    });
-  });
-
-  it('送信に成功したら状況を取り直す', async () => {
-    mockSubmitShopApplication.mockResolvedValue(undefined);
-    mockFetchMyShopApplication.mockResolvedValueOnce(null).mockResolvedValue(PENDING_APPLICATION);
-    await renderShopApplicationScreen();
-    await waitFor(() => {
-      expect(screen.getByTestId(SHOP_NAME_TEST_ID)).toBeOnTheScreen();
-    });
-
-    await fillApplicationForm();
-    await fireEvent.press(screen.getByTestId(SUBMIT_TEST_ID));
-
-    await waitFor(() => {
-      expect(screen.getByTestId(STATUS_TEST_ID)).toHaveTextContent(
-        SHOP_APPLICATION_STATUS_LABELS.pending,
-      );
-    });
-  });
-
-  it('送信に失敗したら理由を出し、入力は消さない', async () => {
-    mockSubmitShopApplication.mockRejectedValue(new AuthError('network'));
-    await renderShopApplicationScreen();
-    await waitFor(() => {
-      expect(screen.getByTestId(SHOP_NAME_TEST_ID)).toBeOnTheScreen();
-    });
-
-    await fillApplicationForm();
-    await fireEvent.press(screen.getByTestId(SUBMIT_TEST_ID));
-
-    await waitFor(() => {
-      expect(screen.getByTestId(ERROR_TEST_ID)).toHaveTextContent(AUTH_ERROR_MESSAGES.network);
-    });
-    // 書き直させると離脱する。パスワードと違って消す理由がない
-    expect(screen.getByTestId(SHOP_NAME_TEST_ID)).toHaveProp('value', VALID_APPLICATION.shopName);
-  });
-
-  it('状況の取得に失敗したら再試行できる', async () => {
-    mockFetchMyShopApplication.mockRejectedValue(new AuthError('network'));
-
-    await renderShopApplicationScreen();
-
-    await waitFor(() => {
-      expect(screen.getByTestId('shop-application-load-error')).toBeOnTheScreen();
-    });
-  });
-});
-```
-
-Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- "settings/shop-application"`
-Expected: FAIL（プレースホルダのまま）
-
-- [ ] **Step 7: `app/(user)/settings/shop-application.tsx` を実装に差し替える**
-
-```tsx
-// apps/mobile/src/app/(user)/settings/shop-application.tsx
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Controller, useForm } from 'react-hook-form';
-import { Text, View } from 'react-native';
-
-import { AuthFormScreen } from '@/components/auth/auth-form-screen';
-import { FormErrorBanner } from '@/components/auth/form-error-banner';
-import { Button } from '@/components/ui/button';
-import { ErrorState } from '@/components/ui/error-state';
-import { INPUT_TEXT_BEHAVIORS, Input } from '@/components/ui/input';
-import {
-  SHOP_APPLICATION_QUERY_KEY,
-  SHOP_APPLICATION_STALE_TIME_MS,
-  SHOP_APPLICATION_STATUS_DESCRIPTIONS,
-  SHOP_APPLICATION_STATUS_LABELS,
-} from '@/constants/shop-application';
-import { useAuthMutation } from '@/features/auth/use-auth-mutation';
-import { fetchMyShopApplication, submitShopApplication } from '@/features/shop-application/api';
-import {
-  shopApplicationSchema,
-  type ShopApplicationInput,
-} from '@/features/shop-application/schema';
-
-const EMPTY_APPLICATION: ShopApplicationInput = {
-  shopName: '',
-  contactName: '',
-  phoneNumber: '',
-};
-
-const LOADING_MESSAGE = '申請の状況を確認しています';
-const LOAD_ERROR_TITLE = '申請の状況を取得できませんでした';
-const LOAD_ERROR_DESCRIPTION = '通信状況を確認して、もう一度お試しください。';
-
-export default function ShopApplicationScreen() {
-  const queryClient = useQueryClient();
-
-  const {
-    data: application,
-    isPending: isLoadingApplication,
-    isError: hasLoadFailed,
-    refetch,
-  } = useQuery({
-    queryKey: SHOP_APPLICATION_QUERY_KEY,
-    queryFn: fetchMyShopApplication,
-    staleTime: SHOP_APPLICATION_STALE_TIME_MS,
-  });
-
-  const { control, handleSubmit } = useForm<ShopApplicationInput>({
-    resolver: zodResolver(shopApplicationSchema),
-    defaultValues: EMPTY_APPLICATION,
-    mode: 'onTouched',
-  });
-
-  const {
-    submit: sendApplication,
-    isSubmitting,
-    errorMessage,
-  } = useAuthMutation(submitShopApplication);
-
-  const submitApplication = handleSubmit(async (values) => {
-    const hasSubmitted = await sendApplication(values);
-
-    if (!hasSubmitted) {
-      // 入力は残す。書き直させると離脱する（パスワードのように消す理由がない）
-      return;
-    }
-
-    // 送信直後は状況を取り直して、フォームから審査中の表示へ切り替える
-    await queryClient.invalidateQueries({ queryKey: SHOP_APPLICATION_QUERY_KEY });
-  });
-
-  if (isLoadingApplication) {
-    return (
-      <AuthFormScreen
-        description="申請済みかどうかを確認しています"
-        testID="shop-application-screen"
-        title="店舗の登録申請"
-      >
-        <Text
-          accessibilityLiveRegion="polite"
-          className="text-center font-body text-base text-neutral-600"
-          testID="shop-application-loading"
-        >
-          {LOADING_MESSAGE}
-        </Text>
-      </AuthFormScreen>
-    );
-  }
-
-  if (hasLoadFailed) {
-    return (
-      <View className="flex-1 justify-center bg-neutral-50">
-        <ErrorState
-          description={LOAD_ERROR_DESCRIPTION}
-          onRetry={() => {
-            void refetch();
-          }}
-          testID="shop-application-load-error"
-          title={LOAD_ERROR_TITLE}
-        />
-      </View>
-    );
-  }
-
-  if (application !== null && application !== undefined) {
-    return (
-      <AuthFormScreen
-        description={SHOP_APPLICATION_STATUS_DESCRIPTIONS[application.status]}
-        testID="shop-application-screen"
-        title="店舗の登録申請"
-      >
-        <View
-          className="gap-xs rounded-card border border-neutral-200 bg-white px-md py-md"
-          testID="shop-application-status"
-        >
-          <Text className="font-body-bold text-lg text-neutral-900">{application.shopName}</Text>
-          <Text className="font-body text-base text-neutral-700">
-            {SHOP_APPLICATION_STATUS_LABELS[application.status]}
-          </Text>
-          {application.rejectionReason === null ? null : (
-            <Text className="font-body text-sm text-neutral-600">
-              {application.rejectionReason}
-            </Text>
-          )}
-        </View>
-      </AuthFormScreen>
-    );
-  }
-
-  return (
-    <AuthFormScreen
-      description="審査のうえ、店舗管理者としてご利用いただけるようにします"
-      testID="shop-application-screen"
-      title="店舗の登録申請"
-    >
-      <FormErrorBanner message={errorMessage} testID="shop-application-error" />
-
-      <Controller
-        control={control}
-        name="shopName"
-        render={({ field, fieldState }) => (
-          <Input
-            errorMessage={fieldState.error?.message}
-            isDisabled={isSubmitting}
-            isRequired
-            label="店舗名"
-            onBlur={field.onBlur}
-            onChangeText={field.onChange}
-            placeholder="定食や まる"
-            testID="shop-application-shop-name-input"
-            value={field.value}
-          />
-        )}
-      />
-
-      <Controller
-        control={control}
-        name="contactName"
-        render={({ field, fieldState }) => (
-          <Input
-            errorMessage={fieldState.error?.message}
-            isDisabled={isSubmitting}
-            isRequired
-            label="ご担当者名"
-            onBlur={field.onBlur}
-            onChangeText={field.onChange}
-            placeholder="山田太郎"
-            testID="shop-application-contact-name-input"
-            textBehavior={INPUT_TEXT_BEHAVIORS.personName}
-            value={field.value}
-          />
-        )}
-      />
-
-      <Controller
-        control={control}
-        name="phoneNumber"
-        render={({ field, fieldState }) => (
-          <Input
-            errorMessage={fieldState.error?.message}
-            isDisabled={isSubmitting}
-            isRequired
-            label="連絡先電話番号"
-            onBlur={field.onBlur}
-            onChangeText={field.onChange}
-            placeholder="03-1234-5678"
-            testID="shop-application-phone-number-input"
-            textBehavior={INPUT_TEXT_BEHAVIORS.telephone}
-            value={field.value}
-          />
-        )}
-      />
-
-      <Button
-        isLoading={isSubmitting}
-        label="申請する"
-        onPress={() => {
-          void submitApplication();
-        }}
-        testID="shop-application-submit-button"
-      />
-    </AuthFormScreen>
-  );
-}
-```
-
-Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- "settings/shop-application"`
-Expected: PASS（8 件）
-
-- [ ] **Step 8: 店舗管理者側の審査状況画面の失敗するテストを書く**
-
-```tsx
-// apps/mobile/src/app/(owner)/onboarding/status.test.tsx
-import { QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react-native';
-
-import { SHOP_APPLICATION_STATUS_LABELS } from '@/constants/shop-application';
-import { AuthError } from '@/features/auth/auth-error';
-import { createQueryClient } from '@/lib/query-client';
-
-const mockFetchMyShopApplication = jest.fn();
-
-jest.mock('@/features/shop-application/api', () => ({
-  fetchMyShopApplication: mockFetchMyShopApplication,
-}));
-
-import OwnerOnboardingStatusScreen from './status';
-
-const APPROVED_APPLICATION = {
-  id: 'sap_1',
-  shopName: '定食や まる',
-  status: 'approved' as const,
-  submittedAt: '2026-09-15T02:00:00.000Z',
-  rejectionReason: null,
-};
-
-const REJECTED_APPLICATION = {
-  id: 'sap_2',
-  shopName: '定食や まる',
-  status: 'rejected' as const,
-  submittedAt: '2026-09-15T02:00:00.000Z',
-  rejectionReason: '営業許可証の写しが確認できませんでした。',
-};
-
-function renderStatusScreen() {
-  return render(
-    <QueryClientProvider client={createQueryClient()}>
-      <OwnerOnboardingStatusScreen />
-    </QueryClientProvider>,
-  );
-}
-
-describe('OwnerOnboardingStatusScreen', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    mockFetchMyShopApplication.mockResolvedValue(APPROVED_APPLICATION);
-  });
-
-  it('承認済みの申請を表示する', async () => {
-    await renderStatusScreen();
-
-    await waitFor(() => {
-      expect(screen.getByTestId('owner-onboarding-status')).toHaveTextContent(
-        SHOP_APPLICATION_STATUS_LABELS.approved,
-      );
-    });
-    expect(screen.getByText(APPROVED_APPLICATION.shopName)).toBeOnTheScreen();
-  });
-
-  it('否認なら理由も表示する', async () => {
-    mockFetchMyShopApplication.mockResolvedValue(REJECTED_APPLICATION);
-
-    await renderStatusScreen();
-
-    await waitFor(() => {
-      expect(screen.getByText(REJECTED_APPLICATION.rejectionReason)).toBeOnTheScreen();
-    });
-  });
-
-  it('申請が見つからないときは空の案内を出す（境界値）', async () => {
-    // 運営が直接 owner を付与した場合、申請レコードが無いことがある
-    mockFetchMyShopApplication.mockResolvedValue(null);
-
-    await renderStatusScreen();
-
-    await waitFor(() => {
-      expect(screen.getByTestId('owner-onboarding-empty')).toBeOnTheScreen();
-    });
-  });
-
-  it('取得に失敗したら再試行できる', async () => {
-    mockFetchMyShopApplication.mockRejectedValue(new AuthError('network'));
-
-    await renderStatusScreen();
-
-    await waitFor(() => {
-      expect(screen.getByTestId('owner-onboarding-error')).toBeOnTheScreen();
-    });
-  });
-});
-```
-
-Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- "onboarding/status"`
-Expected: FAIL（プレースホルダのまま）
-
-- [ ] **Step 9: `app/(owner)/onboarding/status.tsx` を実装に差し替える**
-
-```tsx
-// apps/mobile/src/app/(owner)/onboarding/status.tsx
-import { useQuery } from '@tanstack/react-query';
-import { FileText } from 'lucide-react-native';
-import { ScrollView, Text, View } from 'react-native';
-
-import { EmptyState } from '@/components/ui/empty-state';
-import { ErrorState } from '@/components/ui/error-state';
-import {
-  SHOP_APPLICATION_QUERY_KEY,
-  SHOP_APPLICATION_STALE_TIME_MS,
-  SHOP_APPLICATION_STATUS_DESCRIPTIONS,
-  SHOP_APPLICATION_STATUS_LABELS,
-} from '@/constants/shop-application';
-import { fetchMyShopApplication } from '@/features/shop-application/api';
-
-const LOADING_MESSAGE = '申請の状況を確認しています';
-const EMPTY_TITLE = '申請の記録がありません';
-const EMPTY_DESCRIPTION = '運営から直接ご案内した場合、このページには何も表示されません。';
-const ERROR_TITLE = '申請の状況を取得できませんでした';
-const ERROR_DESCRIPTION = '通信状況を確認して、もう一度お試しください。';
-
-export default function OwnerOnboardingStatusScreen() {
-  const {
-    data: application,
-    isPending,
-    isError,
-    refetch,
-  } = useQuery({
-    queryKey: SHOP_APPLICATION_QUERY_KEY,
-    queryFn: fetchMyShopApplication,
-    staleTime: SHOP_APPLICATION_STALE_TIME_MS,
-  });
-
-  if (isPending) {
-    return (
-      <View className="flex-1 items-center justify-center bg-neutral-50">
-        <Text
-          accessibilityLiveRegion="polite"
-          className="font-body text-base text-neutral-600"
-          testID="owner-onboarding-loading"
-        >
-          {LOADING_MESSAGE}
-        </Text>
-      </View>
-    );
-  }
-
-  if (isError) {
-    return (
-      <View className="flex-1 justify-center bg-neutral-50">
-        <ErrorState
-          description={ERROR_DESCRIPTION}
-          onRetry={() => {
-            void refetch();
-          }}
-          testID="owner-onboarding-error"
-          title={ERROR_TITLE}
-        />
-      </View>
-    );
-  }
-
-  if (application === null) {
-    return (
-      <View className="flex-1 justify-center bg-neutral-50">
-        <EmptyState
-          description={EMPTY_DESCRIPTION}
-          // EmptyState の icon は必須 prop（components/ui/empty-state.tsx の EmptyStateProps）。
-          // 「申請書の記録が無い」状態なので書類アイコンを選ぶ
-          icon={FileText}
-          testID="owner-onboarding-empty"
-          title={EMPTY_TITLE}
-        />
-      </View>
-    );
-  }
-
-  return (
-    <ScrollView
-      className="flex-1 bg-neutral-50"
-      contentContainerClassName="gap-md p-lg"
-      testID="owner-onboarding-status-screen"
-    >
-      <View
-        className="gap-xs rounded-card border border-neutral-200 bg-white px-md py-md"
-        testID="owner-onboarding-status"
-      >
-        <Text className="font-body-bold text-lg text-neutral-900">{application.shopName}</Text>
-        <Text className="font-body text-base text-neutral-700">
-          {SHOP_APPLICATION_STATUS_LABELS[application.status]}
-        </Text>
-        <Text className="font-body text-sm text-neutral-600">
-          {SHOP_APPLICATION_STATUS_DESCRIPTIONS[application.status]}
-        </Text>
-        {application.rejectionReason === null ? null : (
-          <Text className="text-danger-600 font-body text-sm">{application.rejectionReason}</Text>
-        )}
-      </View>
-    </ScrollView>
-  );
-}
-```
-
-**注意:** `EmptyState` / `ErrorState` の props は Phase 0 の実装（`apps/mobile/src/components/ui/empty-state.tsx` / `error-state.tsx`）を読んで確認済み。
-
-- `EmptyStateProps`: `icon: LucideIcon`（**必須**）/ `title: string`（必須）/ `description?` / `action?: { label; onPress; isDisabled?; isLoading? }` / `testID?`
-- `ErrorStateProps`: `title?`（既定値 `'エラーが発生しました'`）/ `description?` / `onRetry: () => void`（**必須**）/ `testID?`
-
-`actionLabel` / `onAction` という prop は**存在しない**。アクションを渡すのは `EmptyState` の `action` オブジェクトだけで、`ErrorState` の再試行は `onRetry` 固定（ボタン文言も `'再試行'` 固定）。
-
-Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- "onboarding/status"`
-Expected: PASS（4 件）
-
-- [ ] **Step 10: わざと壊してテストが落ちることを確認する**
-
-`ShopApplicationScreen` の `if (isLoadingApplication) { ... }` ブロックを削除し、「申請状況の取得中は入力欄を出さない」が**失敗すること**を確認する。
-続けて `if (application !== null && application !== undefined)` を `if (application !== undefined)` に書き換え、「未申請なら入力欄を出す」が**失敗すること**を確認してから両方を元に戻す。
-
-- [ ] **Step 11: コミットする**
-
-```bash
-git add apps/mobile/src/lib/api-types.ts apps/mobile/src/constants/shop-application.ts apps/mobile/src/constants/shop-application.test.ts apps/mobile/src/features/shop-application "apps/mobile/src/app/(user)/settings/shop-application.tsx" "apps/mobile/src/app/(user)/settings/shop-application.test.tsx" "apps/mobile/src/app/(owner)/onboarding/status.tsx" "apps/mobile/src/app/(owner)/onboarding/status.test.tsx"
-git commit -m "feat(mobile): 店舗申請（user から owner への昇格）の導線を実装する"
-```
+Phase 9 を選んだ根拠は Phase 9 計画書の追補節にある（承認側が同じフェーズにあること・申請フォームが要る `SelectField` を Task 9-18 が作ること・409 を返す `conflict()` を Task 9-0 が作ること）。**Phase 8 計画書 247 行の「初回申請は Phase 5 の担当」も同日に訂正済みである。**
 
 ---
 
@@ -8007,18 +6725,16 @@ jest.mock('@/lib/auth-client', () => ({
   authClient: {
     signIn: { email: jest.fn() },
     signUp: { email: jest.fn() },
+    // Task 5-16 はスコープ外だが、features/auth/api.ts が import だけはするので潰しておく
     requestPasswordReset: jest.fn(),
-    sendVerificationEmail: jest.fn(),
     signOut: jest.fn(),
     useSession: jest.fn(() => ({ data: null, isPending: false })),
   },
 }));
+// `/api` が付くのは Better Auth だけ。apiClient.api.me ではなく apiClient.me（Task 5-3）
 jest.mock('@/lib/api-client', () => ({
   apiClient: {
-    api: {
-      me: { $get: jest.fn() },
-      'shop-applications': { $post: jest.fn(), me: { $get: jest.fn() } },
-    },
+    me: { $get: jest.fn() },
   },
 }));
 ```
@@ -8262,6 +6978,7 @@ git commit -m "test(mobile): ロールルーティングの統合テストを追
 **Files:**
 
 - Modify: `apps/mobile/jest.config.js`（`collectCoverageFrom` の `!src/app/**` を `!src/app/_dev/**` に差し替える。Step 4-a）
+- Modify: `apps/mobile/src/constants/api.ts`（コメント 1 行の誤りを直す。Step 3-a）
 - Modify: `docs/superpowers/specs/2026-09-15-meshimap-design.md`（§5.1 のみ）
 - Modify: `docs/superpowers/plans/2026-09-15-phase-5-auth-routing.md`（チェックボックスを埋める）
 
@@ -8285,6 +7002,20 @@ Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm run typec
 Expected: エラーなし。
 `typedRoutes` が生成する `.expo/types/router.d.ts` は `expo start` 実行時に更新されるため、`Href` の型エラーが出た場合は一度 `npm run mobile` を起動してから再実行する。
 
+- [ ] **Step 2-a: lint を通す**
+
+Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm run lint -w @meshimap/mobile`
+Expected: エラー 0 / warning 0。
+
+**Phase 5 で lint を走らせるのはここだけ**なので飛ばさない。実測（2026-09-16）で確認した事実は次のとおり。
+
+- `apps/mobile/package.json:74` に `"lint": "expo lint"` がある
+- `apps/mobile/eslint.config.js:25-40` が `no-console`（`:31`）/ `@typescript-eslint/no-explicit-any`（`:32`）/ `@typescript-eslint/no-unused-vars`（`:35-38`）を **error** にしている
+- リポジトリ直下の `eslint.config.mjs` は冒頭のコメントどおり `apps/mobile` を対象外にしている。つまり `npm run lint`（ルート）ではモバイルは検査されない
+
+**次の Step 3 の grep はこの補助でしかない。** grep が見るのは `console\.log` と `: any` / `<any>` / `as any` の 3 パターンだけで、`console.warn` / `console.error` や `any[]` / `Array<any>` / `Promise<any>` を取りこぼす。**grep が空でも lint は落ちうる。**
+`src/lib/logger.ts:36-44` の `/* eslint-disable no-console */` 〜 `/* eslint-enable no-console */` は sink の実装に必要なので消さないこと。
+
 - [ ] **Step 3: 禁止パターンが混入していないか機械的に確認する**
 
 ```bash
@@ -8306,6 +7037,18 @@ grep -rn "!\." src/ --include="*.ts" --include="*.tsx" | grep -v "!==" | grep -v
 
 Expected: 1 つ目・2 つ目・4 つ目は**出力ゼロ**。3 つ目は `src/features/auth/auth-context.tsx` の `as UserId` **1 行だけ**。
 それ以外が出たら、その場で直してから Step 1 に戻る。
+
+- [ ] **Step 3-a: `constants/api.ts` のコメントの誤りを 1 行直す**
+
+`apps/mobile/src/constants/api.ts:4` は「`apps/api/wrangler.toml` と対応」と書いているが、**`apps/api/` にあるのは `wrangler.jsonc` だけで `wrangler.toml` は存在しない**（2026-09-16 実測）。ポート 8787 自体は `apps/api/wrangler.jsonc:9` の `BETTER_AUTH_URL: "http://localhost:8787"` と一致しており正しいので、直すのは拡張子だけ。
+
+```diff
+- * ここは wrangler dev の既定ポートに合わせる（apps/api/wrangler.toml と対応）。
++ * ここは wrangler dev の既定ポートに合わせる（apps/api/wrangler.jsonc と対応）。
+```
+
+Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm test -w @meshimap/mobile -- constants/api`
+Expected: PASS（3 件。コメントしか変えていないので件数も内容も変わらない）
 
 - [ ] **Step 4: カバレッジを確認する（まず `src/app/` を除外したまま）**
 
@@ -8335,7 +7078,7 @@ Expected: **statements / branches / functions / lines すべて 100%**。
 1. **0% は「テストが無い」ではなく「除外されていたから一度も測っていない」だけ**。`_layout.tsx` と `index.tsx` は Phase 5 が書き換えるので、この 0% は Phase 5 の成果物で置き換わる。除外を外して困る既存ファイルは `_dev/catalog.tsx` **1 つだけ**で、その不足も functions の 80%（5 個中 1 個）に限られる。
 2. **`_dev/catalog.tsx` は Phase 5 の所有物ではない**。Phase 0 が作った開発者向けの UI カタログで、Phase 5 はこのファイルを 1 行も触らない。他フェーズの資産を埋めるために Phase 5 の完了を止めるのは筋が違う。だから「除外を外す」と「`_dev` は除外に残す」は両立させる。
 
-切り替えを Task 5-8 ではなく Task 5-21 に置くのは、**Phase 5 が置く 25 個の実装ファイルのうち専用テストを持つのは 13 個**で、残り 12 個（`(admin)/_layout.tsx` / `(admin)/(tabs)/_layout.tsx` / `(admin)/(tabs)/overview.tsx` / `(auth)/_layout.tsx` / `(owner)/_layout.tsx` / `(owner)/(tabs)/_layout.tsx` / `(owner)/(tabs)/dashboard.tsx` / `(user)/_layout.tsx` / `(user)/(tabs)/_layout.tsx` / `(user)/(tabs)/home.tsx` / `(user)/(tabs)/profile.tsx` / `+not-found.tsx`）は Task 5-20 の `routing.test.tsx` が `renderRouter` で実際に描画することでしか到達しないため。Task 5-8 の時点で外すと、まだ存在しない 24 ファイル分の 0% で `test:coverage` が落ち続け、Task 5-9 以降のすべてのタスクが赤いゲートを跨ぐことになる。**全画面が揃った最後に 1 度だけ外す。**
+切り替えを Task 5-8 ではなく Task 5-21 に置くのは、**Phase 5 が置く 25 個の実装ファイルのうち専用テストを持つのは 9 個**で、残り 16 個（`(admin)/_layout.tsx` / `(admin)/(tabs)/_layout.tsx` / `(admin)/(tabs)/overview.tsx` / `(auth)/_layout.tsx` / `(auth)/verify-email.tsx` / `(auth)/forgot-password.tsx` / `(owner)/_layout.tsx` / `(owner)/(tabs)/_layout.tsx` / `(owner)/(tabs)/dashboard.tsx` / `(owner)/onboarding/status.tsx` / `(user)/_layout.tsx` / `(user)/(tabs)/_layout.tsx` / `(user)/(tabs)/home.tsx` / `(user)/(tabs)/profile.tsx` / `(user)/settings/shop-application.tsx` / `+not-found.tsx`）は Task 5-20 の `routing.test.tsx` が `renderRouter` で実際に描画することでしか到達しないため。**13 個 → 9 個に減っているのは、Task 5-15 / 5-16 / 5-19 をスコープ外にして 4 つの画面がプレースホルダのまま残るからである**（`verify-email` / `forgot-password` / `settings/shop-application` / `onboarding/status`）。この 4 つは `PlaceholderScreen` を 1 つ返すだけなので、`routing.test.tsx` がそのパスへ遷移できれば 100% に届く。Task 5-8 の時点で外すと、まだ存在しない 24 ファイル分の 0% で `test:coverage` が落ち続け、Task 5-9 以降のすべてのタスクが赤いゲートを跨ぐことになる。**全画面が揃った最後に 1 度だけ外す。**
 
 - [ ] **Step 4-a: `collectCoverageFrom` の除外を差し替える**
 
@@ -8364,7 +7107,7 @@ Expected: **statements / branches / functions / lines すべて 100%**。
 Run: `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" && npm run test:coverage -w @meshimap/mobile`
 Expected: **4 指標とも 100%**。
 
-落ちたときに見る場所は、たいてい上に挙げた「専用テストを持たない 12 ファイル」のどれか。埋め方は 2 通りあり、**先に前者を試す**。
+落ちたときに見る場所は、たいてい上に挙げた「専用テストを持たない 16 ファイル」のどれか。埋め方は 2 通りあり、**先に前者を試す**。
 
 1. Task 5-20 の `routing.test.tsx` に、その画面へ実際に遷移するケースを足す（統合テストで担保する、という本計画の方針そのもの）
 2. それでも届かない分岐だけ、その画面に専用の `.test.tsx` を足す
@@ -8438,8 +7181,9 @@ git commit -m "docs: Phase 5 の完了を反映し設計書 5.1 のホームを 
 
 ## Phase 5 完了条件
 
-- [ ] `npm test -w @meshimap/mobile` が全件 PASS（Phase 0 の 105 件を含む）
+- [ ] `npm test -w @meshimap/mobile` が全件 PASS（**Task 5-1 完了時点の 128 件 = Phase 0 の 117 件 + Task 5-1 で足した 11 件 が 1 件も減っていない**こと）
 - [ ] `npm run typecheck -w @meshimap/mobile` がエラーなし
+- [ ] `npm run lint -w @meshimap/mobile` がエラー 0 / warning 0（Task 5-21 Step 2-a）
 - [ ] `npm run format:check` がエラーなし
 - [ ] 未認証でアプリ内のどのパスを叩いても `(auth)` の外に入れない（Task 5-20 で自動検証）
 - [ ] `user` / `owner` / `admin` がそれぞれ `/home` / `/dashboard` / `/overview` に着地する（Task 5-20 で自動検証）
@@ -8455,33 +7199,33 @@ git commit -m "docs: Phase 5 の完了を反映し設計書 5.1 のホームを 
 
 ## Phase 6 への引き継ぎ
 
-| 項目                | Phase 5 で決めたこと                                                                                                                           | Phase 6 でやること                                                                                                                                                                                                                                                                                        |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ゲスト閲覧          | Phase 5 では**ゲスト導線を出さない**。行き先（地図・店舗詳細）がまだ無く、出口のない導線になるため（Task 5-17 の判断表）                       | `AuthState` に 5 つ目の `{ status: 'guest' }` を足し、`app/_layout.tsx` の `(user)` ガードを `isAuthenticatedUser \|\| isGuest` に緩める。`(user)/settings/**` と予約・レビュー系は `isAuthenticatedUser` のままにして、ゲストが入れない範囲を分ける。`welcome.tsx` に「まずは見てみる」の CTA を追加する |
-| `lib/api-types.ts`  | `AppType` が `apps/api` から出ていないため、モバイル側で手書きの `MobileApiSchema` を置いて `hc<MobileApiSchema>` で型を付けている（Task 5-3） | Phase 4 が `AppType` を export したら `lib/api-client.ts` を `hc<AppType>` に差し替え、`lib/api-types.ts` を**削除**する。`api-client.test.ts` の「レスポンス型が想定どおり」テストがそのまま差し替え後の回帰テストになる                                                                                 |
-| `(user)/(tabs)`     | Phase 5 は `home` / `profile` の 2 タブのみ（`▽` プレースホルダ）                                                                              | `map` / `search` / `saved` を足して 5 タブにする。`home.tsx` の中身を作る                                                                                                                                                                                                                                 |
-| `PlaceholderScreen` | Phase 6 以降で中身を作る画面の枠として `▽` 印のファイルが使っている                                                                            | 実装した画面から順に `PlaceholderScreen` を剥がす。`src/` 全体から `PlaceholderScreen` の参照が消えた時点でコンポーネント自体を削除する                                                                                                                                                                   |
-| 店舗申請            | `(user)/settings/shop-application.tsx` から申請を送り、`(owner)/onboarding/status.tsx` で審査状況を見るところまで（Task 5-19）                 | 審査通過時のロール変更をアプリに反映する経路（プッシュ通知 → `PROFILE_QUERY_KEY` の invalidate）を Phase 7 以降で追加する。ロールが変われば着地先が変わることは Task 5-20 で検証済み                                                                                                                      |
+| 項目                | Phase 5 で決めたこと                                                                                                                                                                                                                                                                                                                                                                                                 | Phase 6 でやること                                                                                                                                                                                                                                                                                                                                                             |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| ゲスト閲覧          | Phase 5 では**ゲスト導線を出さない**。行き先（地図・店舗詳細）がまだ無く、出口のない導線になるため（Task 5-17 の判断表）                                                                                                                                                                                                                                                                                             | `AuthState` に 5 つ目の `{ status: 'guest' }` を足し、`app/_layout.tsx` の `(user)` ガードを `isAuthenticatedUser \|\| isGuest` に緩める。`(user)/settings/**` と予約・レビュー系は `isAuthenticatedUser` のままにして、ゲストが入れない範囲を分ける。`welcome.tsx` に「まずは見てみる」の CTA を追加する                                                                      |
+| `lib/api-types.ts`  | `apps/api` は **`AppType` を export 済み**（`apps/api/src/index.ts:34`）。Task 5-3 Step 2 が「`@meshimap/api` をモバイル側から型として import できるか」を実測し、道 A（できた）なら `lib/api-types.ts` は `AppType` の再 export と `MeResponseBody` だけ、道 B（`@cloudflare/workers-types` のグローバル型が解決できず落ちた）なら手書きの `MobileApiSchema` を置く。**どちらを選んだかはコミットメッセージに残す** | 道 B を選んでいた場合だけ、`apps/mobile/tsconfig.json` の `types` に `@cloudflare/workers-types` を足すなどして道 A へ寄せ直し、`lib/api-types.ts` の手書き部分を削除する。道 A ならこの項目は Phase 5 で完了しており、Phase 6 での作業は無い                                                                                                                                  |
+| `(user)/(tabs)`     | Phase 5 は `home` / `profile` の 2 タブのみ（`▽` プレースホルダ）                                                                                                                                                                                                                                                                                                                                                    | `map` / `search` / `saved` を足して 5 タブにする。`home.tsx` の中身を作る                                                                                                                                                                                                                                                                                                      |
+| `PlaceholderScreen` | Phase 6 以降で中身を作る画面の枠として `▽` 印のファイルが使っている                                                                                                                                                                                                                                                                                                                                                  | 実装した画面から順に `PlaceholderScreen` を剥がす。`src/` 全体から `PlaceholderScreen` の参照が消えた時点でコンポーネント自体を削除する                                                                                                                                                                                                                                        |
+| 店舗申請            | **Phase 5 ではスコープ外**（Task 5-19）。API も `shop_applications` の形も噛み合わないため、`(user)/settings/shop-application.tsx` と `(owner)/onboarding/status.tsx` は `PlaceholderScreen` のまま。決めたのは「登録時にロールを選ばせない。`owner` へは審査つきの申請だけが道」という方針のみ                                                                                                                      | **決着済み（2026-09-16）: Phase 9 Task 9-25 / 9-26 / 9-27 が引き取る。** API 4 本（`GET /masters` / `POST /shop-applications` / `GET /shop-applications/me` / `POST /shop-applications/me/documents`）と `(user)/settings/shop-application.tsx` の中身をセットで実装し、`EXPECTED_ROUTE_PATTERNS` を 83 → 87 にする。Phase 8 計画書 247 行の「Phase 5 の担当」も同日に訂正済み |
 
 ## 未確認事項
 
 計画の作成時に**確認できなかった**点。実装時に最初に潰すこと。
 
-| #   | 未確認の内容                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | 影響するタスク                   | 実装時の確認方法                                                                                                                                                                                                                                                                                                                                                                |
-| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | `renderRouter` を**このリポジトリで実行していない**。とくに「RNTL 14 の全 API が Promise を返す」×「`renderRouter` が内部で `jest.useFakeTimers()` を呼ぶ（`node_modules/expo-router/build/testing-library/index.js:38`）」の組み合わせは型定義とソースからの推論にとどまる                                                                                                                                                                                                                                                                                                                                                                        | 5-20                             | Task 5-20 Step 3 を最初に単独で走らせる。`getPathname()` が `undefined` / 遷移が進まない場合は `settleNavigation()` を `await act(async () => { await jest.advanceTimersByTimeAsync(0); })` に替える                                                                                                                                                                            |
-| 2   | `toHavePathname` 系のカスタムマッチャに**型定義が無い**（`expo-router/build/testing-library/expect.d.ts` の中身は `export {};`）。また `testRouter.*` は `act()` を await せずに呼ぶ実装（`index.js:76-92`）                                                                                                                                                                                                                                                                                                                                                                                                                                       | 5-20                             | 本計画ではどちらも使わず `getPathname()` で判定している。もし将来 `toHavePathname` を使うなら型拡張を自前で書く必要がある                                                                                                                                                                                                                                                       |
-| 3   | **解消済み（2026-09-15 に実体を確認）。** `packages/core/src/index.ts` が export するロール系は `ROLES`（**`as const` のタプル**）/ `ROLE_USER` / `ROLE_OWNER` / `ROLE_ADMIN` / `type Role` / `isRole` / `toRole` / `canManageShop` / `canModerate`。`UserRole` / `USER_ROLES` は**存在しない**。認証・店舗申請の入力スキーマ（`signInSchema` / `signUpSchema` / `passwordResetRequestSchema` / `shopApplicationSchema`）も core に無く、`packages/core/src/index.test.ts` が公開 export 名を完全一致で固定しているため追加コストが高い。→ **モバイル側**（`features/auth/schema.ts` / `features/shop-application/schema.ts`）に置く方針に変更済み | 5-1, 5-4, 5-13, 5-14, 5-16, 5-19 | 対応不要。core の export を増やしたくなったら `packages/core/src/index.test.ts` の一覧も同時に直すこと                                                                                                                                                                                                                                                                          |
-| 4   | **解消済み。** 本計画で使うスキーマはすべてモバイル側で新規に定義し、`transform` / `default` を持たせていない。`signUpSchema.displayName` の `.trim()` は値を変えるが TypeScript の型は `string` のままなので `z.input` と `z.output` は一致する                                                                                                                                                                                                                                                                                                                                                                                                   | 5-13, 5-14, 5-16, 5-19           | `features/auth/schema.ts` / `features/shop-application/schema.ts` に `transform` を足すときだけ再確認する。`zodResolver` は `Resolver<z4.input<T>, Context, z4.output<T>>` を返す（`node_modules/@hookform/resolvers/zod/dist/zod.d.ts`）                                                                                                                                       |
-| 5   | `apps/api` が `AppType` を export していない。`lib/api-types.ts` の `MeResponseBody` / `MobileApiSchema`（`/api/me`・`/api/shop-applications`・`/api/shop-applications/me`）は**設計書 §7 から起こした暫定型**で、実際のレスポンスと突き合わせていない                                                                                                                                                                                                                                                                                                                                                                                             | 5-3, 5-19                        | Phase 4 完了後に `hc<AppType>` へ差し替える。差し替えで型エラーが出た箇所が、想定とサーバ実装のずれ                                                                                                                                                                                                                                                                             |
-| 6   | `apps/api` 側の Better Auth の `emailAndPassword` 設定（`autoSignIn` / `requireEmailVerification`）が未確認。Task 5-14 は「サインアップ直後は認証済みにならず、メール確認待ち画面へ送る」前提で書いている                                                                                                                                                                                                                                                                                                                                                                                                                                          | 5-14, 5-15                       | Phase 4 の `auth.ts` を読む。`autoSignIn: true` なら Task 5-14 の遷移先を「確認待ち画面」から「ロールディスパッチャ」に変える                                                                                                                                                                                                                                                   |
-| 7   | `authClient.getCookie()` の型が Better Auth の動的パスプロキシ経由で解決されることを**実行では確認していない**（`@better-auth/expo/dist/client.js` のソース読みのみ）                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | 5-3                              | Task 5-3 Step 2 で `npm run typecheck` を通す。型が出ない場合は `authClient.getCookie` の代わりに `expo-secure-store` から `${AUTH_STORAGE_PREFIX}_cookie` を直接読む実装に切り替える                                                                                                                                                                                           |
-| 8   | `authClient.useSession()` が**初回レンダーで `isPending: true` を返すか**を実行確認していない。ここが `false` スタートだと復元中の判定が 1 フレーム抜ける                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | 5-5                              | Task 5-5 のテストで初回レンダーの `status` を assert している。実機（Step 6 の「初回起動」）でちらつきが出たら、`AuthProvider` 側に「初回マウント完了まで無条件で restoring」のガードを足す                                                                                                                                                                                     |
-| 9   | `unstable_settings.anchor` が**入れ子グループのレイアウト**でどう効くかはソース（`getRoutesCore.js:655`）読みのみで、実行確認していない                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | 5-8                              | Task 5-8 のテストと Task 5-20 の「ガードで弾かれたら index に戻る」ケースで検証される。効かない場合は各グループの `_layout.tsx` にも `unstable_settings` を置く                                                                                                                                                                                                                 |
-| 10  | **解消済み（2026-09-15 に実装を確認）。** `EmptyStateProps` = `icon: LucideIcon`（**必須**）/ `title: string` / `description?` / `action?: { label; onPress; isDisabled?; isLoading? }` / `testID?`。`ErrorStateProps` = `title?`（既定 `エラーが発生しました`）/ `description?` / `onRetry: () => void`（必須）/ `testID?`。`actionLabel` / `onAction` は**存在しない**。Task 5-19 の `EmptyState` 呼び出しに `icon={FileText}` を補って修正済み                                                                                                                                                                                                  | 5-9, 5-19                        | 対応不要。Phase 0 側の API を変えず、呼ぶ側を合わせる方針は維持する                                                                                                                                                                                                                                                                                                             |
-| 11  | jest-expo の環境で `Response` がグローバルに存在するかを確認していない。`sign-out-storage.test.ts` は `global.fetch` を `new Response(...)` で差し替える                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | 5-18                             | 無ければ `{ ok: true, status: 200, json: async () => ({}), headers: new Headers() }` を返すオブジェクトに置き換える                                                                                                                                                                                                                                                             |
-| 12  | `better-auth` / `@better-auth/expo` が Jest で変換なしに読めるか未確認（`transformIgnorePatterns` に未追加）。Task 5-2 で `TRANSPILED_NODE_MODULES` に追加する前提で書いている                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | 5-2, 5-18                        | Task 5-2 Step 1 でテストを走らせた時点で分かる。`SyntaxError: Cannot use import statement outside a module` が出たら `jest.config.js` に `'better-auth'`, `'@better-auth'` を足す                                                                                                                                                                                               |
-| 13  | **解消済み（2026-09-15 に実測して決定）。** `jest.config.js:63-64` のコメントに**従う**。ただし `!src/app/**` を丸ごと外すのではなく `!src/app/_dev/**` に差し替え、外すのは **Task 5-21 Step 4-a**（全画面が揃った後）にする。実測: 除外を外すと `src/app/` は 0/0/0/0、`src/app/_dev/` は 100/100/**80**/100（テスト 128 件は PASS）。つまり既存で足りないのは Phase 5 が 1 行も触らない `_dev/catalog.tsx` の functions だけ                                                                                                                                                                                                                    | 5-8, 5-20, 5-21                  | 対応不要。Task 5-8 は `moduleNameMapper` だけを触り `collectCoverageFrom` には手を付けない。Task 5-21 Step 4-a / 4-b が差し替えと測り直しを持つ。落ちたら Task 5-20 の `routing.test.tsx` に遷移ケースを足すのが第一手                                                                                                                                                          |
-| 14  | 電話番号の正規表現が二重定義になる。`packages/core/src/schema.ts` の `PHONE_PATTERN`（`/^0[0-9]{1,4}-[0-9]{1,4}-[0-9]{3,4}$/`、**ハイフン必須**）は module private で export されていないため、モバイル側 `features/shop-application/schema.ts` に同じ値を書き写している                                                                                                                                                                                                                                                                                                                                                                           | 5-19                             | core が `PHONE_PATTERN` を export するようになったら、モバイル側の定義を消して import に置き換える。それまでは片方だけ直すと検証がズレる                                                                                                                                                                                                                                        |
-| 15  | `@tanstack/query-core` の型実体ファイル名 `build/modern/hydration-Bjs0MSgg.d.ts` は**ビルドごとのハッシュ付き**で、バージョンを上げると変わる（`queryClient.d.ts` 自体は 2 行の再エクスポートバレル）                                                                                                                                                                                                                                                                                                                                                                                                                                              | 5-5                              | 行番号が合わなくなったら `grep -rn "clear(): void" node_modules/@tanstack/query-core/build/modern/` で引き直す。API そのもの（`clear(): void` / `getDefaultOptions(): DefaultOptions`）は変わっていない                                                                                                                                                                         |
-| 16  | `renderHook` / `render` / `fireEvent` が Promise を返すこと（RNTL 14）は `node_modules/@testing-library/react-native/dist/render-hook.d.ts` で型を確認したが、**Jest 環境では動的 `import()` が使えない**（`TypeError: A dynamic import callback was invoked without --experimental-vm-modules`）。本計画のテストは `jest.resetModules()` + `require()`（型は `typeof import('./module')`）で統一している                                                                                                                                                                                                                                          | 5-1, 5-2, 5-8                    | `await import(...)` を書きたくなったら必ず `require()` に置き換える。`.json` を `require` する箇所に `// eslint-disable-next-line @typescript-eslint/no-require-imports` を付けると `Unused eslint-disable directive` の warning になる（`eslint-config-expo/flat/utils/typescript.js:85-96` の `allow` 正規表現に `json` が含まれるため）。`.js` / `.ts` の `require` には必要 |
+| #   | 未確認の内容                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | 影響するタスク       | 実装時の確認方法                                                                                                                                                                                                                                                                                                                                                                |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `renderRouter` を**このリポジトリで実行していない**。とくに「RNTL 14 の全 API が Promise を返す」×「`renderRouter` が内部で `jest.useFakeTimers()` を呼ぶ（`node_modules/expo-router/build/testing-library/index.js:38`）」の組み合わせは型定義とソースからの推論にとどまる                                                                                                                                                                                                                                                                                                                                                                                                                  | 5-20                 | Task 5-20 Step 3 を最初に単独で走らせる。`getPathname()` が `undefined` / 遷移が進まない場合は `settleNavigation()` を `await act(async () => { await jest.advanceTimersByTimeAsync(0); })` に替える                                                                                                                                                                            |
+| 2   | `toHavePathname` 系のカスタムマッチャに**型定義が無い**（`expo-router/build/testing-library/expect.d.ts` の中身は `export {};`）。また `testRouter.*` は `act()` を await せずに呼ぶ実装（`index.js:76-92`）                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | 5-20                 | 本計画ではどちらも使わず `getPathname()` で判定している。もし将来 `toHavePathname` を使うなら型拡張を自前で書く必要がある                                                                                                                                                                                                                                                       |
+| 3   | **解消済み（2026-09-15 に実体を確認）。** `packages/core/src/index.ts` が export するロール系は `ROLES`（**`as const` のタプル**）/ `ROLE_USER` / `ROLE_OWNER` / `ROLE_ADMIN` / `type Role` / `isRole` / `toRole` / `canManageShop` / `canModerate`。`UserRole` / `USER_ROLES` は**存在しない**。認証・店舗申請の入力スキーマ（`signInSchema` / `signUpSchema` / `passwordResetRequestSchema` / `shopApplicationSchema`）も core に無く、`packages/core/src/index.test.ts` が公開 export 名を完全一致で固定しているため追加コストが高い。→ **モバイル側**（`features/auth/schema.ts`）に置く方針に変更済み。`shopApplicationSchema` は Task 5-19 をスコープ外にしたため Phase 5 では作らない | 5-1, 5-4, 5-13, 5-14 | 対応不要。core の export を増やしたくなったら `packages/core/src/index.test.ts` の一覧も同時に直すこと                                                                                                                                                                                                                                                                          |
+| 4   | **解消済み。** 本計画で使うスキーマはすべてモバイル側で新規に定義し、`transform` / `default` を持たせていない。`signUpSchema.displayName` の `.trim()` は値を変えるが TypeScript の型は `string` のままなので `z.input` と `z.output` は一致する                                                                                                                                                                                                                                                                                                                                                                                                                                             | 5-13, 5-14           | `features/auth/schema.ts` に `transform` を足すときだけ再確認する。`zodResolver` は `Resolver<z4.input<T>, Context, z4.output<T>>` を返す（`node_modules/@hookform/resolvers/zod/dist/zod.d.ts`）                                                                                                                                                                               |
+| 5   | **解消済み（2026-09-16 に実体を確認）。** `apps/api/src/index.ts:34` に `export type AppType = typeof app;` があり、`apps/api/src/routes/` には `me.ts` / `shops.ts` / `reviews.ts` が実在する。`GET /me` が返すのは `apps/api/src/routes/me.ts:14-25` のとおり `{ profile: { userId, role, displayName } }` の 3 列だけで、`user` も `avatarKey` も `status` も含まない（`apps/api/src/routes/routes.test.ts:113-117` の `toEqual` が形を固定している）。パスに `/api` は付かない（`index.ts:29` は `.route('/me', meRoutes)`。`/api` が付くのは `auth.ts:11` の `AUTH_BASE_PATH` を使う Better Auth だけ）                                                                                 | 5-3, 5-4, 5-5        | 対応不要。Task 5-3 Step 2 が「`@meshimap/api` を型として import できるか」を実測して道 A / 道 B を選ぶ。テストのフィクスチャは上記 3 列に揃えてある                                                                                                                                                                                                                             |
+| 6   | **解消済み（2026-09-16 に実体を確認）。** `apps/api/src/auth/auth.ts:45` は `emailAndPassword: { enabled: true },` だけで、`autoSignIn` も `requireEmailVerification` も設定していない。`node_modules/better-auth/dist/api/routes/sign-up.mjs:163` は `autoSignIn === false` のときだけ自動サインインを飛ばすので、**既定ではサインアップ直後にセッションが張られる**                                                                                                                                                                                                                                                                                                                        | 5-14, 5-15           | 対応不要。Task 5-14 は「成功しても画面側では遷移しない」に書き換え済み、Task 5-15 はスコープ外にした。将来 `apps/api` 側の設定を変えるときは、Task 5-4 の 422 分岐（`sign-up.mjs:162` の `shouldReturnGenericDuplicateResponse`）も必ず一緒に見直す                                                                                                                             |
+| 7   | `authClient.getCookie()` の型が Better Auth の動的パスプロキシ経由で解決されることを**実行では確認していない**（`@better-auth/expo/dist/client.js` のソース読みのみ）                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | 5-3                  | Task 5-3 Step 2 で `npm run typecheck` を通す。型が出ない場合は `authClient.getCookie` の代わりに `expo-secure-store` から `${AUTH_STORAGE_PREFIX}_cookie` を直接読む実装に切り替える                                                                                                                                                                                           |
+| 8   | `authClient.useSession()` が**初回レンダーで `isPending: true` を返すか**を実行確認していない。ここが `false` スタートだと復元中の判定が 1 フレーム抜ける                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | 5-5                  | Task 5-5 のテストで初回レンダーの `status` を assert している。実機（Step 6 の「初回起動」）でちらつきが出たら、`AuthProvider` 側に「初回マウント完了まで無条件で restoring」のガードを足す                                                                                                                                                                                     |
+| 9   | `unstable_settings.anchor` が**入れ子グループのレイアウト**でどう効くかはソース（`getRoutesCore.js:655`）読みのみで、実行確認していない                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | 5-8                  | Task 5-8 のテストと Task 5-20 の「ガードで弾かれたら index に戻る」ケースで検証される。効かない場合は各グループの `_layout.tsx` にも `unstable_settings` を置く                                                                                                                                                                                                                 |
+| 10  | **解消済み（2026-09-15 に実装を確認）。** `EmptyStateProps` = `icon: LucideIcon`（**必須**）/ `title: string` / `description?` / `action?: { label; onPress; isDisabled?; isLoading? }` / `testID?`。`ErrorStateProps` = `title?`（既定 `エラーが発生しました`）/ `description?` / `onRetry: () => void`（必須）/ `testID?`。`actionLabel` / `onAction` は**存在しない**。Task 5-19 をスコープ外にしたため、Phase 5 に `EmptyState` の呼び出しは残っていない                                                                                                                                                                                                                                 | 5-9                  | 対応不要。Phase 0 側の API を変えず、呼ぶ側を合わせる方針は維持する                                                                                                                                                                                                                                                                                                             |
+| 11  | jest-expo の環境で `Response` がグローバルに存在するかを確認していない。`sign-out-storage.test.ts` は `global.fetch` を `new Response(...)` で差し替える                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | 5-18                 | 無ければ `{ ok: true, status: 200, json: async () => ({}), headers: new Headers() }` を返すオブジェクトに置き換える                                                                                                                                                                                                                                                             |
+| 12  | `better-auth` / `@better-auth/expo` が Jest で変換なしに読めるか未確認（`transformIgnorePatterns` に未追加）。Task 5-2 で `TRANSPILED_NODE_MODULES` に追加する前提で書いている                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | 5-2, 5-18            | Task 5-2 Step 1 でテストを走らせた時点で分かる。`SyntaxError: Cannot use import statement outside a module` が出たら `jest.config.js` に `'better-auth'`, `'@better-auth'` を足す                                                                                                                                                                                               |
+| 13  | **解消済み（2026-09-15 に実測して決定）。** `jest.config.js:63-64` のコメントに**従う**。ただし `!src/app/**` を丸ごと外すのではなく `!src/app/_dev/**` に差し替え、外すのは **Task 5-21 Step 4-a**（全画面が揃った後）にする。実測: 除外を外すと `src/app/` は 0/0/0/0、`src/app/_dev/` は 100/100/**80**/100（テスト 128 件は PASS）。つまり既存で足りないのは Phase 5 が 1 行も触らない `_dev/catalog.tsx` の functions だけ                                                                                                                                                                                                                                                              | 5-8, 5-20, 5-21      | 対応不要。Task 5-8 は `moduleNameMapper` だけを触り `collectCoverageFrom` には手を付けない。Task 5-21 Step 4-a / 4-b が差し替えと測り直しを持つ。落ちたら Task 5-20 の `routing.test.tsx` に遷移ケースを足すのが第一手                                                                                                                                                          |
+| 14  | **該当なし（2026-09-16）。** Task 5-19 をスコープ外にしたので、`features/shop-application/schema.ts` 自体を Phase 5 では作らない。`packages/core/src/schema.ts` の `PHONE_PATTERN`（`/^0[0-9]{1,4}-[0-9]{1,4}-[0-9]{3,4}$/`、**ハイフン必須**）と `POSTAL_CODE_PATTERN`（`/^[0-9]{3}-[0-9]{4}$/`）が module private で export されていないという事実だけは残るので、申請フォームを作るフェーズが引き取ること                                                                                                                                                                                                                                                                                 | —                    | **引き取り先は Phase 9 Task 9-27（Step 1）。**core が `PHONE_PATTERN` / `POSTAL_CODE_PATTERN` を export するようにし、`packages/core/src/index.ts` と `index.test.ts` の一覧を同じコミットで直してから import する。二重定義にすると片方だけ直したときに検証がズレる                                                                                                            |
+| 15  | `@tanstack/query-core` の型実体ファイル名 `build/modern/hydration-Bjs0MSgg.d.ts` は**ビルドごとのハッシュ付き**で、バージョンを上げると変わる（`queryClient.d.ts` 自体は 2 行の再エクスポートバレル）                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | 5-5                  | 行番号が合わなくなったら `grep -rn "clear(): void" node_modules/@tanstack/query-core/build/modern/` で引き直す。API そのもの（`clear(): void` / `getDefaultOptions(): DefaultOptions`）は変わっていない                                                                                                                                                                         |
+| 16  | `renderHook` / `render` / `fireEvent` が Promise を返すこと（RNTL 14）は `node_modules/@testing-library/react-native/dist/render-hook.d.ts` で型を確認したが、**Jest 環境では動的 `import()` が使えない**（`TypeError: A dynamic import callback was invoked without --experimental-vm-modules`）。本計画のテストは `jest.resetModules()` + `require()`（型は `typeof import('./module')`）で統一している                                                                                                                                                                                                                                                                                    | 5-1, 5-2, 5-8        | `await import(...)` を書きたくなったら必ず `require()` に置き換える。`.json` を `require` する箇所に `// eslint-disable-next-line @typescript-eslint/no-require-imports` を付けると `Unused eslint-disable directive` の warning になる（`eslint-config-expo/flat/utils/typescript.js:85-96` の `allow` 正規表現に `json` が含まれるため）。`.js` / `.ts` の `require` には必要 |
