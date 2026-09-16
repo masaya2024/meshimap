@@ -1,6 +1,6 @@
 import { Text, View } from 'react-native';
 
-/** Phase 1 以降で地図画面に差し替えるプレースホルダー */
+/** Phase 6 Task 6-1 で地図画面に差し替えるプレースホルダー */
 export default function HomeScreen() {
   return (
     <View className="flex-1 items-center justify-center gap-sm bg-neutral-50">

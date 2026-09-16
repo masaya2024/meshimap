@@ -816,12 +816,12 @@ export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
    *
    * ここに置いている理由:
    * ロール定義とドメイン定数は本来 `@meshimap/core` の責務だが（設計書 §7）、
-   * Phase 2 で core を並行実装中のため、Phase 3 では api 側に閉じた定義を持つ。
+   * core を import すると D1 のマイグレーション生成が core のビルドに依存し、
+   * 「core が壊れるとマイグレーションも生成できない」結合を生むため api 側に閉じて持つ。
    *
-   * TODO(Phase 4): `@meshimap/core` の `ROLES` / `RATING_MIN` などが確定したら、
-   * このファイルは core からの再エクスポートに置き換える。その際、
-   * **値が 1 文字でも違うと既存データの CHECK 制約に違反する**ため、
-   * 移行時は必ず `constants.test.ts` の期待値と突き合わせること。
+   * Phase 4 で core からの再エクスポート化を検討したが**見送った**（同じ理由）。
+   * 値は core と手で同期し、ずれは `constants-parity.test.ts` が検出する
+   * （`RATING_MIN` などを core と 1 対 1 で突き合わせている）。
    */
 
   // ───────────────────────── ロール（設計書 §4）─────────────────────────
@@ -6036,8 +6036,10 @@ export const auditLogs;
   /**
    * 店舗オーナー申請。
    *
-   * 承認されると申請者のロールが `user` → `owner` に上がり、`shop_id` の店舗が紐づく
-   * （ロール昇格の実処理は Phase 10）。
+   * `shop_id` は NOT NULL なので、申請行より先に店舗行が要る。したがって店舗は
+   * 承認時ではなく**申請時**に下書き（`status = draft`・`owner_id` は NULL）として作る
+   * （Phase 9 Task 9-25）。`shops.owner_id` が nullable なのはこのため。
+   * 承認されると申請者のロールが `user` → `owner` に上がる（Phase 9 Task 9-5）。
    */
   export const shopApplications = sqliteTable(
     'shop_applications',

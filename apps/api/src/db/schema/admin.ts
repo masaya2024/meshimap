@@ -44,7 +44,7 @@ export type AuditLogDiff = Readonly<Record<string, readonly [unknown, unknown]>>
  *
  * `target_id` には店舗 ID / レビュー ID / ユーザー ID のいずれかが入る。
  * SQLite に多相外部キーはないので参照整合性は張らず、`target_type` との組で解決する。
- * 対象が消えた通報は「対象なし」として管理画面に出す（Phase 10）。
+ * 対象が消えた通報は「対象なし」として管理画面に出す（Phase 9 Task 9-6 の通報キュー）。
  */
 export const reports = sqliteTable(
   'reports',
@@ -99,8 +99,10 @@ export const reports = sqliteTable(
 /**
  * 店舗オーナー申請。
  *
- * 承認されると申請者のロールが `user` → `owner` に上がり、`shop_id` の店舗が紐づく
- * （ロール昇格の実処理は Phase 10）。
+ * `shop_id` は NOT NULL なので、申請行より先に店舗行が要る。したがって店舗は
+ * 承認時ではなく**申請時**に下書き（`status = draft`・`owner_id` は NULL）として作る
+ * （Phase 9 Task 9-25）。`shops.owner_id` が nullable なのはこのため。
+ * 承認されると申請者のロールが `user` → `owner` に上がる（Phase 9 Task 9-5）。
  */
 export const shopApplications = sqliteTable(
   'shop_applications',

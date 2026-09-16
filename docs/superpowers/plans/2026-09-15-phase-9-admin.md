@@ -22548,7 +22548,7 @@ Phase 9 を選ぶ決め手は 3 つ。**どれも実ファイル / 実計画書�
 2. **画面部品がここで揃う。** 申請フォームに要る選択 UI（`SelectField`）は Task 9-18 が作る。Phase 5 / Phase 8 の時点では存在しない（`apps/mobile/src/components/ui/` は badge / button / card / empty-state / error-state / icon / input / skeleton の 8 つだけ。2026-09-16 に `ls` で確認）。
 3. **`shop_applications` に触るタスクが既にある。** Task 9-5 のテストは `seedShop(world, { id: SHOP_ID, ownerId: null, status: SHOP_STATUS_DRAFT })` で「オーナー未定の下書き店舗」を作っている。**申請側が作るべき行の形は、Phase 9 の既存テストが既に前提として書いている形そのものである。**
 
-> `apps/api/src/db/schema/admin.ts:100-103` のコメントは「ロール昇格の実処理は Phase 10」と書いているが、**Phase 10 計画書にロール昇格の実装は無い**（`grep -n 'ROLE_OWNER' 2026-09-15-phase-10-polish.md` は 1 件も返さない）。昇格は Task 9-5 が実装する。スキーマのコメントのほうが古い。**実ファイルのコメントは変更しない**（このフェーズでコードは書かない）が、Task 9-5 の実装時に 1 行直すこと。
+> `apps/api/src/db/schema/admin.ts` のコメントは「ロール昇格の実処理は Phase 10」と書いていたが、**Phase 10 計画書にロール昇格の実装は無い**（`grep -n 'ROLE_OWNER' 2026-09-15-phase-10-polish.md` は 1 件も返さない）。昇格は Task 9-5 が実装する。**このコメントは 2026-09-16 に修正済み**で、現在は「`shop_id` は NOT NULL なので申請時に下書き店舗を作る（Task 9-25）／昇格は Task 9-5」と書いてある。同じ文面が `2026-09-15-phase-3-database.md` の Drizzle スキーマ例にもあり、そちらも同時に直した。
 
 ### 実装形の比較（案 A / 案 B / 案 C）
 

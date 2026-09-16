@@ -4725,7 +4725,7 @@ export async function findVisibleShop(
   return rows[0] ?? null;
 }
 
-/** 店舗申請の承認で admin が作る。作成直後は draft（設計書 4 章の審査フロー） */
+/** admin が `POST /shops` で直接作る（唯一の呼び出し元）。作成直後は draft */
 export async function createShopAsAdmin(
   db: Database,
   _actor: AdminActor,
