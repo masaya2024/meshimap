@@ -43,9 +43,18 @@ async function listSourceFiles(directory: string): Promise<string[]> {
   return files;
 }
 
-/** そのファイルが actor モジュールから値として import しているシンボル名を返す */
-function collectValueImportsFromActor(sourceFile: ts.SourceFile): string[] {
-  const imported: string[] = [];
+/** 名前空間 import に対する違反メッセージ。個別シンボルの文言と混ざらないよう分けている */
+const NAMESPACE_IMPORT_REASON = 'actor モジュール全体を名前空間として import している';
+
+/**
+ * そのファイルが actor モジュールの生成能力を持ち込んでいれば、違反メッセージを返す。
+ *
+ * 名前空間 import を別扱いするのは、`import * as actorModule from './actor'` と書けば
+ * `actorModule.toActor(...)` で同じ生成ができるのに、名前付き import の検査では
+ * 1 つも引っかからないため。ここを見落とすと検査全体が素通りになる。
+ */
+function collectActorFactoryViolations(sourceFile: ts.SourceFile, relativePath: string): string[] {
+  const violations: string[] = [];
   for (const statement of sourceFile.statements) {
     if (!ts.isImportDeclaration(statement)) {
       continue;
@@ -63,18 +72,70 @@ function collectValueImportsFromActor(sourceFile: ts.SourceFile): string[] {
       continue;
     }
     const bindings = clause.namedBindings;
-    if (bindings === undefined || !ts.isNamedImports(bindings)) {
+    if (bindings === undefined) {
+      continue;
+    }
+    if (ts.isNamespaceImport(bindings)) {
+      violations.push(`${relativePath} が ${NAMESPACE_IMPORT_REASON}`);
+      continue;
+    }
+    if (!ts.isNamedImports(bindings)) {
       continue;
     }
     for (const element of bindings.elements) {
       if (element.isTypeOnly) {
         continue;
       }
-      imported.push(element.name.text);
+      // `import { toActor as make }` では name が別名になるので、元の名前がある propertyName を優先する
+      const originalName = (element.propertyName ?? element.name).text;
+      if (ACTOR_FACTORY_SYMBOLS.has(originalName)) {
+        violations.push(`${relativePath} が ${originalName} を import している`);
+      }
     }
   }
-  return imported;
+  return violations;
 }
+
+describe('検査器そのものの取りこぼし', () => {
+  /** 実ファイルを作らずに検査ロジックだけを試すためのヘルパ */
+  function violationsOf(code: string): string[] {
+    const sourceFile = ts.createSourceFile('probe.ts', code, ts.ScriptTarget.ES2022, true);
+    return collectActorFactoryViolations(sourceFile, 'probe.ts');
+  }
+
+  it('名前付き import の toActor を捕まえる', () => {
+    expect(violationsOf("import { toActor } from './actor';")).toEqual([
+      'probe.ts が toActor を import している',
+    ]);
+  });
+
+  it('名前空間 import も捕まえる', () => {
+    // `import * as actorModule from './actor'` は actorModule.toActor(...) と書けるため、
+    // 名前付き import と同じだけ生成能力がある。ここを見落とすと検査は素通りする
+    expect(violationsOf("import * as actorModule from './actor';")).toEqual([
+      'probe.ts が actor モジュール全体を名前空間として import している',
+    ]);
+  });
+
+  it('別名を付けた import も、元の名前で捕まえる', () => {
+    expect(violationsOf("import { toActor as make } from './actor';")).toEqual([
+      'probe.ts が toActor を import している',
+    ]);
+  });
+
+  it('型だけの import は見逃す', () => {
+    expect(violationsOf("import type { Actor } from './actor';")).toEqual([]);
+    expect(violationsOf("import { type Actor } from './actor';")).toEqual([]);
+  });
+
+  it('型ガードなど生成能力のない値 import は見逃す', () => {
+    expect(violationsOf("import { isOwnerActor } from './actor';")).toEqual([]);
+  });
+
+  it('別モジュールの同名 import は見逃す', () => {
+    expect(violationsOf("import { toActor } from './not-actor';")).toEqual([]);
+  });
+});
 
 describe('Actor ファクトリの閉じ込め', () => {
   it('toActor と ANONYMOUS_VIEWER を import してよいのはホワイトリストのファイルだけ', async () => {
@@ -102,11 +163,7 @@ describe('Actor ファクトリの閉じ込め', () => {
         true,
         ts.ScriptKind.TS,
       );
-      for (const name of collectValueImportsFromActor(sourceFile)) {
-        if (ACTOR_FACTORY_SYMBOLS.has(name)) {
-          violations.push(`${relativePath} が ${name} を import している`);
-        }
-      }
+      violations.push(...collectActorFactoryViolations(sourceFile, relativePath));
     }
 
     expect(violations).toEqual([]);
