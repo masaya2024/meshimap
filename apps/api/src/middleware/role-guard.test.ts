@@ -120,6 +120,13 @@ describe('require*Actor ヘルパ', () => {
     expect((await get('/require-user', bob.cookie)).status).toBe(403);
   });
 
+  // 未認証の判定を消しても、後段の isUserActor が匿名を弾いて 403 になる。
+  // 「ログインすれば通るのか、ロールが足りないのか」が呼び出し側で区別できなくなるので、
+  // 403 ではなく 401 であることを名指しで縛る（requireAdminActor 側には既にある）
+  it('requireUserActor は未認証のとき 401（403 ではない）', async () => {
+    expect((await get('/require-user')).status).toBe(401);
+  });
+
   it('requireOwnerActor は owner のとき userId を返す', async () => {
     const bob = await signUpAs(world, 'bob@example.com', ROLE_OWNER);
     const res = await get('/require-owner', bob.cookie);
@@ -129,6 +136,10 @@ describe('require*Actor ヘルパ', () => {
   it('requireOwnerActor は admin のとき 403（admin 用の関数を使わせる）', async () => {
     const carol = await signUpAs(world, 'carol@example.com', ROLE_ADMIN);
     expect((await get('/require-owner', carol.cookie)).status).toBe(403);
+  });
+
+  it('requireOwnerActor は未認証のとき 401（403 ではない）', async () => {
+    expect((await get('/require-owner')).status).toBe(401);
   });
 
   it('requireAdminActor は admin のとき userId を返す', async () => {

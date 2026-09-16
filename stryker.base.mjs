@@ -74,6 +74,24 @@ export function createStrykerConfig({ mutate, vitestArgs = [], timeoutMS = DEFAU
       // 98 変異中 94 が Timeout 判定になり、Stryker は Timeout を Killed と同じ
       // 「殺せた」に数えるので score だけ 100% と出た。
       // テストの強さを測れていない 100% だったということ。
+      //
+      // この指定にはもう 1 つ効能がある。ファイルを直列に流すので、
+      // 1 プロセスあたりの D1 ループバック接続の**発生レート**が下がる。
+      // miniflare の D1 は workerd への loopback HTTP で、1 クエリが TCP 接続 1 本。
+      // macOS の一時ポートは 49152〜65535 の 16,384 個、TIME_WAIT は 2×MSL = 30 秒
+      // （`sysctl net.inet.ip.portrange.first/last net.inet.tcp.msl`）なので、
+      // 毎秒 546 接続を超えると枯渇し、workerd が
+      // `::bind(...): Can't assign requested address; 127.0.0.1:0` で起動に失敗する。
+      //
+      // 2026-09-16 実測（apps/api・774 件・24 コア）。決め手は並列数ではなくこの指定:
+      //   素の `npx vitest run` を 4 並列 → 12 回すべて緑
+      //   素の `npx vitest run` を 8 並列 → 16 回すべて赤（113〜122 件失敗・TIME_WAIT 最大 16,203）
+      //   この command をそのまま 12 並列 → 12 回すべて緑（TIME_WAIT 最大 14,872）
+      // つまり Stryker の concurrency 12 は安全側にある。
+      //
+      // 逆に、ミューテーション実行中に素の `npx vitest run` を別に走らせてはいけない。
+      // command ランナーは終了コードしか見ないので、ポート枯渇による失敗が
+      // 「その変異を殺した」と誤記録され、スコアが実力より高く出る。
       command: ['npx vitest run --silent --no-file-parallelism', ...vitestArgs].join(' '),
     },
     concurrency: CONCURRENCY,
