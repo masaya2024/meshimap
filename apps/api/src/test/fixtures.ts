@@ -2,8 +2,13 @@ import { isAdminActor, isOwnerActor, isUserActor, toActor } from '../auth/actor'
 import type { Actor, AdminActor, OwnerActor, UserActor } from '../auth/actor';
 import { AUTH_BASE_PATH, createAuth } from '../auth/auth';
 import { createDatabase } from '../db/client';
-import { PROFILE_STATUS_ACTIVE, ROLE_USER, SHOP_STATUS_PUBLISHED } from '../db/constants';
-import type { ProfileStatus, Role, ShopStatus } from '../db/constants';
+import {
+  PROFILE_STATUS_ACTIVE,
+  REVIEW_STATUS_PUBLISHED,
+  ROLE_USER,
+  SHOP_STATUS_PUBLISHED,
+} from '../db/constants';
+import type { ProfileStatus, ReviewStatus, Role, ShopStatus } from '../db/constants';
 import { createMigratedD1 } from '../db/testing/local-d1';
 import type { AppBindings } from '../lib/app-env';
 
@@ -326,4 +331,61 @@ export function adminActorOrThrow(actor: Actor): AdminActor {
     throw new Error('テストの前提が壊れている: admin ではない');
   }
   return actor;
+}
+
+export type SeedReviewOptions = {
+  readonly id: string;
+  readonly shopId: string;
+  readonly userId: string;
+  readonly status?: ReviewStatus;
+  readonly rating?: number;
+  readonly body?: string;
+  /** NULL 可だが、入れるなら YYYY-MM-DD（ck_reviews_visited_on_format） */
+  readonly visitedOn?: string | null;
+  readonly budget?: number | null;
+  /** ミリ秒。生の SQL で入れるので Date ではなく整数で渡す */
+  readonly createdAtMs?: number;
+};
+
+/**
+ * レビューを 1 行作る。
+ * `uq_reviews_shop_user` があるので、**同じ (shopId, userId) の組を 2 回渡すと落ちる**。
+ * hidden なレビューを混ぜたいときは、別の利用者を用意すること。
+ */
+export async function seedReview(world: TestWorld, options: SeedReviewOptions): Promise<void> {
+  await runWrite(
+    world,
+    'INSERT INTO reviews (id, shop_id, user_id, rating, body, visited_on, budget, status, created_at) ' +
+      'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    options.id,
+    options.shopId,
+    options.userId,
+    options.rating ?? 4,
+    options.body ?? '美味しかった',
+    options.visitedOn === undefined ? '2026-09-01' : options.visitedOn,
+    options.budget ?? null,
+    options.status ?? REVIEW_STATUS_PUBLISHED,
+    options.createdAtMs ?? 0,
+  );
+}
+
+/**
+ * Drizzle は D1 のエラーを `Failed query: insert into ...` という自前のメッセージで包み、
+ * 本当の理由（`UNIQUE constraint failed: ...`）を `cause` の先に隠す。
+ * `rejects.toThrow(/UNIQUE/)` は message しか見ないので**必ず素通りする**。
+ * cause を末端まで辿って連結し、制約名で検証できるようにする。
+ */
+export async function rejectionMessageOf(promise: Promise<unknown>): Promise<string> {
+  try {
+    await promise;
+  } catch (error) {
+    const messages: string[] = [];
+    let current: unknown = error;
+    while (current instanceof Error) {
+      messages.push(current.message);
+      current = current.cause;
+    }
+    return messages.join(' / ');
+  }
+  throw new Error('例外が発生すると期待したが、正常に解決した');
 }
