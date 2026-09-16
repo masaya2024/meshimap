@@ -1,3 +1,5 @@
+import { isAdminActor, isOwnerActor, isUserActor, toActor } from '../auth/actor';
+import type { Actor, AdminActor, OwnerActor, UserActor } from '../auth/actor';
 import { AUTH_BASE_PATH, createAuth } from '../auth/auth';
 import { createDatabase } from '../db/client';
 import { PROFILE_STATUS_ACTIVE, ROLE_USER, SHOP_STATUS_PUBLISHED } from '../db/constants';
@@ -226,7 +228,7 @@ export type TestUser = {
  * すでに `role = 'user'` の行を作っているため。INSERT すると PRIMARY KEY 衝突で落ちる。
  *
  * 認証経路を本物のまま通すので、Actor は必ず authMiddleware が生成する
- * （fixtures は `toActor` を呼ばない）。
+ * （この関数は `toActor` を呼ばない。リポジトリ単体テスト用の `buildActorForTest` とは別経路）。
  */
 export async function signUpAs(
   world: TestWorld,
@@ -290,4 +292,38 @@ export async function corruptProfileRole(
   } finally {
     await world.d1.prepare('PRAGMA ignore_check_constraints = OFF').run();
   }
+}
+
+/**
+ * リポジトリ層の単体テスト専用の Actor 生成。
+ * HTTP を通さずにリポジトリだけを検証したいときに使う。
+ * 本番コードからは呼ばない（Task 4-3 の検査で機械的に禁止している）。
+ */
+export function buildActorForTest(userId: string, role: Role): Actor {
+  return toActor(userId, role);
+}
+
+/**
+ * 以下 3 つは Actor ユニオンを各ロール型へ絞るヘルパ。
+ * テストコードでも `as` を使わずに絞れるよう、必ず型ガードを通す。
+ */
+export function userActorOrThrow(actor: Actor): UserActor {
+  if (!isUserActor(actor)) {
+    throw new Error('テストの前提が壊れている: user ではない');
+  }
+  return actor;
+}
+
+export function ownerActorOrThrow(actor: Actor): OwnerActor {
+  if (!isOwnerActor(actor)) {
+    throw new Error('テストの前提が壊れている: owner ではない');
+  }
+  return actor;
+}
+
+export function adminActorOrThrow(actor: Actor): AdminActor {
+  if (!isAdminActor(actor)) {
+    throw new Error('テストの前提が壊れている: admin ではない');
+  }
+  return actor;
 }
