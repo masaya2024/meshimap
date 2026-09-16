@@ -1,6 +1,7 @@
 import { ROLE_ADMIN, ROLE_OWNER, ROLE_USER } from '@meshimap/core';
 import type { Role } from '@meshimap/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { AUTH_BASE_PATH } from '../auth/auth';
 import { SHOP_STATUS_DRAFT, SHOP_STATUS_PUBLISHED } from '../db/constants';
 import { app } from '../index';
 import type { TestWorld } from '../test/fixtures';
@@ -411,5 +412,217 @@ describe('403 と 404 の使い分け', () => {
     expect(text).toBe('{"error":{"status":404,"message":"対象が見つかりません"}}');
     expect(text).not.toMatch(/at\s+\w+\s+\(/);
     expect(text).not.toMatch(/select|update|delete\s+from|owner_id|shops|reviews/i);
+  });
+});
+
+// ───────────────── ルート表 ↔ 実装の突合（Task 4-14）─────────────────
+
+/** `app.routes` の 1 要素から、突合に必要な 2 つだけを抜き出した形 */
+type RegisteredRoute = { readonly method: string; readonly path: string };
+
+/** 走査対象が 0 本のときに返す違反。これが無いと「表も実装も空」で偽の緑になる */
+const VIOLATION_NO_SCAN_TARGET = '走査対象のエンドポイントが 1 本も無い';
+
+/**
+ * `.use()` で登録したミドルウェアか。
+ *
+ * Hono は `.use('*', mw)` も `app.all('/x', h)` も method を 'ALL' として記録するため、
+ * method だけでは区別できない。ワイルドカードで終わるパスだけをミドルウェアとみなす。
+ * こうしないと `app.all('/version', ...)` のような**本物のエンドポイントが
+ * 静かに突合から漏れる**。`.use('/admin', mw)` のようなワイルドカード無しの登録は
+ * エンドポイント扱いになって突合に失敗するが、**黙って見逃すより落ちる側に倒す**。
+ */
+function isMiddlewareRoute(route: RegisteredRoute): boolean {
+  return route.method === 'ALL' && route.path.endsWith('*');
+}
+
+/**
+ * Better Auth のハンドラ配下か。権限は Better Auth 側の責務なのでマトリクスの対象外にする。
+ *
+ * 単なる前方一致で判定してはいけない。`AUTH_BASE_PATH` が `/api/auth` のとき、
+ * `startsWith` だけだと `/api/authorize` のような**別のエンドポイントまで巻き込んで除外**する。
+ * パス境界（完全一致か、直後が `/`）まで見る。
+ */
+function isAuthHandlerRoute(route: RegisteredRoute, authBasePath: string): boolean {
+  return route.path === authBasePath || route.path.startsWith(`${authBasePath}/`);
+}
+
+/**
+ * 登録済みルートから「権限マトリクスが責任を持つエンドポイント」を取り出す。
+ * ミドルウェアとハンドラで同じ method + path が重複して現れるので Set で潰す。
+ */
+export function collectEndpointPatterns(
+  routes: readonly RegisteredRoute[],
+  authBasePath: string,
+): readonly string[] {
+  const patterns = routes
+    .filter((route) => !isMiddlewareRoute(route) && !isAuthHandlerRoute(route, authBasePath))
+    .map((route) => `${route.method} ${route.path}`);
+  return [...new Set(patterns)].sort();
+}
+
+/**
+ * ルート表（権限マトリクス）と実装を突き合わせ、食い違いを文字列で列挙する純関数。
+ * 空配列が返れば「表と実装が 1 本残らず一致している」。
+ */
+export function collectRouteCoverageViolations(
+  routes: readonly RegisteredRoute[],
+  coveredPatterns: readonly string[],
+  authBasePath: string,
+): readonly string[] {
+  const declared = collectEndpointPatterns(routes, authBasePath);
+  if (declared.length === 0) {
+    return [VIOLATION_NO_SCAN_TARGET];
+  }
+  const covered = [...new Set(coveredPatterns)].sort();
+  const violations: string[] = [];
+  for (const pattern of declared) {
+    if (!covered.includes(pattern)) {
+      violations.push(`権限マトリクスに無いエンドポイント: ${pattern}`);
+    }
+  }
+  for (const pattern of covered) {
+    if (!declared.includes(pattern)) {
+      violations.push(`実装に無いエンドポイント: ${pattern}`);
+    }
+  }
+  return violations;
+}
+
+/**
+ * `app.routes` に実際に載っているルート。実測した内訳は次のとおり。
+ * - 生の要素数 22（ミドルウェアとハンドラで同じ method + path が重複して現れる）
+ * - 重複を潰すと 13
+ * - そこから `ALL /*`（authMiddleware）と `GET|POST /api/auth/*`（Better Auth）を除くと 10
+ */
+function declaredRoutePatterns(): readonly string[] {
+  return collectEndpointPatterns(app.routes, AUTH_BASE_PATH);
+}
+
+/** 権限マトリクスが責任を持つ 10 本。ここを増減させるときは必ず ENDPOINT_CASES も直す */
+const EXPECTED_ROUTE_PATTERNS: readonly string[] = [
+  'DELETE /reviews/:reviewId',
+  'DELETE /shops/:shopId',
+  'GET /health',
+  'GET /me',
+  'GET /shops',
+  'GET /shops/:shopId',
+  'GET /shops/:shopId/reviews',
+  'PATCH /shops/:shopId',
+  'POST /shops',
+  'POST /shops/:shopId/reviews',
+];
+
+describe('突合器そのものの取りこぼし', () => {
+  const AUTH_BASE = '/api/auth';
+  const SAMPLE_ROUTES: readonly RegisteredRoute[] = [
+    { method: 'ALL', path: '/*' },
+    { method: 'GET', path: '/api/auth/*' },
+    { method: 'POST', path: '/api/auth/*' },
+    { method: 'GET', path: '/health' },
+    { method: 'GET', path: '/health' },
+  ];
+
+  it('表と実装が一致していれば違反は無い', () => {
+    expect(collectRouteCoverageViolations(SAMPLE_ROUTES, ['GET /health'], AUTH_BASE)).toEqual([]);
+  });
+
+  it('ミドルウェア（ALL + ワイルドカード）はエンドポイントに数えない', () => {
+    expect(collectEndpointPatterns(SAMPLE_ROUTES, AUTH_BASE)).toEqual(['GET /health']);
+  });
+
+  it('ワイルドカードを持たない ALL は本物のエンドポイントとして数える', () => {
+    // app.all('/version', ...) を「ミドルウェアだから」と見逃すと突合が素通りする
+    const routes = [...SAMPLE_ROUTES, { method: 'ALL', path: '/version' }];
+    expect(collectRouteCoverageViolations(routes, ['GET /health'], AUTH_BASE)).toEqual([
+      '権限マトリクスに無いエンドポイント: ALL /version',
+    ]);
+  });
+
+  it('Better Auth 配下は除外するが、前方一致だけの別パスは除外しない', () => {
+    // '/api/authorize' は '/api/auth' で startsWith が真になる。境界を見ないと黙って消える
+    const routes = [...SAMPLE_ROUTES, { method: 'GET', path: '/api/authorize' }];
+    expect(collectRouteCoverageViolations(routes, ['GET /health'], AUTH_BASE)).toEqual([
+      '権限マトリクスに無いエンドポイント: GET /api/authorize',
+    ]);
+  });
+
+  it('AUTH_BASE_PATH と完全一致するパスも除外する', () => {
+    const routes = [...SAMPLE_ROUTES, { method: 'POST', path: '/api/auth' }];
+    expect(collectEndpointPatterns(routes, AUTH_BASE)).toEqual(['GET /health']);
+  });
+
+  it('実装に足されたエンドポイントを検出する', () => {
+    const routes = [...SAMPLE_ROUTES, { method: 'GET', path: '/version' }];
+    expect(collectRouteCoverageViolations(routes, ['GET /health'], AUTH_BASE)).toEqual([
+      '権限マトリクスに無いエンドポイント: GET /version',
+    ]);
+  });
+
+  it('表にだけあって実装に無いエンドポイントを検出する', () => {
+    expect(
+      collectRouteCoverageViolations(SAMPLE_ROUTES, ['GET /health', 'GET /healthz'], AUTH_BASE),
+    ).toEqual(['実装に無いエンドポイント: GET /healthz']);
+  });
+
+  it('パスが同じでもメソッドが違えば別のエンドポイントとして扱う', () => {
+    const routes = [...SAMPLE_ROUTES, { method: 'POST', path: '/health' }];
+    expect(collectRouteCoverageViolations(routes, ['GET /health'], AUTH_BASE)).toEqual([
+      '権限マトリクスに無いエンドポイント: POST /health',
+    ]);
+  });
+
+  it('同じ method + path が何度現れても 1 本に潰れる', () => {
+    // ミドルウェアとハンドラで同じ行が重複して載るため、潰さないと件数が合わない
+    const routes = [
+      { method: 'GET', path: '/health' },
+      { method: 'GET', path: '/health' },
+      { method: 'GET', path: '/health' },
+    ];
+    expect(collectEndpointPatterns(routes, AUTH_BASE)).toEqual(['GET /health']);
+  });
+
+  it('表の側に重複があっても違反にならない（#4 と #5 のように 1 本を複数ケースで検証する）', () => {
+    expect(
+      collectRouteCoverageViolations(SAMPLE_ROUTES, ['GET /health', 'GET /health'], AUTH_BASE),
+    ).toEqual([]);
+  });
+
+  it('入力の並び順が変わっても結果は変わらない', () => {
+    const shuffled = [...SAMPLE_ROUTES].reverse();
+    expect(collectEndpointPatterns(shuffled, AUTH_BASE)).toEqual(
+      collectEndpointPatterns(SAMPLE_ROUTES, AUTH_BASE),
+    );
+  });
+
+  it('走査対象が 0 本なら、表も空でも違反として報告する（偽の緑を防ぐ）', () => {
+    // ここが無いと「ルートが 1 本も取れていない」状態が「全部覆えている」に見える
+    expect(collectRouteCoverageViolations([], [], AUTH_BASE)).toEqual([VIOLATION_NO_SCAN_TARGET]);
+    expect(collectRouteCoverageViolations([{ method: 'ALL', path: '/*' }], [], AUTH_BASE)).toEqual([
+      VIOLATION_NO_SCAN_TARGET,
+    ]);
+  });
+
+  it('表が空なら実装の全エンドポイントが未検証として並ぶ', () => {
+    expect(collectRouteCoverageViolations(SAMPLE_ROUTES, [], AUTH_BASE)).toEqual([
+      '権限マトリクスに無いエンドポイント: GET /health',
+    ]);
+  });
+});
+
+describe('ルート表と実装の突合', () => {
+  it('走査対象のエンドポイントが 1 本以上ある', () => {
+    // 0 本なら以降の比較は「空 vs 空」で必ず通ってしまう。先に本数を押さえる
+    expect(declaredRoutePatterns().length).toBeGreaterThan(0);
+  });
+
+  it('app に登録されたエンドポイントは 10 本で、想定どおりの並びである', () => {
+    expect(declaredRoutePatterns()).toEqual(EXPECTED_ROUTE_PATTERNS);
+  });
+
+  it('権限マトリクスは app のエンドポイントを 1 本残らず覆っている', () => {
+    // #4 と #5 のように 1 本のルートを複数ケースで検証しているので、重複は潰して比べる
+    const covered = ENDPOINT_CASES.map((endpoint) => endpoint.routePattern);
+    expect(collectRouteCoverageViolations(app.routes, covered, AUTH_BASE_PATH)).toEqual([]);
   });
 });
