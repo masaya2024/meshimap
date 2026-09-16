@@ -92,6 +92,24 @@ export function createStrykerConfig({ mutate, vitestArgs = [], timeoutMS = DEFAU
       // 逆に、ミューテーション実行中に素の `npx vitest run` を別に走らせてはいけない。
       // command ランナーは終了コードしか見ないので、ポート枯渇による失敗が
       // 「その変異を殺した」と誤記録され、スコアが実力より高く出る。
+      //
+      // 同じ理由で、実行中に `pkill -f vitest` を打ってはいけない。この command が
+      // 起こす子プロセスの argv に `vitest` が入っているため全部巻き添えになり、
+      // 強制終了ぶんがそのまま Killed として記録される。
+      // 2026-09-16 実測: 進捗が 577 → 589 と concurrency ぴったりの 12 件だけ一瞬で飛んだ。
+      // 停止したいときはプロセス名ではなく Stryker の PID を落とすこと。
+      //
+      // macOS では `caffeinate -i` を噛ませること。スリープ中は全プロセスが凍るが、
+      // Stryker のタイムアウトは実時間で判定するので、復帰した瞬間に実行中の変異が
+      // concurrency ぶんまとめて Timeout になる（= 上の理由で Killed に数えられる）。
+      // 2026-09-17 実測（apps/api・659 変異）: 285 分のうち 138 分がスリープ
+      // （`pmset -g log` の Sleep→DarkWake 11 回・うち 8 回は約 16 分）で、
+      // Timeout が 0 件から 133 件に増えスコアが 86.95% → 88.92% と**上に**ずれた。
+      // 偽 Timeout であることの決め手は、同じ変異が前回 Survived だったこと
+      // （テストが通って終わる変異が、本質的にタイムアウトすることはない）:
+      //   src/lib/logger.ts    前回 Survived 2 件 → 今回 Timeout 2 件
+      //   src/lib/validate.ts  前回 Killed   7 件 → 今回 Timeout 7 件
+      //   src/lib/parse-id.ts  前回 Killed 9・Survived 1 → 今回 Timeout 10 件
       command: ['npx vitest run --silent --no-file-parallelism', ...vitestArgs].join(' '),
     },
     concurrency: CONCURRENCY,
