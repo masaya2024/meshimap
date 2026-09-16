@@ -4,6 +4,12 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-09-01",
   "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    // ローカル開発の既定値。本番は `wrangler deploy --var` か環境別設定で上書きする
+    "BETTER_AUTH_URL": "http://localhost:8787",
+    // Expo アプリのカスタムスキーム。Better Auth の trustedOrigins に渡す
+    "MOBILE_APP_SCHEME": "meshimap"
+  },
   "observability": {
     "enabled": true
   },

@@ -49,3 +49,6 @@ example
 coverage/
 reports/
 .stryker-tmp/
+
+# wrangler のローカル秘密変数
+.dev.vars
