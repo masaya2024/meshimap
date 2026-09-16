@@ -12,10 +12,17 @@ const SOURCE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '
  *
  * 下の「ホワイトリストに載っているファイルが実在する」検査があるため、
  * **まだ存在しないファイルをここに先に書くことはできない**。
- * 認証経路の `auth/load-actor.ts` は Task 4-6 で作成するので、
- * そのタスクでこの Set に追加すること（追加しないと load-actor.ts 自身が違反として落ちる）。
+ *
+ * `middleware/auth.ts` が載っているのは、そこが「セッションが無い＝匿名」を決める
+ * 唯一の場所だから。ANONYMOUS_VIEWER は権限を 1 つも持たない値なので、
+ * これを他所から作られても権限は増えないが、viewer を決める経路が散ると
+ * 「どこで匿名に落ちたのか」を追えなくなるため認証経路に閉じ込める。
  */
-const ACTOR_FACTORY_ALLOWLIST = new Set(['test/fixtures.ts']);
+const ACTOR_FACTORY_ALLOWLIST = new Set([
+  'auth/load-actor.ts',
+  'middleware/auth.ts',
+  'test/fixtures.ts',
+]);
 
 /** 生成系のシンボル。型だけの import は対象外（型は漏れても権限は作れない） */
 const ACTOR_FACTORY_SYMBOLS = new Set(['toActor', 'ANONYMOUS_VIEWER']);

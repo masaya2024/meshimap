@@ -1,6 +1,9 @@
-import { PROFILE_STATUS_ACTIVE, SHOP_STATUS_PUBLISHED } from '../db/constants';
+import { AUTH_BASE_PATH, createAuth } from '../auth/auth';
+import { createDatabase } from '../db/client';
+import { PROFILE_STATUS_ACTIVE, ROLE_USER, SHOP_STATUS_PUBLISHED } from '../db/constants';
 import type { ProfileStatus, Role, ShopStatus } from '../db/constants';
 import { createMigratedD1 } from '../db/testing/local-d1';
+import type { AppBindings } from '../lib/app-env';
 
 /** D1 にバインドできる値。boolean も通るが、テストでは 0/1 を明示して曖昧さを消す */
 export type SqlParam = string | number | null;
@@ -179,4 +182,112 @@ export async function seedShop(world: TestWorld, options: SeedShopOptions): Prom
     options.createdAtMs ?? 0,
     options.updatedAtMs ?? 0,
   );
+}
+
+/** Better Auth の baseURL。テストのリクエストもこの origin で投げる */
+export const TEST_BASE_URL = 'http://localhost:8787';
+/** 本番の鍵は wrangler secret で入れる。テストでは固定値でよい */
+export const TEST_BETTER_AUTH_SECRET = 'test-secret-value-at-least-32-characters-long';
+/** wrangler.jsonc の vars と同じ「スキーム名だけ」の形。`://` は auth.ts が付ける */
+export const TEST_MOBILE_APP_SCHEME = 'meshimap';
+
+/**
+ * Phase 4 のテストが実際に読むバインディングだけを持つ型。
+ * R2 / KV / Durable Object のダミーを `as` で捏造しないための絞り込み。
+ * `app.request(path, init, bindings)` の第 3 引数の型は `AppBindings | {}` なので、
+ * 部分的なオブジェクトでもそのまま渡せる。
+ * 返り値に型注釈を付けてあるので、キー名を打ち間違えれば AppBindings との照合でコンパイルエラーになる。
+ */
+export type TestBindings = Pick<
+  AppBindings,
+  'DB' | 'BETTER_AUTH_SECRET' | 'BETTER_AUTH_URL' | 'MOBILE_APP_SCHEME'
+>;
+
+export function createTestBindings(world: TestWorld): TestBindings {
+  return {
+    DB: world.d1,
+    BETTER_AUTH_SECRET: TEST_BETTER_AUTH_SECRET,
+    BETTER_AUTH_URL: TEST_BASE_URL,
+    MOBILE_APP_SCHEME: TEST_MOBILE_APP_SCHEME,
+  };
+}
+
+export type TestUser = {
+  readonly userId: string;
+  readonly email: string;
+  /** `name=value` の形。リクエストの `cookie` ヘッダにそのまま入れる */
+  readonly cookie: string;
+};
+
+/**
+ * Better Auth で本当にサインアップし、profiles のロールを指定値へ変える。
+ *
+ * ロールを INSERT ではなく UPDATE するのは、`databaseHooks.user.create.after` が
+ * すでに `role = 'user'` の行を作っているため。INSERT すると PRIMARY KEY 衝突で落ちる。
+ *
+ * 認証経路を本物のまま通すので、Actor は必ず authMiddleware が生成する
+ * （fixtures は `toActor` を呼ばない）。
+ */
+export async function signUpAs(
+  world: TestWorld,
+  email: string,
+  role: Role = ROLE_USER,
+): Promise<TestUser> {
+  const bindings = createTestBindings(world);
+  const auth = createAuth(createDatabase(world.d1), bindings);
+
+  const response = await auth.handler(
+    new Request(`${TEST_BASE_URL}${AUTH_BASE_PATH}/sign-up/email`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: TEST_BASE_URL },
+      body: JSON.stringify({ email, password: 'password1234', name: email }),
+    }),
+  );
+  if (response.status !== 200) {
+    throw new Error(`サインアップに失敗した: ${response.status}`);
+  }
+  const body = await response.json<{ user: { id: string } }>();
+  const cookie = (response.headers.get('set-cookie') ?? '').split(';')[0] ?? '';
+
+  const changed = await runWrite(
+    world,
+    'UPDATE profiles SET role = ? WHERE user_id = ?',
+    role,
+    body.user.id,
+  );
+  // databaseHooks が profiles を作らなくなったら、ここで気付けるようにする
+  if (changed !== 1) {
+    throw new Error(`profiles の更新行数が想定外: ${changed}`);
+  }
+
+  return { userId: body.user.id, email, cookie };
+}
+
+/**
+ * profiles.role に CHECK 制約が許さない値を無理やり書き込む。
+ *
+ * 本番では起き得ないが、**マイグレーション事故や DB 直編集で壊れた値が入ったときに
+ * API が通してしまわないこと**を証明するために必要。
+ * `PRAGMA ignore_check_constraints` は接続に対する設定なので、必ず OFF に戻してから抜ける。
+ * 戻し忘れると、以降の同じ world でのテストが制約なしの緩い世界で回ってしまう。
+ */
+export async function corruptProfileRole(
+  world: TestWorld,
+  userId: string,
+  role: string,
+): Promise<void> {
+  await world.d1.prepare('PRAGMA ignore_check_constraints = ON').run();
+  try {
+    const changed = await runWrite(
+      world,
+      'UPDATE profiles SET role = ? WHERE user_id = ?',
+      role,
+      userId,
+    );
+    if (changed !== 1) {
+      throw new Error(`profiles の更新行数が想定外: ${changed}`);
+    }
+  } finally {
+    await world.d1.prepare('PRAGMA ignore_check_constraints = OFF').run();
+  }
 }

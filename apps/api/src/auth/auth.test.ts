@@ -1,40 +1,39 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { PROFILE_STATUS_ACTIVE, ROLE_USER } from '../db/constants';
-import { countRows, createTestWorld, readRow } from '../test/fixtures';
+import {
+  countRows,
+  createTestBindings,
+  createTestWorld,
+  readRow,
+  TEST_BASE_URL,
+} from '../test/fixtures';
 import type { TestWorld } from '../test/fixtures';
 import { createDatabase } from '../db/client';
 import { PROFILE_DISPLAY_NAME_MAX_LENGTH } from '../lib/constants';
 import { AUTH_BASE_PATH, createAuth } from './auth';
 
-const TEST_BINDINGS = {
-  BETTER_AUTH_SECRET: 'test-secret-value-at-least-32-characters-long',
-  BETTER_AUTH_URL: 'http://localhost:8787',
-  // wrangler.jsonc の vars と同じ「スキーム名だけ」の形。`://` は auth.ts が付ける
-  MOBILE_APP_SCHEME: 'meshimap',
-} as const;
-
 /**
  * このテストでは D1 以外のバインディング（R2 / KV / DO）を一切使わない。
  * AppBindings を満たすためだけにダミーを置くと、使っていない依存が増えて壊れやすくなるので、
- * createAuth が実際に読む 3 つのキーだけを持つオブジェクトを渡す。
- * createAuth の引数型を AppBindings から「必要な 3 キーだけ」に絞ることで as を使わずに済ませる。
+ * fixtures の createTestBindings が返す「実際に読むキーだけ」のオブジェクトを渡す。
+ * 秘密鍵の文字列を 2 箇所に散らすと、片方だけ変えたときに原因を追いにくくなる。
  */
 function createTestAuth(world: TestWorld) {
-  return createAuth(createDatabase(world.d1), TEST_BINDINGS);
+  return createAuth(createDatabase(world.d1), createTestBindings(world));
 }
 
 function signUpRequest(body: Record<string, string>): Request {
-  return new Request(`${TEST_BINDINGS.BETTER_AUTH_URL}${AUTH_BASE_PATH}/sign-up/email`, {
+  return new Request(`${TEST_BASE_URL}${AUTH_BASE_PATH}/sign-up/email`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', origin: TEST_BINDINGS.BETTER_AUTH_URL },
+    headers: { 'content-type': 'application/json', origin: TEST_BASE_URL },
     body: JSON.stringify(body),
   });
 }
 
 function signInRequest(body: Record<string, string>): Request {
-  return new Request(`${TEST_BINDINGS.BETTER_AUTH_URL}${AUTH_BASE_PATH}/sign-in/email`, {
+  return new Request(`${TEST_BASE_URL}${AUTH_BASE_PATH}/sign-in/email`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', origin: TEST_BINDINGS.BETTER_AUTH_URL },
+    headers: { 'content-type': 'application/json', origin: TEST_BASE_URL },
     body: JSON.stringify(body),
   });
 }
@@ -162,7 +161,7 @@ describe('createAuth', () => {
     const cookie = toCookieHeader(signUpRes);
 
     const otherAuth = createAuth(createDatabase(world.d1), {
-      ...TEST_BINDINGS,
+      ...createTestBindings(world),
       BETTER_AUTH_SECRET: 'a-completely-different-secret-value-32ch',
     });
 
