@@ -17,11 +17,13 @@ import {
   createTestWorld,
   ownerActorOrThrow,
   readRow,
+  runWrite,
   seedMasters,
   seedShop,
   seedUser,
   TEST_AREA_ID,
   TEST_GENRE_ID,
+  TEST_LONGITUDE,
   userActorOrThrow,
 } from '../test/fixtures';
 import type { TestWorld } from '../test/fixtures';
@@ -46,6 +48,9 @@ const GINZA_GEOHASH = 'xn76umv';
 /** 大阪駅。encodeGeohash(coordinate(34.702485, 135.495951), 7) の実測値 */
 const OSAKA_GEOHASH = 'xn0m7m3';
 const OSAKA_LATITUDE = 34.702485;
+/** 差し替え先の master。genre_id / area_id が本当に書き換わったと言うには別の行が要る */
+const OTHER_GENRE_ID = 'gnr_sushi';
+const OTHER_AREA_ID = 'are_shinjuku';
 const OSAKA_LONGITUDE = 135.495951;
 
 /** shopCreateSchema.parse を通した後の形。default が適用済みなので全キーが揃っている */
@@ -342,6 +347,81 @@ describe('shop-repository', () => {
       );
       expect(updated?.budgetLunchMin).toBe(800);
       expect(updated?.budgetLunchMax).toBe(1500);
+    });
+
+    it('任意項目をすべて指定すると、対応する列へ 1 つずつ書き込む', async () => {
+      // genre_id / area_id は外部キー。別の値へ確かに変わったと言うために master をもう 1 組入れる
+      await runWrite(
+        world,
+        'INSERT INTO genres (id, name, slug, icon_key, sort_order) VALUES (?, ?, ?, ?, ?)',
+        OTHER_GENRE_ID,
+        '寿司',
+        'sushi',
+        null,
+        1,
+      );
+      await runWrite(
+        world,
+        'INSERT INTO areas (id, name, parent_id, prefecture) VALUES (?, ?, ?, ?)',
+        OTHER_AREA_ID,
+        '新宿',
+        null,
+        '東京都',
+      );
+
+      await updateShopAsOwner(
+        db,
+        ownerA,
+        toShopId('shp_a_pub'),
+        {
+          nameKana: 'エーノコウカイテン',
+          genreId: OTHER_GENRE_ID,
+          areaId: OTHER_AREA_ID,
+          description: '説明を入れた',
+          postalCode: '160-0022',
+          address: '東京都新宿区新宿3-1-1',
+          phone: '03-1234-5678',
+          website: 'https://example.com',
+          budgetDinnerMinYen: 3000,
+          budgetDinnerMaxYen: 6000,
+        },
+        new Date(100),
+      );
+
+      // 戻り値ではなく生 SQL で見る。プロパティ名と列名の対応がずれていても
+      // 戻り値どうしの比較では一致してしまい、取り違えに気づけない
+      const row = await readRow(
+        world,
+        'SELECT name_kana, genre_id, area_id, description, postal_code, address, phone, website, budget_dinner_min, budget_dinner_max FROM shops WHERE id = ?',
+        'shp_a_pub',
+      );
+
+      expect(row).toEqual({
+        name_kana: 'エーノコウカイテン',
+        genre_id: OTHER_GENRE_ID,
+        area_id: OTHER_AREA_ID,
+        description: '説明を入れた',
+        postal_code: '160-0022',
+        address: '東京都新宿区新宿3-1-1',
+        phone: '03-1234-5678',
+        website: 'https://example.com',
+        budget_dinner_min: 3000,
+        budget_dinner_max: 6000,
+      });
+    });
+
+    it('経度だけの指定では経度も geohash も変えない', async () => {
+      // 緯度側の条件だけを落とす変異は、undefined の緯度から geohash を
+      // 計算しようとしてここで初めて表に出る
+      const updated = await updateShopAsOwner(
+        db,
+        ownerA,
+        toShopId('shp_a_pub'),
+        { longitude: OSAKA_LONGITUDE },
+        new Date(100),
+      );
+      expect(updated?.lng).toBe(TEST_LONGITUDE);
+      expect(updated?.geohash).toBe(SEEDED_GEOHASH);
     });
 
     it('null を明示した項目は null で上書きする', async () => {

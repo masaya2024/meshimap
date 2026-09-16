@@ -2,6 +2,7 @@ import { HTTPException } from 'hono/http-exception';
 import { describe, expect, it } from 'vitest';
 import {
   ERROR_MESSAGE_FORBIDDEN,
+  ERROR_MESSAGE_INTERNAL,
   ERROR_MESSAGE_INVALID_INPUT,
   ERROR_MESSAGE_NOT_FOUND,
   ERROR_MESSAGE_UNAUTHORIZED,
@@ -35,6 +36,16 @@ describe('HTTP エラーファクトリ', () => {
     const error = invalidInput();
     expect(error.status).toBe(422);
     expect(error.message).toBe(ERROR_MESSAGE_INVALID_INPUT);
+  });
+
+  it('文言は決められた日本語そのものである', () => {
+    // 上の各テストは定数どうしを比べているだけなので、文言が空文字に変わっても通ってしまう。
+    // リテラルと突き合わせて初めて「文言が消えた」に気づける
+    expect(ERROR_MESSAGE_UNAUTHORIZED).toBe('ログインが必要です');
+    expect(ERROR_MESSAGE_FORBIDDEN).toBe('この操作を行う権限がありません');
+    expect(ERROR_MESSAGE_NOT_FOUND).toBe('対象が見つかりません');
+    expect(ERROR_MESSAGE_INVALID_INPUT).toBe('入力内容が正しくありません');
+    expect(ERROR_MESSAGE_INTERNAL).toBe('サーバ内部でエラーが発生しました');
   });
 
   it('文言に内部情報を示す語が含まれていない', () => {
